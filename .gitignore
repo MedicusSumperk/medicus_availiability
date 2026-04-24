@@ -1,0 +1,7 @@
+config/db_config.local.json
+data/doctor_directory.xlsx
+logs/
+outputs/
+**pycache**/
+.venv/
+.env
