@@ -1,0 +1,7 @@
+{
+  "doctor_directory_path": "data/doctor_directory.xlsx",
+  "default_days_to_sync": 7,
+  "default_slot_interval_minutes": 15,
+  "output_path": "outputs/availability_results",
+  "timezone": "Europe/Prague"
+}
