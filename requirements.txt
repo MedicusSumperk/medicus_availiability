@@ -1,1 +1,1 @@
-# Placeholder for Python dependencies
+fdb==2.0.2
