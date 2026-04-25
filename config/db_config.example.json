@@ -1,0 +1,8 @@
+{
+  "host": "localhost",
+  "port": 3050,
+  "database": "C:/path/to/database.fdb",
+  "username": "SYSDBA",
+  "password": "your_password",
+  "charset": "UTF8"
+}
