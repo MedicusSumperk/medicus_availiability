@@ -1,0 +1,97 @@
+"""Read-only deterministic inspection script for OBSPRAC scheduling records."""
+
+import sys
+from datetime import date
+from pathlib import Path
+
+SCRIPTS_DIR = Path(__file__).resolve().parent
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from db import connect_to_db
+
+
+DOCTOR_ID = 1
+TARGET_DATE = "2026-04-10"
+
+COLUMNS = [
+    "IDPRAC",
+    "IDUZI",
+    "CAS",
+    "DOBA",
+    "INTERVAL",
+    "TYPTYD",
+    "DENTYD",
+    "PLATIOD",
+    "PLATIDO",
+    "OBJED",
+]
+
+
+def _format_row(row: tuple) -> str:
+    return " | ".join(str(value) if value is not None else "" for value in row)
+
+
+def inspect_obsprac() -> None:
+    """Print scheduling rows valid for a single doctor and target date."""
+    target_date = date.fromisoformat(TARGET_DATE)
+    connection = None
+
+    try:
+        connection = connect_to_db()
+        cursor = connection.cursor()
+        cursor.execute(
+            """
+            SELECT
+                IDPRAC,
+                IDUZI,
+                CAS,
+                DOBA,
+                INTERVAL,
+                TYPTYD,
+                DENTYD,
+                PLATIOD,
+                PLATIDO,
+                OBJED
+            FROM OBSPRAC
+            WHERE IDUZI = ?
+              AND OBJED = 'A'
+              AND PLATIOD <= ?
+              AND (PLATIDO >= ? OR PLATIDO IS NULL)
+            ORDER BY IDPRAC, DENTYD, CAS
+            """,
+            (DOCTOR_ID, target_date, target_date),
+        )
+        rows = cursor.fetchall()
+
+        print(f"Doctor ID: {DOCTOR_ID}")
+        print(f"Target date: {TARGET_DATE}")
+        print(" | ".join(COLUMNS))
+        print("-" * 120)
+        for row in rows:
+            print(_format_row(row))
+
+        distinct_idprac = sorted({row[0] for row in rows if row[0] is not None})
+        distinct_dentyd = sorted({row[6] for row in rows if row[6] is not None})
+        distinct_typtyd = sorted({row[5] for row in rows if row[5] is not None})
+
+        print("\nSummary")
+        print(f"Rows found: {len(rows)}")
+        print(f"Distinct IDPRAC: {distinct_idprac}")
+        print(f"Distinct DENTYD: {distinct_dentyd}")
+        print(f"Distinct TYPTYD: {distinct_typtyd}")
+
+    except Exception as error:  # noqa: BLE001
+        print(f"Failed to inspect OBSPRAC: {error}")
+    finally:
+        if connection is not None:
+            connection.close()
+
+
+def main() -> None:
+    """Entry point for direct script execution."""
+    inspect_obsprac()
+
+
+if __name__ == "__main__":
+    main()
