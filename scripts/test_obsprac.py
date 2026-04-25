@@ -1,6 +1,7 @@
-"""Read-only inspection script for appointment-enabled scheduling records."""
+"""Read-only deterministic inspection script for OBSPRAC scheduling records."""
 
 import sys
+from datetime import date
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -9,6 +10,9 @@ if str(SCRIPTS_DIR) not in sys.path:
 
 from db import connect_to_db
 
+
+DOCTOR_ID = 1
+TARGET_DATE = "2026-04-10"
 
 COLUMNS = [
     "IDPRAC",
@@ -28,15 +32,17 @@ def _format_row(row: tuple) -> str:
     return " | ".join(str(value) if value is not None else "" for value in row)
 
 
-def inspect_obsprac(limit: int = 100) -> None:
-    """Print a preview of appointment-enabled rows from OBSPRAC."""
+def inspect_obsprac() -> None:
+    """Print scheduling rows valid for a single doctor and target date."""
+    target_date = date.fromisoformat(TARGET_DATE)
     connection = None
+
     try:
         connection = connect_to_db()
         cursor = connection.cursor()
         cursor.execute(
-            f"""
-            SELECT FIRST {int(limit)}
+            """
+            SELECT
                 IDPRAC,
                 IDUZI,
                 CAS,
@@ -48,18 +54,32 @@ def inspect_obsprac(limit: int = 100) -> None:
                 PLATIDO,
                 OBJED
             FROM OBSPRAC
-            WHERE OBJED = 'A'
-            ORDER BY IDUZI, IDPRAC, PLATIDO DESC, DENTYD, CAS
-            """
+            WHERE IDUZI = ?
+              AND OBJED = 'A'
+              AND PLATIOD <= ?
+              AND (PLATIDO >= ? OR PLATIDO IS NULL)
+            ORDER BY IDPRAC, DENTYD, CAS
+            """,
+            (DOCTOR_ID, target_date, target_date),
         )
         rows = cursor.fetchall()
 
+        print(f"Doctor ID: {DOCTOR_ID}")
+        print(f"Target date: {TARGET_DATE}")
         print(" | ".join(COLUMNS))
         print("-" * 120)
         for row in rows:
             print(_format_row(row))
 
-        print(f"\nDisplayed {len(rows)} records (max {limit}).")
+        distinct_idprac = sorted({row[0] for row in rows if row[0] is not None})
+        distinct_dentyd = sorted({row[6] for row in rows if row[6] is not None})
+        distinct_typtyd = sorted({row[5] for row in rows if row[5] is not None})
+
+        print("\nSummary")
+        print(f"Rows found: {len(rows)}")
+        print(f"Distinct IDPRAC: {distinct_idprac}")
+        print(f"Distinct DENTYD: {distinct_dentyd}")
+        print(f"Distinct TYPTYD: {distinct_typtyd}")
 
     except Exception as error:  # noqa: BLE001
         print(f"Failed to inspect OBSPRAC: {error}")
@@ -70,7 +90,7 @@ def inspect_obsprac(limit: int = 100) -> None:
 
 def main() -> None:
     """Entry point for direct script execution."""
-    inspect_obsprac(limit=100)
+    inspect_obsprac()
 
 
 if __name__ == "__main__":
