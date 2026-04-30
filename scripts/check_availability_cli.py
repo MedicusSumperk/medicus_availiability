@@ -51,22 +51,18 @@ def _load_doctors(cursor) -> list[tuple[int, str]]:
     cursor.execute(
         """
         SELECT IDUZI,
-               TRIM(COALESCE(TITULPRED, '')),
-               TRIM(COALESCE(JMENO, '')),
-               TRIM(COALESCE(PRIJMENI, '')),
-               TRIM(COALESCE(TITULZA, ''))
+               JMENO,
+               PRIJMENI
         FROM UZIVATEL
-        WHERE IDUZI IS NOT NULL
-        ORDER BY PRIJMENI, JMENO, IDUZI
+        ORDER BY IDUZI
         """
     )
 
     doctors: list[tuple[int, str]] = []
-    for doctor_id, title_before, first_name, last_name, title_after in cursor.fetchall():
-        name_parts = [part for part in (title_before, first_name, last_name) if part]
-        display_name = " ".join(name_parts) if name_parts else f"Doctor {doctor_id}"
-        if title_after:
-            display_name = f"{display_name}, {title_after}"
+    for doctor_id, first_name, last_name in cursor.fetchall():
+        first_name_text = (first_name or "").strip()
+        last_name_text = (last_name or "").strip()
+        display_name = f"{first_name_text} {last_name_text}".strip() or "<no name>"
         doctors.append((int(doctor_id), display_name))
 
     return doctors
