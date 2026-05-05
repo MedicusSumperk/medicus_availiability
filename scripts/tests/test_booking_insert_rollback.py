@@ -76,6 +76,41 @@ def _confirm_insert() -> bool:
     return answer == "INSERT"
 
 
+def _find_conflicts(cursor, idprac: int, iduzi: int, target_date: date, start_time: time, end_time: time):
+    cursor.execute(
+        """
+        SELECT
+            IDOBJ,
+            IDPAC,
+            IDPRAC,
+            IDUZI,
+            DATUM,
+            CAS,
+            CASDO,
+            TYP,
+            PRISEL,
+            INFO
+        FROM OBJOBJ
+        WHERE IDPRAC = ?
+          AND IDUZI = ?
+          AND DATUM = ?
+          AND CAS < ?
+          AND CASDO > ?
+        ORDER BY CAS
+        """,
+        (idprac, iduzi, target_date, end_time, start_time),
+    )
+    return cursor.fetchall(), [description[0] for description in cursor.description]
+
+
+def _print_conflicts(headers: list[str], rows) -> None:
+    print("\nConflicting appointment rows found. Insert will not run.")
+    print(" | ".join(headers))
+    print("-" * 100)
+    for row in rows:
+        print(" | ".join("" if value is None else str(value).strip() for value in row))
+
+
 def _print_row(cursor, idobj: int) -> None:
     cursor.execute(
         """
@@ -155,12 +190,21 @@ def main() -> None:
         print(f"DATZAPIS: CURRENT_DATE")
         print(f"CREATEDBY: {created_by}")
 
-        if not _confirm_insert():
-            print("Aborted before insert.")
-            return
-
         connection = connect_to_db()
         cursor = connection.cursor()
+
+        conflicts, conflict_headers = _find_conflicts(cursor, idprac, iduzi, target_date, start_time, end_time)
+        if conflicts:
+            _print_conflicts(conflict_headers, conflicts)
+            connection.rollback()
+            return
+
+        print("\nConflict check passed: no overlapping OBJOBJ rows found for this doctor/workplace/time.")
+
+        if not _confirm_insert():
+            print("Aborted before insert.")
+            connection.rollback()
+            return
 
         cursor.execute(
             """
