@@ -22,16 +22,10 @@ OUTPUT_COLUMN_CANDIDATES = [
     "RODCIS",
     "DATNAR",
     "POJ",
-    "TELEFON",
-    "EMAIL",
 ]
 SEARCHABLE_CANDIDATES = [
     "PRIJMENI",
     "JMENO",
-    "TITUL",
-    "RODCIS",
-    "TELEFON",
-    "EMAIL",
 ]
 TEXT_FIELD_TYPES = {14, 37}  # CHAR, VARCHAR
 
@@ -40,6 +34,10 @@ def _clean(value) -> str:
     if value is None:
         return ""
     return str(value).strip()
+
+
+def _escape_sql_literal(value: str) -> str:
+    return value.replace("'", "''")
 
 
 def _load_column_metadata(cursor) -> dict[str, dict[str, int | None]]:
@@ -77,7 +75,7 @@ def _is_safe_text_column(column_metadata: dict[str, dict[str, int | None]], colu
     return metadata["type"] in TEXT_FIELD_TYPES
 
 
-def _build_query(column_metadata: dict[str, dict[str, int | None]], terms: list[str]) -> tuple[str, list[str], list[str]]:
+def _build_query(column_metadata: dict[str, dict[str, int | None]], terms: list[str]) -> tuple[str, list[str]]:
     available_columns = set(column_metadata.keys())
     output_columns = [column for column in OUTPUT_COLUMN_CANDIDATES if column in available_columns]
     if "IDPAC" not in output_columns and "IDPAC" in available_columns:
@@ -89,14 +87,13 @@ def _build_query(column_metadata: dict[str, dict[str, int | None]], terms: list[
         if column in available_columns and _is_safe_text_column(column_metadata, column)
     ]
     if not searchable_columns:
-        raise ValueError("No known searchable CHAR/VARCHAR patient columns found in KAR")
+        raise ValueError("No known searchable CHAR/VARCHAR patient name columns found in KAR")
 
     where_parts = []
-    params = []
     for column in searchable_columns:
         for term in terms:
-            where_parts.append(f"UPPER({column}) LIKE ?")
-            params.append(f"%{term.upper()}%")
+            escaped_term = _escape_sql_literal(term.upper())
+            where_parts.append(f"UPPER(CAST({column} AS VARCHAR(80))) LIKE '%{escaped_term}%'")
 
     query = f"""
         SELECT FIRST 50 {", ".join(output_columns)}
@@ -104,7 +101,7 @@ def _build_query(column_metadata: dict[str, dict[str, int | None]], terms: list[
         WHERE {" OR ".join(where_parts)}
         ORDER BY IDPAC DESC
     """
-    return query, params, searchable_columns
+    return query, searchable_columns
 
 
 def _print_rows(headers: list[str], rows) -> None:
@@ -131,11 +128,11 @@ def main() -> None:
         column_metadata = _load_column_metadata(cursor)
         _print_available_columns(column_metadata)
 
-        query, params, searchable_columns = _build_query(column_metadata, terms)
-        print("\nSearching safe text columns:")
+        query, searchable_columns = _build_query(column_metadata, terms)
+        print("\nSearching safe name columns:")
         print(", ".join(searchable_columns))
 
-        cursor.execute(query, params)
+        cursor.execute(query)
         rows = cursor.fetchall()
         headers = [description[0] for description in cursor.description]
 
