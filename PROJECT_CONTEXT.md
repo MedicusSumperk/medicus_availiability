@@ -1,186 +1,219 @@
-PROJECT CONTEXT: MEDICUS AVAILABILITY ENGINE
+# Medicus Availability Engine
 
-Goal:
-Compute exact free appointment slots for a doctor and date using Firebird database.
+## Goal
 
-Core Principle:
-Availability = theoretical slots (schedule) minus occupied slots (appointments)
+This project computes exact free appointment slots for a selected doctor and date using the Medicus Firebird database.
 
----
+Core formula:
 
-DATABASE STRUCTURE
+```text
+availability = theoretical schedule slots - occupied appointment slots
+```
 
-1. UZIVATEL
-- Contains users/doctors
-- Key column: IDUZI
-- Used for doctor selection
+The verified core logic is read-only. Scripts query the database and print inspection or availability output; they do not write back to the database.
 
-2. OBSPRAC
-- Contains scheduling rules
-- Key columns:
-  IDUZI (doctor)
-  IDPRAC (workplace)
-  TYPTYD (week type)
-  DENTYD (day of week)
-  CAS (start time)
-  DOBA (duration in minutes)
-  INTERVAL (slot size in minutes)
-  PLATIOD (valid from)
-  PLATIDO (valid to, can be NULL)
-  OBJED = 'A' means appointment-enabled
+## Main Database Objects
 
-- Important:
-  Only rows valid for target date must be used:
-    PLATIOD <= target_date
-    AND (PLATIDO >= target_date OR PLATIDO IS NULL)
+### UZIVATEL
 
-3. OBSDNE_PRAVODLIS_SEL
-- Stored procedure
-- Returns daily scheduling blocks for given:
-  date, TYPTYD, DENTYD, IDPRAC
+Contains users/doctors.
 
-- Returns:
-  CAS (start time)
-  DOBA (duration)
-  INTERVAL (slot size)
-  IDUZI (doctor)
+Important columns:
 
-- Used to generate theoretical slots
+- `IDUZI` - doctor/user ID
+- `JMENO` - first name
+- `PRIJMENI` - last name
 
-4. OBJOBJ
-- Contains real appointments
-- Key columns:
-  IDPRAC
-  IDUZI
-  DATUM
-  CAS (start)
-  CASDO (end)
+Used by the CLI to list and select doctors.
 
-- Used to mark occupied slots
+### OBSPRAC
 
-5. SP_OBJ_KALENDAR
-- Aggregated availability
-- Returns:
-  DOP (free capacity)
-  ODP (occupied capacity)
+Contains scheduling rules.
 
-- Used only for validation, not for slot generation
+Important columns:
 
----
+- `IDUZI` - doctor/user ID
+- `IDPRAC` - workplace/schedule ID
+- `TYPTYD` - week type
+- `DENTYD` - day of week, Monday=1 through Sunday=7
+- `CAS` - block start time
+- `DOBA` - block duration in minutes
+- `INTERVAL` - appointment slot size in minutes
+- `PLATIOD` - valid from date
+- `PLATIDO` - valid to date, nullable/open-ended
+- `OBJED` - `A` means appointment-enabled
 
-AVAILABILITY PIPELINE
+Only rows valid for the target date are considered:
 
-Step 1:
-Select doctor from UZIVATEL
+```sql
+PLATIOD <= target_date
+AND (PLATIDO >= target_date OR PLATIDO IS NULL)
+```
 
-Step 2:
-Input target date
+### OBSDNE_PRAVODLIS_SEL
 
-Step 3:
-Compute DENTYD from date:
-  Monday = 1 ... Sunday = 7
+Stored procedure returning daily schedule blocks for a date, week type, day of week, and workplace.
 
-Step 4:
-Query OBSPRAC:
-  filter:
-    IDUZI = doctor
-    OBJED = 'A'
-    DENTYD = computed DENTYD
-    PLATIOD <= target_date
-    AND (PLATIDO >= target_date OR PLATIDO IS NULL)
+Called with:
 
-Step 5:
-Extract:
-  IDPRAC
-  TYPTYD
+```text
+(target_date, TYPTYD, DENTYD, IDPRAC)
+```
 
-Step 6:
-Call OBSDNE_PRAVODLIS_SEL:
-  (target_date, TYPTYD, DENTYD, IDPRAC)
+Used to generate theoretical appointment slots from `CAS`, `DOBA`, and `INTERVAL`.
 
-Step 7:
-Generate theoretical slots:
-  for each block:
-    start at CAS
-    repeat every INTERVAL minutes
-    until CAS + DOBA
+### OBJOBJ
 
-Step 8:
-Query OBJOBJ:
-  IDPRAC = IDPRAC
-  IDUZI = doctor
-  DATUM = target_date
+Contains real appointments.
 
-Step 9:
-Mark occupied slots:
-  slot is occupied if:
-    slot_time >= CAS
-    AND slot_time < CASDO
+Important columns:
 
-Step 10:
-Free slots = theoretical slots - occupied slots
+- `IDPRAC` - workplace/schedule ID
+- `IDUZI` - doctor/user ID
+- `DATUM` - appointment date
+- `CAS` - appointment start time
+- `CASDO` - appointment end time
 
----
+Used to mark generated theoretical slots as occupied.
 
-VALIDATED TEST CASE
+### SP_OBJ_KALENDAR
+
+Stored procedure returning aggregated calendar capacity indicators.
+
+Important output columns:
+
+- `DOP`
+- `ODP`
+
+Used for validation only. Exact free slots are generated explicitly from schedule blocks and appointments, not from this aggregate procedure.
+
+## Availability Pipeline
+
+1. Load doctors from `UZIVATEL`.
+2. Select a doctor (`IDUZI`).
+3. Input the target date.
+4. Compute `DENTYD` from the target date, where Monday=1 and Sunday=7.
+5. Query `OBSPRAC` for active appointment-enabled schedule rows:
+
+```sql
+IDUZI = doctor_id
+AND OBJED = 'A'
+AND DENTYD = computed_dentyd
+AND PLATIOD <= target_date
+AND (PLATIDO >= target_date OR PLATIDO IS NULL)
+```
+
+6. Extract the schedule context, especially `IDPRAC` and `TYPTYD`.
+7. Call `OBSDNE_PRAVODLIS_SEL(target_date, TYPTYD, DENTYD, IDPRAC)`.
+8. Generate theoretical slots for each returned block:
+
+```text
+start at CAS
+repeat every INTERVAL minutes
+stop before CAS + DOBA
+```
+
+9. Query `OBJOBJ` for appointments matching `IDPRAC`, `IDUZI`, and `DATUM`.
+10. Mark a generated slot as occupied when:
+
+```text
+slot_time >= appointment.CAS
+AND slot_time < appointment.CASDO
+```
+
+11. Return free slots as theoretical slots minus occupied slots.
+
+## Validated Test Case
 
 Doctor:
-  IDUZI = 1
+
+```text
+IDUZI = 1
+```
 
 Date:
-  2026-04-10
 
-Derived:
-  DENTYD = 5
-  TYPTYD = 4
-  IDPRAC = 1
+```text
+2026-04-10
+```
+
+Derived context:
+
+```text
+DENTYD = 5
+TYPTYD = 4
+IDPRAC = 1
+```
 
 Schedule:
-  08:00–12:00 (240 min, interval 15)
-  13:00–15:00 (120 min, interval 15)
 
-Theoretical slots:
-  24
+```text
+08:00-12:00, 240 minutes, interval 15
+13:00-15:00, 120 minutes, interval 15
+```
 
-Appointments:
-  24
+Expected result:
 
-Expected free slots:
-  0
+```text
+Theoretical slots: 24
+Expected free slots: 0
+```
 
-SP_OBJ_KALENDAR:
-  DOP = 0
-  ODP = 0
+This has been checked against direct schedule block inspection, `OBJOBJ` appointments, exact slot calculation, and `SP_OBJ_KALENDAR` aggregate validation.
 
----
+## Project Structure
 
-IMPORTANT RULES
+```text
+scripts/
+  check_availability_cli.py
+  db.py
+  tests/
+    test_obsprac.py
+    test_schedule_blocks.py
+    test_appointments.py
+    test_calendar_capacity.py
+    compute_free_slots.py
+```
 
-- Always filter OBSPRAC by valid date
-- Always compute DENTYD correctly
-- Always handle PLATIDO = NULL as open-ended
-- Always filter by IDUZI
-- Always use OBJED = 'A'
-- Do not rely on SP_OBJ_KALENDAR for slot generation
-- Always compute slots explicitly
+`check_availability_cli.py` is the main interactive CLI entry point.
 
----
+`scripts/tests/` contains read-only validation and inspection scripts used to verify the database pipeline.
 
-OUTPUT EXPECTATION
+## Run the CLI
 
-Function:
-  get_free_slots(doctor_id, date)
+From the repository root:
 
-Returns:
-  list of time strings:
-    ["08:00", "08:15", ...]
+```powershell
+C:\python\python.exe scripts\check_availability_cli.py
+```
 
-If none:
-  return empty list
+The CLI lists doctors from `UZIVATEL`, prompts for a doctor number, prompts for a target date in `YYYY-MM-DD` format, and prints total, occupied, and free slot counts plus free slot times.
 
----
+## Run Validation Scripts
 
-STATUS
+Run all validation scripts from the repository root so their imports resolve consistently:
 
-Core scheduling logic is fully implemented and validated.
-Next step: build user-facing interface (CLI / API / automation).
+```powershell
+C:\python\python.exe scripts\tests\test_obsprac.py
+C:\python\python.exe scripts\tests\test_schedule_blocks.py
+C:\python\python.exe scripts\tests\test_appointments.py
+C:\python\python.exe scripts\tests\test_calendar_capacity.py
+C:\python\python.exe scripts\tests\compute_free_slots.py
+```
+
+Each validation script adds the parent `scripts` directory to `sys.path`, then imports `db.py` from `scripts/db.py`.
+
+## Important Rules
+
+- Keep scripts read-only against the database.
+- Always filter `OBSPRAC` by valid date.
+- Always handle `PLATIDO IS NULL` as open-ended validity.
+- Always filter by `IDUZI`.
+- Always require `OBJED = 'A'` for appointment-enabled schedule rows.
+- Always compute `DENTYD` correctly from the date.
+- Do not rely on `SP_OBJ_KALENDAR` for exact slot generation.
+- Generate exact free slots explicitly from schedule blocks and appointments.
+
+## Current Status
+
+The core scheduling logic is implemented and validated. The repository now separates the main interactive CLI from read-only validation scripts under `scripts/tests/`.
