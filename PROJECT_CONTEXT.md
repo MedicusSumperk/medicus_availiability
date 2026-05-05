@@ -12,6 +12,36 @@ availability = theoretical schedule slots - occupied appointment slots
 
 The verified core logic is read-only. Scripts query the database and print inspection or availability output; they do not write back to the database.
 
+## Product Context
+
+The broader project is an integration layer for an AI receptionist. The client wants an ElevenLabs voice agent that can answer patient calls, reason over current appointment availability, and eventually book patients into the Medicus system.
+
+The agent should have two simple, reliable tools:
+
+1. Check availability.
+2. Book a patient appointment.
+
+The availability tool should provide fresh context for the agent before or during a call. If the requested appointment date/time is outside the cached context window, the agent should call the availability tool again and verify current availability.
+
+The booking tool should write an appointment to the database only after the write path is mapped, tested, and confirmed with the client.
+
+A supporting procedure/reason dictionary will be needed so the agent can map patient intent to required appointment duration. Example concept:
+
+```json
+{
+  "kontrola": {
+    "duration_minutes": 15,
+    "required_slots": 1
+  },
+  "vstupni_vysetreni": {
+    "duration_minutes": 30,
+    "required_slots": 2
+  }
+}
+```
+
+The script should calculate whether a doctor has enough consecutive free slots for the requested procedure. The agent should not have to infer this from raw slot lists.
+
 ## Main Database Objects
 
 ### UZIVATEL
@@ -74,7 +104,7 @@ Important columns:
 - `CAS` - appointment start time
 - `CASDO` - appointment end time
 
-Used to mark generated theoretical slots as occupied.
+Used to mark generated theoretical slots as occupied. This is also a likely booking/write target, but Phase 3 must verify the correct write path, required fields, defaults, generated IDs, and UI visibility before any production booking script is created.
 
 ### SP_OBJ_KALENDAR
 
@@ -242,6 +272,8 @@ Each validation script adds the parent `scripts` directory to `sys.path`, then i
 ## Important Rules
 
 - Keep database interactions read-only until Phase 3.
+- Phase 3 write tests should start inside a database transaction and use rollback by default.
+- Do not commit any test appointment until the target table/procedure, fields, and UI visibility are confirmed with the client.
 - Always filter `OBSPRAC` by valid date.
 - Always handle `PLATIDO IS NULL` as open-ended validity.
 - Always filter by `IDUZI`.
@@ -264,6 +296,36 @@ Suggested verification path:
 2. Compare that source with `OBSPRAC.TYPTYD` across several consecutive weeks.
 3. Test at least one doctor with known alternating week schedules, if available.
 4. Update `availability_engine.py` if a separate source of truth for calendar week type is found.
+
+### Map Booking Write Path
+
+Before creating a production booking script, Phase 3 must determine how Medicus expects appointments to be written.
+
+Open questions:
+
+- Is direct `INSERT` into `OBJOBJ` sufficient, or should booking use a stored procedure?
+- Which fields are required beyond `IDPRAC`, `IDUZI`, `DATUM`, `CAS`, and `CASDO`?
+- How are appointment IDs generated?
+- Which patient identifier fields are required?
+- Which appointment type/status/source fields are required for the appointment to appear correctly in the Medicus UI?
+- Is there a safe way to mark test records, such as a note value like `AI_RECEPTION_TEST`?
+- Is there a supported cancellation/delete path for test cleanup?
+
+## Phase 3 Write-Test Approach
+
+Firebird writes are transactional. A Phase 3 script can open a connection, start or use a transaction, perform a test write, query the same transaction to inspect the inserted data, and then call `rollback()` so the database is not permanently changed.
+
+Initial write-test script should be deliberately conservative:
+
+1. Inspect `OBJOBJ` metadata and nearby real appointment rows.
+2. Identify required/non-null columns and likely defaults.
+3. Build a candidate test insert using a clearly recognizable marker such as `AI_RECEPTION_TEST`.
+4. Run the insert inside a transaction.
+5. Query the inserted row back in the same session.
+6. Roll back by default.
+7. Only after client confirmation, optionally run a controlled commit test for one known safe appointment slot.
+
+This phase is for mapping and confidence building with the client. Production booking behavior comes later, after Phase 2 availability and Phase 3 write behavior are confirmed.
 
 ## PoC Roadmap
 
@@ -299,6 +361,8 @@ Status: planned.
 
 Create a minimal controlled SQL write test to confirm that writing into the client database works, understand exactly which table and fields are affected, and verify that the written data is visible in the expected place on the client side.
 
+The first implementation should default to rollback. A committed test should happen only after the write path and test data are explicitly agreed with the client.
+
 ## Current Status
 
-The core scheduling logic is implemented and validated. Phase 2 weekly CLI was tested on the Windows server and generates usable report files while keeping database operations read-only. The main remaining Phase 2 validation item is confirming the correct source of truth for `TYPTYD`.
+The core scheduling logic is implemented and validated. Phase 2 weekly CLI was tested on the Windows server and generates usable report files while keeping database operations read-only. The main remaining Phase 2 validation item is confirming the correct source of truth for `TYPTYD`; the next major workstream is Phase 3 mapping of safe appointment writes.
