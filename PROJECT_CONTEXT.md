@@ -90,9 +90,9 @@ Used for validation only. Exact free slots are generated explicitly from schedul
 ## Availability Pipeline
 
 1. Load doctors from `UZIVATEL`.
-2. Select a doctor (`IDUZI`).
-3. Input the target date.
-4. Compute `DENTYD` from the target date, where Monday=1 and Sunday=7.
+2. Select a doctor (`IDUZI`) or iterate through all doctors for the weekly CLI.
+3. Input the target date or selected week.
+4. Compute `DENTYD` from each target date, where Monday=1 and Sunday=7.
 5. Query `OBSPRAC` for active appointment-enabled schedule rows:
 
 ```sql
@@ -164,8 +164,13 @@ This has been checked against direct schedule block inspection, `OBJOBJ` appoint
 ## Project Structure
 
 ```text
+data/
+  availability/
+    .gitkeep
 scripts/
+  availability_engine.py
   check_availability_cli.py
+  check_week_availability_cli.py
   db.py
   tests/
     test_obsprac.py
@@ -175,11 +180,15 @@ scripts/
     compute_free_slots.py
 ```
 
-`check_availability_cli.py` is the main interactive CLI entry point.
+`availability_engine.py` contains reusable read-only calculation helpers.
+
+`check_availability_cli.py` is the original interactive single-doctor/single-day CLI entry point.
+
+`check_week_availability_cli.py` is the Phase 2 weekly CLI. It checks Monday-Friday availability for all doctors and writes JSON, CSV, and Markdown output files.
 
 `scripts/tests/` contains read-only validation and inspection scripts used to verify the database pipeline.
 
-## Run the CLI
+## Run the Single-Day CLI
 
 From the repository root:
 
@@ -188,6 +197,33 @@ C:\python\python.exe scripts\check_availability_cli.py
 ```
 
 The CLI lists doctors from `UZIVATEL`, prompts for a doctor number, prompts for a target date in `YYYY-MM-DD` format, and prints total, occupied, and free slot counts plus free slot times.
+
+## Run the Weekly CLI
+
+From the repository root:
+
+```powershell
+C:\python\python.exe scripts\check_week_availability_cli.py
+```
+
+The weekly CLI prompts for one of these options:
+
+- current Monday-Friday week
+- next Monday-Friday week
+- following Monday-Friday week
+- custom date, using the Monday-Friday week containing that date
+
+It computes availability for all doctors and includes doctors even when they have no free slots or no schedule for a day.
+
+Output files are written to `data/availability/`:
+
+```text
+availability_YYYY-Www.json
+availability_YYYY-Www.csv
+availability_YYYY-Www.md
+```
+
+The Markdown report is intended as the easiest output to show to a client. JSON is for downstream automation/API use, and CSV is for spreadsheet review.
 
 ## Run Validation Scripts
 
@@ -205,7 +241,7 @@ Each validation script adds the parent `scripts` directory to `sys.path`, then i
 
 ## Important Rules
 
-- Keep scripts read-only against the database.
+- Keep database interactions read-only until Phase 3.
 - Always filter `OBSPRAC` by valid date.
 - Always handle `PLATIDO IS NULL` as open-ended validity.
 - Always filter by `IDUZI`.
@@ -230,9 +266,9 @@ UZIVATEL -> OBSPRAC -> OBSDNE_PRAVODLIS_SEL -> OBJOBJ
 
 ### Phase 2: Extended CLI
 
-Status: planned.
+Status: in progress.
 
-Build a more capable CLI around the verified availability engine. It should support practical testing flows, broader inputs, clearer output, and reusable functions for later API or automation layers.
+Build a more capable CLI around the verified availability engine. The first implementation is `scripts/check_week_availability_cli.py`, which checks all doctors for a selected Monday-Friday week and produces console, JSON, CSV, and Markdown output.
 
 ### Phase 3: SQL Write Test
 
@@ -242,4 +278,4 @@ Create a minimal controlled SQL write test to confirm that writing into the clie
 
 ## Current Status
 
-The core scheduling logic is implemented and validated. The repository now separates the main interactive CLI from read-only validation scripts under `scripts/tests/`. Next planned work is Phase 2: an extended CLI for broader PoC testing.
+The core scheduling logic is implemented and validated. Phase 2 now has an initial weekly CLI for broader PoC testing while keeping database operations read-only.
