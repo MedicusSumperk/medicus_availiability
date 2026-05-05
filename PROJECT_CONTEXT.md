@@ -214,6 +214,32 @@ Each validation script adds the parent `scripts` directory to `sys.path`, then i
 - Do not rely on `SP_OBJ_KALENDAR` for exact slot generation.
 - Generate exact free slots explicitly from schedule blocks and appointments.
 
+## PoC Roadmap
+
+### Phase 1: Read-only Availability Pipeline
+
+Status: completed.
+
+Validated the full read-only pipeline for computing exact free appointment slots from Firebird:
+
+```text
+UZIVATEL -> OBSPRAC -> OBSDNE_PRAVODLIS_SEL -> OBJOBJ
+```
+
+`SP_OBJ_KALENDAR` is used as an aggregate validation reference.
+
+### Phase 2: Extended CLI
+
+Status: planned.
+
+Build a more capable CLI around the verified availability engine. It should support practical testing flows, broader inputs, clearer output, and reusable functions for later API or automation layers.
+
+### Phase 3: SQL Write Test
+
+Status: planned.
+
+Create a minimal controlled SQL write test to confirm that writing into the client database works, understand exactly which table and fields are affected, and verify that the written data is visible in the expected place on the client side.
+
 ## Current Status
 
-The core scheduling logic is implemented and validated. The repository now separates the main interactive CLI from read-only validation scripts under `scripts/tests/`.
+The core scheduling logic is implemented and validated. The repository now separates the main interactive CLI from read-only validation scripts under `scripts/tests/`. Next planned work is Phase 2: an extended CLI for broader PoC testing.
