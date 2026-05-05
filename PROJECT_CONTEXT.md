@@ -203,6 +203,7 @@ scripts/
   check_week_availability_cli.py
   db.py
   tests/
+    inspect_booking_write_path.py
     test_obsprac.py
     test_schedule_blocks.py
     test_appointments.py
@@ -268,6 +269,16 @@ C:\python\python.exe scripts\tests\compute_free_slots.py
 ```
 
 Each validation script adds the parent `scripts` directory to `sys.path`, then imports `db.py` from `scripts/db.py`.
+
+## Run Phase 3 Booking Inspection
+
+From the repository root:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_booking_write_path.py
+```
+
+This script is read-only. It inspects `OBJOBJ` columns, constraints, indexes, triggers, likely generators/sequences, and potentially related procedures. At the end it asks whether to print recent `OBJOBJ` rows; answer `YES` only when patient-data exposure is acceptable for the current debugging session.
 
 ## Important Rules
 
@@ -362,6 +373,12 @@ Status: planned.
 Create a minimal controlled SQL write test to confirm that writing into the client database works, understand exactly which table and fields are affected, and verify that the written data is visible in the expected place on the client side.
 
 The first implementation should default to rollback. A committed test should happen only after the write path and test data are explicitly agreed with the client.
+
+First mapping script:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_booking_write_path.py
+```
 
 ## Current Status
 
