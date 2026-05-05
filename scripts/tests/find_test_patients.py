@@ -13,7 +13,7 @@ from db import connect_to_db
 
 
 TABLE_NAME = "KAR"
-DEFAULT_TERMS = ["TEST", "TESTOV", "DEMO", "AI", "RECEP"]
+DEFAULT_TERMS = ["TEST", "TESTOV", "TESTOVACI", "DEMO", "RECEP", "RECEPCE"]
 OUTPUT_COLUMN_CANDIDATES = [
     "IDPAC",
     "PRIJMENI",
@@ -118,7 +118,7 @@ def main() -> None:
     connection = None
     try:
         raw_terms = input(
-            "Search terms separated by comma, or Enter for TEST/DEMO/AI/RECEP: "
+            "Search terms separated by comma, or Enter for TEST/DEMO/RECEP defaults: "
         ).strip()
         if raw_terms:
             terms = [term.strip() for term in raw_terms.split(",") if term.strip()]
