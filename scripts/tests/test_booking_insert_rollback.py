@@ -7,11 +7,14 @@ rolls the transaction back so the database is not permanently changed.
 
 from __future__ import annotations
 
+import json
 import sys
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = SCRIPTS_DIR.parent
+CONFIG_PATH = PROJECT_ROOT / "config" / "booking_insert_test.local.json"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -27,6 +30,15 @@ DEFAULT_CREATED_BY = 10
 DEFAULT_DURATION_MINUTES = 15
 
 
+def _load_config() -> dict:
+    if not CONFIG_PATH.exists():
+        return {}
+    with CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+        config = json.load(config_file)
+    print(f"Loaded defaults from {CONFIG_PATH}")
+    return config
+
+
 def _read_int(prompt: str, default: int | None = None) -> int:
     while True:
         suffix = f" [{default}]" if default is not None else ""
@@ -39,18 +51,24 @@ def _read_int(prompt: str, default: int | None = None) -> int:
             print("Enter a whole number.")
 
 
-def _read_date(prompt: str) -> date:
+def _read_date(prompt: str, default: str | None = None) -> date:
     while True:
-        raw_value = input(f"{prompt} ({DATE_FORMAT}): ").strip()
+        suffix = f" [{default}]" if default else ""
+        raw_value = input(f"{prompt} ({DATE_FORMAT}){suffix}: ").strip()
+        if not raw_value and default:
+            raw_value = default
         try:
             return datetime.strptime(raw_value, DATE_FORMAT).date()
         except ValueError:
             print("Invalid date format. Use YYYY-MM-DD.")
 
 
-def _read_time(prompt: str) -> time:
+def _read_time(prompt: str, default: str | None = None) -> time:
     while True:
-        raw_value = input(f"{prompt} (HH:MM): ").strip()
+        suffix = f" [{default}]" if default else ""
+        raw_value = input(f"{prompt} (HH:MM){suffix}: ").strip()
+        if not raw_value and default:
+            raw_value = default
         for time_format in TIME_FORMATS:
             try:
                 return datetime.strptime(raw_value, time_format).time()
@@ -163,18 +181,20 @@ def main() -> None:
     inserted_idobj = None
 
     try:
+        config = _load_config()
+
         print("Rollback-only OBJOBJ booking insert test")
         print("Use a known safe test patient and a slot agreed with the client.")
 
-        idpac = _read_int("Patient IDPAC")
-        idprac = _read_int("Workplace IDPRAC")
-        iduzi = _read_int("Doctor IDUZI")
-        target_date = _read_date("Appointment date")
-        start_time = _read_time("Appointment start time")
-        duration_minutes = _read_int("Duration minutes", DEFAULT_DURATION_MINUTES)
+        idpac = _read_int("Patient IDPAC", config.get("idpac"))
+        idprac = _read_int("Workplace IDPRAC", config.get("idprac"))
+        iduzi = _read_int("Doctor IDUZI", config.get("iduzi"))
+        target_date = _read_date("Appointment date", config.get("date"))
+        start_time = _read_time("Appointment start time", config.get("start_time"))
+        duration_minutes = _read_int("Duration minutes", config.get("duration_minutes", DEFAULT_DURATION_MINUTES))
         end_time = _add_minutes(start_time, duration_minutes)
-        typ = _read_int("OBJOBJ.TYP", DEFAULT_TYPE)
-        created_by = _read_int("CREATEDBY", DEFAULT_CREATED_BY)
+        typ = _read_int("OBJOBJ.TYP", config.get("typ", DEFAULT_TYPE))
+        created_by = _read_int("CREATEDBY", config.get("created_by", DEFAULT_CREATED_BY))
 
         print("\nCandidate row:")
         print(f"IDPAC: {idpac}")
