@@ -14,28 +14,26 @@ from db import connect_to_db
 
 TABLE_NAME = "KAR"
 DEFAULT_TERMS = ["TEST", "TESTOV", "DEMO", "AI", "RECEP"]
-LIKELY_COLUMNS = [
+OUTPUT_COLUMN_CANDIDATES = [
     "IDPAC",
     "PRIJMENI",
     "JMENO",
     "TITUL",
-    "CELEJMENO",
     "RODCIS",
     "DATNAR",
     "POJ",
     "TELEFON",
     "EMAIL",
-    "POZNAMKA",
 ]
-SEARCHABLE_NAMES = [
+SEARCHABLE_CANDIDATES = [
     "PRIJMENI",
     "JMENO",
-    "CELEJMENO",
+    "TITUL",
     "RODCIS",
     "TELEFON",
     "EMAIL",
-    "POZNAMKA",
 ]
+TEXT_FIELD_TYPES = {14, 37}  # CHAR, VARCHAR
 
 
 def _clean(value) -> str:
@@ -44,38 +42,60 @@ def _clean(value) -> str:
     return str(value).strip()
 
 
-def _load_columns(cursor) -> list[str]:
+def _load_column_metadata(cursor) -> dict[str, dict[str, int | None]]:
     cursor.execute(
         """
-        SELECT RDB$FIELD_NAME
-        FROM RDB$RELATION_FIELDS
-        WHERE RDB$RELATION_NAME = ?
-        ORDER BY RDB$FIELD_POSITION
+        SELECT
+            rf.RDB$FIELD_NAME,
+            f.RDB$FIELD_TYPE,
+            f.RDB$FIELD_LENGTH
+        FROM RDB$RELATION_FIELDS rf
+        JOIN RDB$FIELDS f ON f.RDB$FIELD_NAME = rf.RDB$FIELD_SOURCE
+        WHERE rf.RDB$RELATION_NAME = ?
+        ORDER BY rf.RDB$FIELD_POSITION
         """,
         (TABLE_NAME,),
     )
-    return [_clean(row[0]).upper() for row in cursor.fetchall()]
+    return {
+        _clean(column_name).upper(): {
+            "type": field_type,
+            "length": field_length,
+        }
+        for column_name, field_type, field_length in cursor.fetchall()
+    }
 
 
-def _print_available_columns(columns: list[str]) -> None:
+def _print_available_columns(column_metadata: dict[str, dict[str, int | None]]) -> None:
     print(f"Available {TABLE_NAME} columns:")
-    print(", ".join(columns))
+    print(", ".join(column_metadata.keys()))
 
 
-def _build_query(columns: list[str], terms: list[str]) -> tuple[str, list[str]]:
-    output_columns = [column for column in LIKELY_COLUMNS if column in columns]
-    if "IDPAC" not in output_columns and "IDPAC" in columns:
+def _is_safe_text_column(column_metadata: dict[str, dict[str, int | None]], column: str) -> bool:
+    metadata = column_metadata.get(column)
+    if not metadata:
+        return False
+    return metadata["type"] in TEXT_FIELD_TYPES
+
+
+def _build_query(column_metadata: dict[str, dict[str, int | None]], terms: list[str]) -> tuple[str, list[str], list[str]]:
+    available_columns = set(column_metadata.keys())
+    output_columns = [column for column in OUTPUT_COLUMN_CANDIDATES if column in available_columns]
+    if "IDPAC" not in output_columns and "IDPAC" in available_columns:
         output_columns.insert(0, "IDPAC")
 
-    searchable_columns = [column for column in SEARCHABLE_NAMES if column in columns]
+    searchable_columns = [
+        column
+        for column in SEARCHABLE_CANDIDATES
+        if column in available_columns and _is_safe_text_column(column_metadata, column)
+    ]
     if not searchable_columns:
-        raise ValueError("No known searchable patient columns found in KAR")
+        raise ValueError("No known searchable CHAR/VARCHAR patient columns found in KAR")
 
     where_parts = []
     params = []
     for column in searchable_columns:
         for term in terms:
-            where_parts.append(f"UPPER(CAST({column} AS VARCHAR(255))) LIKE ?")
+            where_parts.append(f"UPPER({column}) LIKE ?")
             params.append(f"%{term.upper()}%")
 
     query = f"""
@@ -84,7 +104,7 @@ def _build_query(columns: list[str], terms: list[str]) -> tuple[str, list[str]]:
         WHERE {" OR ".join(where_parts)}
         ORDER BY IDPAC DESC
     """
-    return query, params
+    return query, params, searchable_columns
 
 
 def _print_rows(headers: list[str], rows) -> None:
@@ -108,10 +128,13 @@ def main() -> None:
         connection = connect_to_db()
         cursor = connection.cursor()
 
-        columns = _load_columns(cursor)
-        _print_available_columns(columns)
+        column_metadata = _load_column_metadata(cursor)
+        _print_available_columns(column_metadata)
 
-        query, params = _build_query(columns, terms)
+        query, params, searchable_columns = _build_query(column_metadata, terms)
+        print("\nSearching safe text columns:")
+        print(", ".join(searchable_columns))
+
         cursor.execute(query, params)
         rows = cursor.fetchall()
         headers = [description[0] for description in cursor.description]
