@@ -250,6 +250,21 @@ Each validation script adds the parent `scripts` directory to `sys.path`, then i
 - Do not rely on `SP_OBJ_KALENDAR` for exact slot generation.
 - Generate exact free slots explicitly from schedule blocks and appointments.
 
+## Open Verification Items
+
+### Verify Week Type Source (`TYPTYD`)
+
+Current implementation derives `TYPTYD` from active `OBSPRAC` rows for the selected doctor/date/day-of-week and passes it into `OBSDNE_PRAVODLIS_SEL`.
+
+This needs deeper read-only verification before treating Phase 2 output as final client-facing truth. The key question is whether `OBSPRAC.TYPTYD` is always the correct week type for a concrete calendar date, or whether another database table/procedure defines the actual active week type for each date.
+
+Suggested verification path:
+
+1. Search the database schema for tables/procedures containing week type/calendar mapping data.
+2. Compare that source with `OBSPRAC.TYPTYD` across several consecutive weeks.
+3. Test at least one doctor with known alternating week schedules, if available.
+4. Update `availability_engine.py` if a separate source of truth for calendar week type is found.
+
 ## PoC Roadmap
 
 ### Phase 1: Read-only Availability Pipeline
@@ -270,6 +285,14 @@ Status: in progress.
 
 Build a more capable CLI around the verified availability engine. The first implementation is `scripts/check_week_availability_cli.py`, which checks all doctors for a selected Monday-Friday week and produces console, JSON, CSV, and Markdown output.
 
+Test status:
+
+- Pulled and tested on the Windows server over SSH.
+- Weekly CLI runs successfully.
+- Console output is visible.
+- Report generation works and creates files under `data/availability/`.
+- Generated Markdown/CSV files can be opened or transferred from the server for review.
+
 ### Phase 3: SQL Write Test
 
 Status: planned.
@@ -278,4 +301,4 @@ Create a minimal controlled SQL write test to confirm that writing into the clie
 
 ## Current Status
 
-The core scheduling logic is implemented and validated. Phase 2 now has an initial weekly CLI for broader PoC testing while keeping database operations read-only.
+The core scheduling logic is implemented and validated. Phase 2 weekly CLI was tested on the Windows server and generates usable report files while keeping database operations read-only. The main remaining Phase 2 validation item is confirming the correct source of truth for `TYPTYD`.
