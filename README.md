@@ -70,7 +70,7 @@ C:\python\python.exe scripts\tests\inspect_appointment_types.py
 
 Run this for a date where the client can compare the output with Medicus UI examples of skin examination, dermatoscope, plasma, reservations, and regular-check variants.
 
-See `docs/appointment_type_mapping.md` for the verification workflow.
+See `docs/appointment_type_mapping.md` and `docs/activity_type_mapping.md` for the verification workflow and current `IDCINNOSTI -> CINNOSTI` findings.
 
 ## Booking Write Mapping
 
@@ -138,13 +138,31 @@ COMMIT TEST APPOINTMENT
 
 Any other input rolls back.
 
+Controlled multi-activity insert test for verifying whether `OBJOBJ.IDCINNOSTI` propagates expected activity/color into Medicus UI:
+
+```cmd
+copy config\activity_insert_test.local.example.json config\activity_insert_test.local.json
+```
+
+```powershell
+C:\python\python.exe scripts\tests\test_activity_insert_commit_prompt.py
+```
+
+This inserts several marked appointments with different `IDCINNOSTI` values, then commits only if this exact phrase is typed:
+
+```text
+COMMIT ACTIVITY TEST APPOINTMENTS
+```
+
+Use it only during controlled client-approved UI verification.
+
 ## Current Status
 
 - Phase 1 read-only availability pipeline is validated.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
 - Phase 3 rollback-only `OBJOBJ` insert succeeded and rollback verification passed.
 - Phase 3 committed test row was verified with the client in Medicus UI.
-- Current priority: map appointment types/colors to DB values before production booking logic.
+- Current priority: verify `OBJOBJ.IDCINNOSTI -> CINNOSTI` activity/color behavior with controlled test rows.
 
 ## Detailed Context
 
