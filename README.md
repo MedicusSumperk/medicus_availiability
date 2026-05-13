@@ -7,7 +7,7 @@ The target agent needs two reliable tools:
 1. Check doctor availability.
 2. Book a patient appointment.
 
-Current work is still PoC/mapping. Availability scripts are read-only. Booking scripts are Phase 3 test utilities and should be used only with client-approved test data.
+Current work is still PoC/mapping. Availability diagnostics are read-only. Booking test utilities should be used only with client-approved test data.
 
 ## Setup
 
@@ -59,6 +59,18 @@ data/availability/availability_YYYY-Www.md
 ```
 
 The Markdown report is the easiest output to show to a client. JSON is for downstream automation/API work, and CSV is for spreadsheet review.
+
+## Appointment Type Mapping
+
+Inspect appointment rows for a date so Medicus UI colors/types can be mapped to database values:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_appointment_types.py
+```
+
+Run this for a date where the client can compare the output with Medicus UI examples of skin examination, dermatoscope, plasma, reservations, and regular-check variants.
+
+See `docs/appointment_type_mapping.md` for the verification workflow.
 
 ## Booking Write Mapping
 
@@ -131,7 +143,8 @@ Any other input rolls back.
 - Phase 1 read-only availability pipeline is validated.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
 - Phase 3 rollback-only `OBJOBJ` insert succeeded and rollback verification passed.
-- Next checkpoint: client-approved committed test row and verification in Medicus UI.
+- Phase 3 committed test row was verified with the client in Medicus UI.
+- Current priority: map appointment types/colors to DB values before production booking logic.
 
 ## Detailed Context
 
