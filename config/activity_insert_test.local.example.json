@@ -1,0 +1,48 @@
+{
+  "idpac": 33411,
+  "idprac": 1,
+  "iduzi": 1,
+  "date": "2027-01-01",
+  "start_time": "08:00",
+  "slot_gap_minutes": 30,
+  "typ": 1,
+  "created_by": 10,
+  "variants": [
+    {
+      "label": "skin_default",
+      "idcinnosti": null,
+      "duration_minutes": 15,
+      "info": "AI_ACTIVITY_TEST_SKIN_DEFAULT"
+    },
+    {
+      "label": "derm_scan_1",
+      "idcinnosti": 1,
+      "duration_minutes": 15,
+      "info": "AI_ACTIVITY_TEST_DERM_1"
+    },
+    {
+      "label": "derm_followup",
+      "idcinnosti": 2,
+      "duration_minutes": 15,
+      "info": "AI_ACTIVITY_TEST_DERM_FOLLOWUP"
+    },
+    {
+      "label": "laser_plasma",
+      "idcinnosti": 3,
+      "duration_minutes": 30,
+      "info": "AI_ACTIVITY_TEST_PLAZMA"
+    },
+    {
+      "label": "derm_scan_repeat",
+      "idcinnosti": 5,
+      "duration_minutes": 15,
+      "info": "AI_ACTIVITY_TEST_DERM_REPEAT"
+    },
+    {
+      "label": "derm_reservation",
+      "idcinnosti": 6,
+      "duration_minutes": 15,
+      "info": "AI_ACTIVITY_TEST_DERM_RESERVATION"
+    }
+  ]
+}
