@@ -26,7 +26,8 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - Direct `INSERT INTO OBJOBJ` is considered plausible for the AI booking path.
 - Production/client UI testing confirmed that writing `OBJOBJ.IDCINNOSTI` propagates expected activity/color into the Medicus calendar UI.
 - Appointment/service type mapping is driven by `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`, not `OBJOBJ.TYP`.
-- Current priority: implement service-specific bookable-slot context and finish remaining client/business-rule confirmations.
+- First read-only pre-call agent context builder is implemented.
+- Current priority: test the agent directly with generated `agent_context_latest.json`, then tune context range/shape and remaining business rules.
 
 ## Product Scope V1
 
@@ -161,6 +162,61 @@ Confirmed/working rule:
 - Plasma should be bookable only for doctors allowed by client rules.
 
 Client note: plasma is likely handled by Dr. Bartonova and appears to be available year-round. This must still be confirmed before production booking.
+
+## Pre-call Agent Context
+
+A first read-only pre-call context builder is implemented.
+
+Run command:
+
+```powershell
+C:\python\python.exe scripts\build_agent_context_cli.py
+```
+
+Local config:
+
+```text
+config/agent_context.local.json
+```
+
+Example config:
+
+```text
+config/agent_context.local.example.json
+```
+
+Outputs:
+
+```text
+data/agent_context/agent_context_latest.json
+data/agent_context/agent_context_latest.md
+data/agent_context/agent_context_YYYYMMDD_HHMMSS.json
+data/agent_context/agent_context_YYYYMMDD_HHMMSS.md
+```
+
+Current behavior:
+
+- read-only, no appointment writes
+- default range is configurable through `days_ahead`
+- default is 14 included business days, weekends excluded
+- doctors without a schedule for a given day are omitted by default
+- `include_unscheduled_doctors` can be set to `true` for diagnostic full-matrix output
+- context includes service-specific options for skin and plasma
+- agent should use `services.skin` and `services.plasma`, not raw free slots
+- output limits options per service / doctor / day to keep the file compact
+
+Initial manual tests indicate that script runtime is fast enough for current ranges; expected runtime growth should be roughly linear with days and doctor count. The next test is to pass `agent_context_latest.json` directly to the agent and evaluate whether the agent can use it correctly.
+
+Tuning knobs:
+
+- `days_ahead`
+- `include_weekends`
+- `include_unscheduled_doctors`
+- `max_options_per_service_per_doctor_day`
+- `allowed_doctor_ids`
+- `excluded_doctor_ids`
+
+Detailed notes are in `docs/agent_context.md`.
 
 ## Doctor Availability and Booking Scope
 
@@ -375,18 +431,26 @@ This has been checked against direct schedule block inspection, `OBJOBJ` appoint
 config/
   activity_insert_test.local.example.json
   activity_insert_test.local.json       # local only, created manually from example
+  agent_context.local.example.json
+  agent_context.local.json              # local only, created manually from example
   booking_insert_test.local.example.json
   booking_insert_test.local.json        # local only, created manually from example
   db_config.local.json                  # local only
 data/
+  agent_context/
+    agent_context_latest.json           # generated, ignored
+    agent_context_latest.md             # generated, ignored
   availability/
     .gitkeep
 docs/
   activity_type_mapping.md
+  agent_context.md
   appointment_type_mapping.md
   phase3_rollback_insert_test.md
 scripts/
+  agent_context.py
   availability_engine.py
+  build_agent_context_cli.py
   check_availability_cli.py
   check_week_availability_cli.py
   db.py
@@ -416,6 +480,16 @@ Weekly CLI:
 
 ```powershell
 C:\python\python.exe scripts\check_week_availability_cli.py
+```
+
+Pre-call agent context:
+
+```cmd
+copy config\agent_context.local.example.json config\agent_context.local.json
+```
+
+```powershell
+C:\python\python.exe scripts\build_agent_context_cli.py
 ```
 
 Appointment type inspection:
@@ -579,6 +653,20 @@ This answers the earlier question: yes, the commit test can propagate calendar c
 
 ## Open Verification Items
 
+### Test Agent With Context File
+
+Next immediate step.
+
+Use generated `data/agent_context/agent_context_latest.json` as an explicit context file for the agent and test realistic reception scenarios.
+
+Questions:
+
+- Can the agent reliably use `services.skin` and `services.plasma` options?
+- Does the agent avoid offering raw free slots that are not service-bookable?
+- Is the JSON too large or too technical?
+- Does the context need a shorter top-options summary layer?
+- What date range gives the best balance between setup/load time and response quality?
+
 ### Verify Plasma Production Shape
 
 Questions:
@@ -637,7 +725,7 @@ Status: in progress.
 
 `check_week_availability_cli.py` checks all doctors for a selected Monday-Friday week and produces console, JSON, CSV, and Markdown output. It was pulled and tested on the Windows server over SSH, and report generation works.
 
-Next Phase 2 work should extend from raw free slots toward service-specific bookable context for the agent.
+A first pre-call service-specific agent context builder now exists and should be tested directly with the agent.
 
 ### Phase 3: SQL Write Test
 
@@ -649,17 +737,16 @@ Remaining Phase 3 work is to finalize production values such as exact plasma `IN
 
 ### Phase 4: Agent Booking Context
 
-Status: planned.
+Status: first implementation ready for agent testing.
 
-Implement a mechanism that gives the AI receptionist service-specific context, not only raw availability.
+Implemented a mechanism that gives the AI receptionist service-specific context, not only raw availability.
 
-Expected output should eventually answer:
+Expected output should answer:
 
 - which doctors are bookable on a target day
-- which slots are raw-free
 - which slots are bookable for skin examination
 - which slots are bookable for plasma
 - why a raw-free slot is not bookable for a specific service
 - which DB fields should be used if a booking is created
 
-Do not implement production booking logic until bookable doctor rules, plasma shape, and manual exceptions are confirmed.
+Next step is manual agent testing with `agent_context_latest.json`, then context shape/range tuning based on response quality and real reception scenario mapping.
