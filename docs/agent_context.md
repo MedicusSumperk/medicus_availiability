@@ -38,6 +38,7 @@ The default config currently uses:
 - start date: today
 - days ahead: 14 included business days
 - weekends: excluded
+- unscheduled doctors: excluded
 - max options per service / doctor / day: 6
 - slot interval: 15 minutes
 
@@ -92,10 +93,13 @@ The config supports:
 
 ```json
 "allowed_doctor_ids": [],
-"excluded_doctor_ids": []
+"excluded_doctor_ids": [],
+"include_unscheduled_doctors": false
 ```
 
-Current default is to consider all doctors returned by `UZIVATEL`, then evaluate whether they have a schedule for each day. This is temporary until bookable doctor rules are confirmed.
+Current default is to consider all doctors returned by `UZIVATEL`, then include only doctors who have a schedule for each day. This keeps the agent context compact and avoids returning a full matrix of non-ordinating doctors.
+
+For diagnostics, set `include_unscheduled_doctors` to `true` to include doctors without a schedule.
 
 ## Output Shape
 
@@ -105,7 +109,7 @@ The JSON contains:
 - included date range
 - rule summary
 - days
-- doctors per day
+- scheduled doctors per day
 - raw free-slot count
 - bookable skin options
 - bookable plasma options
