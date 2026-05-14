@@ -2,6 +2,7 @@
   "start_date": null,
   "days_ahead": 14,
   "include_weekends": false,
+  "include_unscheduled_doctors": false,
   "max_options_per_service_per_doctor_day": 6,
   "slot_interval_minutes": 15,
   "services": {
