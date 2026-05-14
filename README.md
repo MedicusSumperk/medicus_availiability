@@ -58,7 +58,28 @@ data/availability/availability_YYYY-Www.csv
 data/availability/availability_YYYY-Www.md
 ```
 
-The Markdown report is the easiest output to show to a client. JSON is for downstream automation/API work, and CSV is for spreadsheet review.
+## Pre-call Agent Context
+
+Build a compact read-only context file before a call:
+
+```cmd
+copy config\agent_context.local.example.json config\agent_context.local.json
+```
+
+```powershell
+C:\python\python.exe scripts\build_agent_context_cli.py
+```
+
+Outputs are written to `data/agent_context/`:
+
+```text
+agent_context_latest.json
+agent_context_latest.md
+agent_context_YYYYMMDD_HHMMSS.json
+agent_context_YYYYMMDD_HHMMSS.md
+```
+
+The JSON is intended for the agent. The Markdown is a quick human-readable check. Current V1 context includes service-specific options for skin examination and plasma, with skin follow-up dermatoscope checks and shared dermatoscope blockers.
 
 ## Appointment Type Mapping
 
@@ -68,9 +89,7 @@ Inspect appointment rows for a date so Medicus UI colors/types can be mapped to 
 C:\python\python.exe scripts\tests\inspect_appointment_types.py
 ```
 
-Run this for a date where the client can compare the output with Medicus UI examples of skin examination, dermatoscope, plasma, reservations, and regular-check variants.
-
-See `docs/appointment_type_mapping.md` and `docs/activity_type_mapping.md` for the verification workflow and current `IDCINNOSTI -> CINNOSTI` findings.
+See `docs/appointment_type_mapping.md` and `docs/activity_type_mapping.md` for the verification workflow and confirmed `IDCINNOSTI -> CINNOSTI` findings.
 
 ## Booking Write Mapping
 
@@ -101,28 +120,11 @@ Create local test defaults:
 copy config\booking_insert_test.local.example.json config\booking_insert_test.local.json
 ```
 
-Example config:
-
-```json
-{
-  "idpac": 33411,
-  "idprac": 1,
-  "iduzi": 1,
-  "date": "2027-01-01",
-  "start_time": "08:00",
-  "duration_minutes": 15,
-  "typ": 1,
-  "created_by": 10
-}
-```
-
 Rollback-only insert test:
 
 ```powershell
 C:\python\python.exe scripts\tests\test_booking_insert_rollback.py
 ```
-
-This inserts `INFO = AI_RECEPTION_TEST_ROLLBACK`, reads the row back inside the transaction, then always rolls back.
 
 Commit-prompt insert test:
 
@@ -130,13 +132,11 @@ Commit-prompt insert test:
 C:\python\python.exe scripts\tests\test_booking_insert_commit_prompt.py
 ```
 
-This inserts `INFO = AI_RECEPTION_TEST_COMMIT`, reads the row back, then commits only if this exact phrase is typed:
+This commits only if this exact phrase is typed:
 
 ```text
 COMMIT TEST APPOINTMENT
 ```
-
-Any other input rolls back.
 
 Controlled multi-activity insert test for verifying whether `OBJOBJ.IDCINNOSTI` propagates expected activity/color into Medicus UI:
 
@@ -148,21 +148,20 @@ copy config\activity_insert_test.local.example.json config\activity_insert_test.
 C:\python\python.exe scripts\tests\test_activity_insert_commit_prompt.py
 ```
 
-This inserts several marked appointments with different `IDCINNOSTI` values, then commits only if this exact phrase is typed:
+This commits only if this exact phrase is typed:
 
 ```text
 COMMIT ACTIVITY TEST APPOINTMENTS
 ```
 
-Use it only during controlled client-approved UI verification.
+Use booking write tests only during controlled client-approved UI verification.
 
 ## Current Status
 
 - Phase 1 read-only availability pipeline is validated.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
-- Phase 3 rollback-only `OBJOBJ` insert succeeded and rollback verification passed.
-- Phase 3 committed test row was verified with the client in Medicus UI.
-- Current priority: verify `OBJOBJ.IDCINNOSTI -> CINNOSTI` activity/color behavior with controlled test rows.
+- Phase 3 committed `OBJOBJ` insert and `IDCINNOSTI` activity/color propagation are verified in Medicus UI.
+- Current priority: generate compact pre-call context for the agent and refine business rules from real reception call mapping.
 
 ## Detailed Context
 
