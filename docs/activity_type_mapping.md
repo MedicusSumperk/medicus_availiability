@@ -4,6 +4,8 @@
 
 Appointment color/type mapping is not driven by `OBJOBJ.TYP` in this database.
 
+Production/client UI verification confirmed that committed rows with `OBJOBJ.IDCINNOSTI` propagate the expected activity/color into the Medicus calendar UI.
+
 Confirmed findings:
 
 - `OBJOBJ.TYP` is commonly `1` and does not distinguish skin / dermatoscope / plasma.
@@ -12,6 +14,8 @@ Confirmed findings:
 - `OBJOBJ.CREATEDBY` is a user reference (`UZIVATEL`), not an appointment type.
 - `OBJOBJ_SEL` is only a wrapper over `OBJOBJ`; it does not calculate UI colors or service types.
 - The useful service-type relation is `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`.
+- `CINNOSTI.BARVA` values correspond to Medicus UI colors.
+- Plasma is booked as the laser activity (`IDCINNOSTI = 3`) with a plasma note in `INFO`.
 
 ## OBJOBJ_SEL Behavior
 
@@ -35,8 +39,8 @@ Observed columns:
 | `NAZEV` | activity name |
 | `BARVA` | UI color value, likely Windows/Delphi `TColor` style integer |
 | `INTERVAL` | activity interval, empty in inspected rows |
-| `VOLNO` | free-state color/text marker, meaning still to confirm |
-| `OBSAZENO` | occupied-state color/text marker, meaning still to confirm |
+| `VOLNO` | free-state color/text marker, not needed for current booking logic |
+| `OBSAZENO` | occupied-state color/text marker, not needed for current booking logic |
 | `IDPRAC` | workplace/schedule relation, empty in inspected rows |
 | `WEB` | web visibility flag |
 | `CREATED` | created timestamp |
@@ -79,7 +83,7 @@ ID | NAZEV                   | BARVA    | VOLNO   | OBSAZENO | WEB
 
 Notes:
 
-- The `BARVA` values appear to correspond to Medicus UI colors.
+- The `BARVA` values correspond to Medicus UI colors after controlled write verification.
 - These are likely stored as Windows/Delphi `TColor` integers rather than web `#RRGGBB` values.
 - Example: `16711680` is often blue in BGR/TColor interpretation, even though it would be red in web RGB notation.
 - `65535` corresponds to yellow in Windows/Delphi color interpretation, matching the client note for dermatoscope reservation.
@@ -96,16 +100,16 @@ NULL       |                         | 29    | 07:00:00  | 17:15:00
 5          | Sken znamenek 2 a vyssi | 4     | 10:45:00  | 15:15:00
 ```
 
-Working interpretation:
+Confirmed/working interpretation:
 
-| DB condition | Working meaning | Booking impact |
+| DB condition | Meaning | Booking impact |
 | --- | --- | --- |
-| `IDCINNOSTI IS NULL` | normal skin appointment / default appointment | likely skin examination candidate; requires follow-up dermatoscope capacity for V1 skin booking |
+| `IDCINNOSTI IS NULL` | normal skin/default appointment | skin examination candidate; V1 skin booking still requires follow-up dermatoscope capacity |
 | `IDCINNOSTI = 1` | first mole scan / dermatoscope | blocks shared dermatoscope |
-| `IDCINNOSTI = 2` | post-scan check | blocks shared dermatoscope unless client says otherwise |
+| `IDCINNOSTI = 2` | post-scan check | treat as dermatoscope blocker unless client later narrows this |
 | `IDCINNOSTI = 5` | repeated / higher-number mole scan | blocks shared dermatoscope |
 | `IDCINNOSTI = 6` | dermatoscope reservation | blocks shared dermatoscope |
-| `IDCINNOSTI = 3` | laser services bucket | contains plasma examples but also broader laser services |
+| `IDCINNOSTI = 3` | laser services bucket | used for plasma with plasma marker in `INFO`; also broader laser services |
 
 ## Plasma Finding
 
@@ -117,13 +121,16 @@ IDOBJ  | DATUM      | CAS      | CASDO    | IDUZI | IDPRAC | IDCINNOSTI | NAZEV 
 132950 | 2026-05-25 | 13:00:00 | 13:30:00 | 8     | 1      | 3          | laser vykony | plazma   luc
 ```
 
-Working interpretation:
+Confirmed production rule:
 
-- Plasma is stored under `IDCINNOSTI = 3` (`laser vykony`).
-- Plasma appears to be distinguished by `INFO` containing text like `plazma`.
+- Plasma is booked under `IDCINNOSTI = 3` (`laser vykony`).
+- Plasma is distinguished by a plasma note in `INFO`.
 - Existing plasma examples are 30 minutes long.
-- It is not yet confirmed whether plasma should always be 30 minutes.
-- It is not yet confirmed what exact `INFO` text should be written for production. Existing rows contain `plazma   luc`.
+
+Still confirm before final production automation:
+
+- Exact `INFO` text to write for plasma. Existing rows contain `plazma   luc`.
+- Whether plasma should always be 30 minutes.
 
 ## V1 Booking Implications
 
@@ -158,41 +165,18 @@ Likely DB write shape:
 
 - `TYP = 1`
 - `IDCINNOSTI = 3`
-- `INFO` contains a plasma marker, exact production text still to confirm
+- `INFO` contains a plasma marker
 - likely 30-minute duration, still to confirm
 
-## Open Questions
+## Controlled Commit Test Result
 
-Need client or controlled UI verification:
+The controlled production/client UI test confirmed that committed rows with the tested `IDCINNOSTI` values appear with the expected colors/activities in Medicus UI.
 
-1. Does writing `IDCINNOSTI` propagate the expected color/activity into the Medicus calendar UI?
-2. Which `IDCINNOSTI` value should be written for each controlled test type?
-3. Should skin examination use `IDCINNOSTI = NULL`, or is there another activity/client workflow for skin appointments?
-4. Does `IDCINNOSTI = 2` always block dermatoscope capacity, or is it a different follow-up type?
-5. Should plasma always use `IDCINNOSTI = 3`?
-6. Should plasma always be 30 minutes?
-7. What exact `INFO` text should be written for plasma?
-8. Are `VOLNO` and `OBSAZENO` meaningful for agent logic, or only UI coloring/configuration?
+This answers the earlier question: yes, the commit test can propagate the calendar color/activity when `IDCINNOSTI` is written correctly.
 
-## Proposed Controlled Commit Test
+## Remaining Questions
 
-To answer whether committed rows can propagate color/activity into the Medicus calendar, run a controlled commit-prompt test that inserts several clearly marked appointments under one approved test patient and doctor/workplace/date.
-
-Suggested variants:
-
-| Label | `IDCINNOSTI` | Expected UI meaning |
-| --- | --- | --- |
-| `skin_default` | `NULL` | default / skin appointment |
-| `derm_scan_1` | `1` | first mole scan |
-| `derm_followup` | `2` | post-scan check |
-| `laser_plasma` | `3` | laser/plasma bucket |
-| `derm_scan_repeat` | `5` | repeated mole scan |
-| `derm_reservation` | `6` | dermatoscope reservation |
-
-Important safety rules:
-
-- Use only client-approved test data.
-- Use future test slots that are verified free.
-- Use obvious `INFO` markers.
-- Require an explicit commit phrase before committing.
-- Print all inserted `IDOBJ` values for later UI verification and cleanup.
+1. Should `IDCINNOSTI = 2` always block dermatoscope capacity, or is it a different follow-up type with different rules?
+2. Should plasma always be 30 minutes?
+3. What exact `INFO` text should be written for plasma?
+4. Are `VOLNO` and `OBSAZENO` meaningful for agent logic, or only UI coloring/configuration?
