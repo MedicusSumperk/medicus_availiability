@@ -1,0 +1,25 @@
+{
+  "start_date": null,
+  "days_ahead": 14,
+  "include_weekends": false,
+  "max_options_per_service_per_doctor_day": 6,
+  "slot_interval_minutes": 15,
+  "services": {
+    "skin": {
+      "label": "Kozni vysetreni",
+      "appointment_duration_minutes": 15,
+      "followup_dermatoscope_minutes": 15,
+      "idcinnosti": null
+    },
+    "plasma": {
+      "label": "Plazma",
+      "appointment_duration_minutes": 30,
+      "idcinnosti": 3,
+      "info_marker": "plazma"
+    }
+  },
+  "dermatoscope_blocking_idcinnosti": [1, 2, 5, 6],
+  "allowed_doctor_ids": [],
+  "excluded_doctor_ids": [],
+  "output_dir": "data/agent_context"
+}
