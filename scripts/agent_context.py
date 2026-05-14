@@ -23,6 +23,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "start_date": None,
     "days_ahead": 14,
     "include_weekends": False,
+    "include_unscheduled_doctors": False,
     "max_options_per_service_per_doctor_day": 6,
     "slot_interval_minutes": 15,
     "services": {
@@ -286,6 +287,7 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
     config = normalize_config(config)
     days = date_window(config)
     doctors = filter_doctors(load_doctors(cursor), config)
+    include_unscheduled_doctors = bool(config.get("include_unscheduled_doctors", False))
     slot_interval_minutes = int(config.get("slot_interval_minutes", 15))
     limit = int(config.get("max_options_per_service_per_doctor_day", 6))
     blocking_idcinnosti = [int(value) for value in config.get("dermatoscope_blocking_idcinnosti", [1, 2, 5, 6])]
@@ -303,6 +305,9 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
 
         for doctor in doctors:
             availability = compute_day_availability(cursor, doctor, target_date)
+            if not availability["has_schedule"] and not include_unscheduled_doctors:
+                continue
+
             doctor_entry: dict[str, Any] = {
                 "doctor_id": doctor["doctor_id"],
                 "doctor_name": doctor["doctor_name"],
