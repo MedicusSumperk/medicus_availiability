@@ -23,9 +23,10 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - Phase 2 weekly CLI runs on the Windows server and generates usable JSON, CSV, and Markdown reports.
 - Phase 3 rollback-only `OBJOBJ` insert succeeded and rollback verification passed.
 - Phase 3 committed test insert succeeded and the client confirmed that the appointment appeared in the expected place in the Medicus UI.
-- Direct `INSERT INTO OBJOBJ` is now considered plausible for the AI booking path.
-- Appointment/service type mapping is now believed to be driven by `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`, not `OBJOBJ.TYP`.
-- Current priority: run a controlled commit test to confirm that writing `IDCINNOSTI` propagates the expected activity/color into Medicus UI.
+- Direct `INSERT INTO OBJOBJ` is considered plausible for the AI booking path.
+- Production/client UI testing confirmed that writing `OBJOBJ.IDCINNOSTI` propagates expected activity/color into the Medicus calendar UI.
+- Appointment/service type mapping is driven by `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`, not `OBJOBJ.TYP`.
+- Current priority: implement service-specific bookable-slot context and finish remaining client/business-rule confirmations.
 
 ## Product Scope V1
 
@@ -37,14 +38,14 @@ The first product version should support booking only:
 The first version should not book:
 
 - standalone dermatoscope appointments
-- laser appointments
+- laser appointments other than plasma-specific booking behavior
 - prescriptions, blood/lab requests, or test results
 
 Requests for prescriptions, blood/lab requests, and test results should be redirected to another phone number / live person. The exact phone number is not needed for the current database mechanism work.
 
 ## Appointment Types and UI Colors
 
-Initial assumption was that `OBJOBJ.TYP` or `OBJOBJ.COLORID` might drive appointment type/color. DB inspection changed that model.
+Initial assumption was that `OBJOBJ.TYP` or `OBJOBJ.COLORID` might drive appointment type/color. DB inspection and controlled UI testing changed that model.
 
 Confirmed findings:
 
@@ -54,6 +55,8 @@ Confirmed findings:
 - `OBJOBJ.CREATEDBY` is a `UZIVATEL` reference for the creator, not an appointment type.
 - `OBJOBJ_SEL` is only a wrapper over `OBJOBJ`; it does not calculate UI colors or service types.
 - The useful service/activity relation is `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`.
+- `CINNOSTI.BARVA` values correspond to Medicus UI colors.
+- A production/client UI test confirmed that committed rows with `IDCINNOSTI` appear with expected activity/color in Medicus UI.
 
 ### CINNOSTI Mapping
 
@@ -81,16 +84,16 @@ ID | NAZEV                   | BARVA    | VOLNO   | OBSAZENO | WEB
 6  | rezervace dermatoskop   | 65535    |         |          | F
 ```
 
-Color note: `CINNOSTI.BARVA` values appear to correspond to Medicus UI colors and are likely stored as Windows/Delphi `TColor` integers, not web `#RRGGBB` values. For example, `65535` corresponds to yellow in that interpretation, matching the reservation note.
+Color note: `CINNOSTI.BARVA` values are likely stored as Windows/Delphi `TColor` integers, not web `#RRGGBB` values. For example, `65535` corresponds to yellow in that interpretation, matching the reservation note.
 
-Working interpretation:
+Confirmed/working interpretation:
 
-| DB condition | Working meaning | Booking impact |
+| DB condition | Meaning | Booking impact |
 | --- | --- | --- |
-| `IDCINNOSTI IS NULL` | normal skin/default appointment | likely skin examination candidate; V1 skin booking still requires follow-up dermatoscope capacity |
+| `IDCINNOSTI IS NULL` | normal skin/default appointment | skin examination candidate; V1 skin booking still requires follow-up dermatoscope capacity |
 | `IDCINNOSTI = 1` | first mole scan / dermatoscope | blocks shared dermatoscope |
-| `IDCINNOSTI = 2` | post-scan check | blocks shared dermatoscope unless client says otherwise |
-| `IDCINNOSTI = 3` | laser services bucket | contains plasma examples but also broader laser services |
+| `IDCINNOSTI = 2` | post-scan check | treat as dermatoscope blocker unless client later narrows this |
+| `IDCINNOSTI = 3` | laser services bucket | used for plasma with plasma marker in `INFO`; also broader laser services |
 | `IDCINNOSTI = 5` | repeated / higher-number mole scan | blocks shared dermatoscope |
 | `IDCINNOSTI = 6` | dermatoscope reservation | blocks shared dermatoscope |
 
@@ -102,7 +105,7 @@ IDOBJ  | DATUM      | CAS      | CASDO    | IDUZI | IDPRAC | IDCINNOSTI | NAZEV 
 132950 | 2026-05-25 | 13:00:00 | 13:30:00 | 8     | 1      | 3          | laser vykony | plazma   luc
 ```
 
-Working interpretation: plasma is stored under `IDCINNOSTI = 3` (`laser vykony`) and distinguished by `INFO` containing text like `plazma`. Existing examples are 30 minutes. Exact production `INFO` text and duration still need client confirmation.
+Confirmed production rule: plasma is booked as the laser activity (`IDCINNOSTI = 3`) with a plasma note in `INFO`. Existing examples are 30 minutes. Exact production `INFO` text and duration still need client confirmation.
 
 Detailed mapping notes are in `docs/activity_type_mapping.md`.
 
@@ -149,9 +152,9 @@ Rules:
 
 ## V1 Plasma Rule
 
-Working assumption:
+Confirmed/working rule:
 
-- Plasma is under `IDCINNOSTI = 3` (`laser vykony`).
+- Plasma is booked under `IDCINNOSTI = 3` (`laser vykony`).
 - Plasma is distinguished by `INFO` containing `plazma` or an agreed marker.
 - Existing plasma examples are 30 minutes.
 - Plasma does not require a follow-up dermatoscope slot.
@@ -209,7 +212,7 @@ Known business-rule notes from client discussion:
 - Plasma is likely Dr. Bartonova only and year-round.
 - Skin examination booking appears relevant only through September; after October, some requests may be more laser-oriented.
 - Some laser services are seasonal: likely only until April or at most mid-May, then not later due to season/sun exposure. Exact service scope must be confirmed.
-- Laser booking is out of V1 scope.
+- Laser booking is out of V1 scope except plasma-specific booking under `IDCINNOSTI = 3`.
 
 These notes are not final production rules. They must be converted into explicit rules after DB verification and client confirmation.
 
@@ -296,13 +299,13 @@ Important fields identified so far:
 - `TYP` - appointment row type, usually `1`; not the service type for V1 mapping
 - `IDCINNOSTI` - service/activity type relation to `CINNOSTI.ID`
 - `PRISEL` - attendance/status flag, recent rows commonly used `N`
-- `INFO` - short text field, useful for test marker and observed plasma marker
+- `INFO` - short text field, useful for test marker and plasma marker
 - `DATZAPIS` - write date, recent rows used current date
 - `CREATEDBY` - creator user ID, recent rows showed `10`
 - `CREATED` / `CHANGED` - populated by triggers
 - `CEKATEL` and `ES_RESYNC_NEEDED` defaulted to `F` in rollback test
 
-`OBJOBJ` is the current candidate direct booking/write target. A committed test row has been verified in the Medicus UI. The next controlled write test should verify `IDCINNOSTI` propagation into UI activity/color.
+`OBJOBJ` is the current direct booking/write target. A committed test row has been verified in Medicus UI, and `IDCINNOSTI` activity/color propagation has also been verified.
 
 ### OBJOBJ_SEL
 
@@ -538,11 +541,13 @@ Detailed note: `docs/phase3_rollback_insert_test.md`.
 
 After the rollback test, a client-approved committed test row was created with the commit-prompt script. The client confirmed that the database write appeared in the expected place in the Medicus UI.
 
-This confirms that a direct `OBJOBJ` insert can be visible in the operational UI. It does not yet confirm whether `IDCINNOSTI` writes propagate the expected activity/color.
+This confirms that a direct `OBJOBJ` insert can be visible in the operational UI.
 
-### Planned Multi-Activity UI Verification
+### Multi-Activity UI Verification
 
-A controlled script now exists to insert several test rows under the same test patient/date with different `IDCINNOSTI` values:
+A controlled production/client UI test confirmed that rows with different `IDCINNOSTI` values appear with expected activities/colors in Medicus UI.
+
+The tested variants were:
 
 ```text
 08:00 skin_default        IDCINNOSTI = NULL
@@ -553,7 +558,7 @@ A controlled script now exists to insert several test rows under the same test p
 10:30 derm_reservation    IDCINNOSTI = 6
 ```
 
-The goal is to verify by phone with the client whether these rows appear with the expected activities/colors in Medicus UI.
+This answers the earlier question: yes, the commit test can propagate calendar color/activity when `IDCINNOSTI` is written correctly.
 
 ## Important Rules
 
@@ -568,32 +573,16 @@ The goal is to verify by phone with the client whether these rows appear with th
 - Do not expose raw free slots to the agent as final bookability without applying service-specific rules.
 - For skin examination, require an immediate free follow-up slot and no shared dermatoscope conflict in that follow-up slot.
 - Do not book standalone dermatoscope appointments in V1.
-- Do not book laser in V1.
+- Do not book laser in V1 except plasma-specific booking under `IDCINNOSTI = 3`.
 - Treat `IDCINNOSTI IN (1, 2, 5, 6)` as dermatoscope blockers unless client later narrows the list.
+- Plasma should be written as `IDCINNOSTI = 3` plus a plasma note in `INFO`.
 
 ## Open Verification Items
-
-### Verify Activity Write UI Propagation
-
-Highest priority.
-
-Questions:
-
-- Does writing `OBJOBJ.IDCINNOSTI` propagate the expected color/activity into the Medicus calendar UI?
-- Does `IDCINNOSTI = NULL` appear as a normal/skin/default appointment?
-- Does `IDCINNOSTI = 1` appear as first mole scan / dermatoscope?
-- Does `IDCINNOSTI = 2` appear as post-scan check, and should it block dermatoscope capacity?
-- Does `IDCINNOSTI = 3` appear as laser/plasma bucket?
-- Does `IDCINNOSTI = 5` appear as repeated mole scan?
-- Does `IDCINNOSTI = 6` appear as dermatoscope reservation?
-
-Planned approach: run `scripts/tests/test_activity_insert_commit_prompt.py` during a controlled call with the client and record what appears in Medicus UI.
 
 ### Verify Plasma Production Shape
 
 Questions:
 
-- Should plasma always use `IDCINNOSTI = 3`?
 - Should plasma always be 30 minutes?
 - What exact `INFO` text should be written for plasma? Existing examples contain `plazma   luc`.
 - Is plasma truly Dr. Bartonova only and year-round?
@@ -652,11 +641,11 @@ Next Phase 2 work should extend from raw free slots toward service-specific book
 
 ### Phase 3: SQL Write Test
 
-Status: committed test verified; activity/color write verification pending.
+Status: committed test and activity/color mapping verified.
 
-Rollback-only insert succeeded. Commit-prompt insert also succeeded and was verified in Medicus UI with the client.
+Rollback-only insert succeeded. Commit-prompt insert succeeded and was verified in Medicus UI with the client. Multi-activity `IDCINNOSTI` write testing also confirmed expected UI colors/activities.
 
-Remaining Phase 3 blocker is whether `IDCINNOSTI` and related fields should be used for production-safe service-specific booking.
+Remaining Phase 3 work is to finalize production values such as exact plasma `INFO`, service durations, and manual business exceptions.
 
 ### Phase 4: Agent Booking Context
 
@@ -673,4 +662,4 @@ Expected output should eventually answer:
 - why a raw-free slot is not bookable for a specific service
 - which DB fields should be used if a booking is created
 
-Do not implement production booking logic until `IDCINNOSTI` UI behavior and bookable doctor rules are confirmed.
+Do not implement production booking logic until bookable doctor rules, plasma shape, and manual exceptions are confirmed.
