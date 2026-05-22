@@ -27,7 +27,8 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - Production/client UI testing confirmed that writing `OBJOBJ.IDCINNOSTI` propagates expected activity/color into the Medicus calendar UI.
 - Appointment/service type mapping is driven by `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`, not `OBJOBJ.TYP`.
 - First read-only pre-call agent context builder is implemented.
-- Current priority: test the agent directly with generated `agent_context_latest.json`, then tune context range/shape and remaining business rules.
+- Agent context now uses the concrete schedule interval from `OBSDNE_PRAVODLIS_SEL.INTERVAL` for doctor/day/context slot planning, with config interval only as fallback.
+- Current priority: verify schedule intervals for Bednar and other doctors, then test the agent directly with generated `agent_context_latest.json`.
 
 ## Product Scope V1
 
@@ -112,15 +113,17 @@ Detailed mapping notes are in `docs/activity_type_mapping.md`.
 
 ## V1 Skin Examination Booking Rule
 
-A skin examination is booked as a single appointment row in the first 15-minute slot, but booking logic must reserve capacity for the follow-up dermatoscope slot.
+A skin examination is booked as a single appointment row, but booking logic must reserve capacity for the follow-up dermatoscope slot.
 
 For a skin examination slot to be offered:
 
 1. The selected skin examination slot must be free for the selected doctor.
-2. The immediately following slot for the same doctor must be free.
-3. The immediately following slot must not overlap an existing dermatoscope appointment for any other doctor, because the clinic has only one dermatoscope.
-4. The last available slot in a doctor's working block must not be offered for skin examination, because there is no room for the follow-up dermatoscope slot.
-5. In V1, the follow-up dermatoscope slot is not written to the database automatically. It is only checked as required free capacity.
+2. Skin duration should follow the concrete schedule interval for that doctor/day/context.
+3. The immediately following dermatoscope capacity should use the same schedule interval unless a service exception overrides it later.
+4. The immediately following slot for the same doctor must be free.
+5. The immediately following dermatoscope interval must not overlap an existing dermatoscope appointment for any doctor, because the clinic has only one dermatoscope.
+6. The last available slot in a doctor's working block must not be offered for skin examination, because there is no room for the follow-up dermatoscope slot.
+7. In V1, the follow-up dermatoscope slot is not written to the database automatically. It is only checked as required free capacity.
 
 Likely DB write shape for skin examination:
 
@@ -128,13 +131,22 @@ Likely DB write shape for skin examination:
 - `IDCINNOSTI = NULL`
 - standard appointment row fields as already tested in committed insert
 
-Example:
+Example for a 15-minute schedule:
 
 ```text
 08:00 skin examination can be offered only if:
 - 08:00 is free for doctor A
 - 08:15 is free for doctor A
-- 08:15 is not occupied by dermatoscope usage for doctor B
+- 08:15-08:30 does not overlap dermatoscope usage for doctor B
+```
+
+Example for a 10-minute schedule, such as the confirmed Bednar rule:
+
+```text
+08:00 skin examination can be offered only if:
+- 08:00 is free for doctor A
+- 08:10 is free for doctor A
+- 08:10-08:20 does not overlap dermatoscope usage for another doctor
 ```
 
 Future phase: once dermatoscope appointment behavior is confirmed, consider automatically writing the follow-up dermatoscope/reservation row. This is intentionally out of scope for V1.
@@ -148,7 +160,8 @@ Rules:
 - The AI receptionist should not book standalone dermatoscope appointments in V1.
 - Dermatoscope is a shared constrained resource.
 - Existing dermatoscope appointments block only their own time interval, based on `OBJOBJ.CAS` and `OBJOBJ.CASDO`.
-- For skin examination booking, only the follow-up slot is checked against shared dermatoscope usage.
+- Shared dermatoscope validation must compare intervals, not only equal slot starts, because doctors can have different slot lengths such as 10 and 15 minutes.
+- For skin examination booking, only the follow-up interval is checked against shared dermatoscope usage.
 - Treat `IDCINNOSTI IN (1, 2, 5, 6)` as dermatoscope blockers unless client narrows the list.
 
 ## V1 Plasma Rule
@@ -160,6 +173,7 @@ Confirmed/working rule:
 - Existing plasma examples are 30 minutes.
 - Plasma does not require a follow-up dermatoscope slot.
 - Plasma should be bookable only for doctors allowed by client rules.
+- Consecutive free-slot checks for plasma must use the concrete schedule interval for the selected doctor/day/context.
 
 Client note: plasma is likely handled by Dr. Bartonova and appears to be available year-round. This must still be confirmed before production booking.
 
@@ -204,6 +218,10 @@ Current behavior:
 - context includes service-specific options for skin and plasma
 - agent should use `services.skin` and `services.plasma`, not raw free slots
 - output limits options per service / doctor / day to keep the file compact
+- each option includes `duration_minutes` and `slot_interval_minutes`
+- skin defaults to schedule interval for both examination and follow-up dermatoscope capacity
+- plasma keeps configured duration but checks consecutive slots using the schedule interval
+- shared dermatoscope blockers are compared as actual time intervals from `OBJOBJ.CAS` / `OBJOBJ.CASDO`
 
 Initial manual tests indicate that script runtime is fast enough for current ranges; expected runtime growth should be roughly linear with days and doctor count. The next test is to pass `agent_context_latest.json` directly to the agent and evaluate whether the agent can use it correctly.
 
@@ -215,6 +233,9 @@ Tuning knobs:
 - `max_options_per_service_per_doctor_day`
 - `allowed_doctor_ids`
 - `excluded_doctor_ids`
+- `services.skin.use_schedule_interval`
+- `services.skin.appointment_duration_minutes`
+- `services.skin.followup_dermatoscope_minutes`
 
 Detailed notes are in `docs/agent_context.md`.
 
@@ -263,6 +284,9 @@ Known business-rule notes from client discussion:
 - Skin examination can be done by all relevant doctors.
 - Dermatoscope can be done by all relevant doctors except Dr. Bednar.
 - Dr. Bednar does not do dermatoscope.
+- Dr. Bednar has explicitly confirmed 10-minute schedule slots; for him, both skin examination and the follow-up dermatoscope capacity are 10 minutes.
+- Dr. Bednar's `IDUZI` is believed to be `6`, but this must be verified from `UZIVATEL` / schedule interval diagnostics.
+- Need to verify whether any other doctors also have 10-minute slots.
 - Dr. Bednar does laser services but does not do plasma.
 - Dr. Bartonova does moles, fractional laser, and plasma.
 - Plasma is likely Dr. Bartonova only and year-round.
@@ -336,7 +360,7 @@ Called with:
 (target_date, TYPTYD, DENTYD, IDPRAC)
 ```
 
-Used to generate theoretical appointment slots from `CAS`, `DOBA`, and `INTERVAL`.
+Used to generate theoretical appointment slots from `CAS`, `DOBA`, and `INTERVAL`. `INTERVAL` is now carried into the agent context as `slot_interval_minutes` and should drive service-specific consecutive-slot checks for that concrete context.
 
 ### OBJOBJ
 
@@ -399,16 +423,17 @@ AND (PLATIDO >= target_date OR PLATIDO IS NULL)
 6. Extract `IDPRAC` and `TYPTYD`.
 7. Call `OBSDNE_PRAVODLIS_SEL(target_date, TYPTYD, DENTYD, IDPRAC)`.
 8. Generate theoretical slots from `CAS`, `DOBA`, and `INTERVAL`.
-9. Query `OBJOBJ` for matching `IDPRAC`, `IDUZI`, `DATUM`.
-10. Mark a slot occupied when:
+9. Carry distinct positive `INTERVAL` values into availability context as `slot_interval_minutes_values`; use the first value as `slot_interval_minutes` for current service checks.
+10. Query `OBJOBJ` for matching `IDPRAC`, `IDUZI`, `DATUM`.
+11. Mark a slot occupied when:
 
 ```text
 slot_time >= appointment.CAS
 AND slot_time < appointment.CASDO
 ```
 
-11. Free slots are theoretical slots minus occupied slots.
-12. Future context output must additionally evaluate service-specific bookability, not only raw free slots.
+12. Free slots are theoretical slots minus occupied slots.
+13. Service-specific context output evaluates bookability, not only raw free slots.
 
 ## Validated Availability Test Case
 
@@ -458,6 +483,7 @@ scripts/
     find_test_patients.py
     inspect_appointment_types.py
     inspect_booking_write_path.py
+    inspect_schedule_intervals.py
     test_activity_insert_commit_prompt.py
     test_booking_insert_rollback.py
     test_booking_insert_commit_prompt.py
@@ -480,6 +506,12 @@ Weekly CLI:
 
 ```powershell
 C:\python\python.exe scripts\check_week_availability_cli.py
+```
+
+Schedule interval diagnostic:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
 ```
 
 Pre-call agent context:
@@ -643,9 +675,11 @@ This answers the earlier question: yes, the commit test can propagate calendar c
 - Always filter by `IDUZI`.
 - Always require `OBJED = 'A'` for appointment-enabled schedule rows.
 - Always compute `DENTYD` correctly from the date.
+- Use `OBSDNE_PRAVODLIS_SEL.INTERVAL` as the doctor/day/context slot interval when available.
 - Do not rely on `SP_OBJ_KALENDAR` for exact slot generation.
 - Do not expose raw free slots to the agent as final bookability without applying service-specific rules.
-- For skin examination, require an immediate free follow-up slot and no shared dermatoscope conflict in that follow-up slot.
+- For skin examination, require an immediate free follow-up slot and no shared dermatoscope conflict in that follow-up interval.
+- Compare shared dermatoscope conflicts as time intervals, not only equal slot starts.
 - Do not book standalone dermatoscope appointments in V1.
 - Do not book laser in V1 except plasma-specific booking under `IDCINNOSTI = 3`.
 - Treat `IDCINNOSTI IN (1, 2, 5, 6)` as dermatoscope blockers unless client later narrows the list.
@@ -653,9 +687,27 @@ This answers the earlier question: yes, the commit test can propagate calendar c
 
 ## Open Verification Items
 
+### Verify Schedule Intervals
+
+Immediate technical check after Bednar finding.
+
+Run:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
+```
+
+Questions:
+
+- Is Rostislav Bednar really `IDUZI = 6`?
+- Does his schedule consistently expose `INTERVAL = 10`?
+- Which other doctors expose `INTERVAL = 10`?
+- Are there any doctor/day/context rows with mixed intervals?
+- Does any service exception need to override the default schedule interval behavior?
+
 ### Test Agent With Context File
 
-Next immediate step.
+Next product behavior step.
 
 Use generated `data/agent_context/agent_context_latest.json` as an explicit context file for the agent and test realistic reception scenarios.
 
@@ -704,8 +756,8 @@ Need to confirm and formalize:
 - seasonal limits for skin examination and laser/plasma services
 - whether plasma is truly Dr. Bartonova only
 - exact Bednar/Bartonova service exceptions
-- whether any service requires longer than 15 minutes
-- whether any skin examination exception requires more than the standard 30-minute capacity check
+- whether any service requires longer than schedule interval
+- whether any skin examination exception requires more than the standard examination + immediate follow-up capacity check
 
 ## PoC Roadmap
 
@@ -737,7 +789,7 @@ Remaining Phase 3 work is to finalize production values such as exact plasma `IN
 
 ### Phase 4: Agent Booking Context
 
-Status: first implementation ready for agent testing.
+Status: first implementation ready for schedule-interval verification and agent testing.
 
 Implemented a mechanism that gives the AI receptionist service-specific context, not only raw availability.
 
@@ -747,6 +799,7 @@ Expected output should answer:
 - which slots are bookable for skin examination
 - which slots are bookable for plasma
 - why a raw-free slot is not bookable for a specific service
+- which schedule interval was used for each option
 - which DB fields should be used if a booking is created
 
-Next step is manual agent testing with `agent_context_latest.json`, then context shape/range tuning based on response quality and real reception scenario mapping.
+Next step is to run the schedule interval diagnostic, then manual agent testing with `agent_context_latest.json`, then context shape/range tuning based on response quality and real reception scenario mapping.
