@@ -29,8 +29,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "services": {
         "skin": {
             "label": "Kozni vysetreni",
-            "appointment_duration_minutes": 15,
-            "followup_dermatoscope_minutes": 15,
+            "use_schedule_interval": True,
+            "appointment_duration_minutes": None,
+            "followup_dermatoscope_minutes": None,
             "idcinnosti": None,
         },
         "plasma": {
@@ -128,6 +129,22 @@ def filter_doctors(doctors: list[dict[str, Any]], config: dict[str, Any]) -> lis
     return filtered
 
 
+def context_slot_interval(context: dict[str, Any], fallback_slot_interval_minutes: int) -> int:
+    """Return the slot interval for one doctor/day/context, falling back to config."""
+    interval = context.get("slot_interval_minutes")
+    if interval is None:
+        return int(fallback_slot_interval_minutes)
+    return int(interval)
+
+
+def configured_minutes(service_config: dict[str, Any], key: str, fallback_minutes: int) -> int:
+    """Read an optional minute value; None means use the supplied fallback."""
+    value = service_config.get(key)
+    if value is None:
+        return int(fallback_minutes)
+    return int(value)
+
+
 def load_dermatoscope_blockers(cursor, target_date: date, blocking_idcinnosti: list[int]) -> list[dict[str, Any]]:
     """Load existing appointments that block shared dermatoscope capacity."""
     if not blocking_idcinnosti:
@@ -203,12 +220,17 @@ def build_skin_options(
     context: dict[str, Any],
     blockers: list[dict[str, Any]],
     service_config: dict[str, Any],
-    slot_interval_minutes: int,
+    fallback_slot_interval_minutes: int,
     limit: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build bookable skin options for one doctor/day/context."""
-    followup_minutes = int(service_config.get("followup_dermatoscope_minutes", slot_interval_minutes))
-    duration_minutes = int(service_config.get("appointment_duration_minutes", slot_interval_minutes))
+    slot_interval_minutes = context_slot_interval(context, fallback_slot_interval_minutes)
+    if bool(service_config.get("use_schedule_interval", True)):
+        duration_minutes = slot_interval_minutes
+        followup_minutes = slot_interval_minutes
+    else:
+        duration_minutes = configured_minutes(service_config, "appointment_duration_minutes", slot_interval_minutes)
+        followup_minutes = configured_minutes(service_config, "followup_dermatoscope_minutes", slot_interval_minutes)
     free_slots = {parse_time(slot) for slot in context.get("free_slots", [])}
 
     options: list[dict[str, Any]] = []
@@ -234,11 +256,14 @@ def build_skin_options(
             {
                 "start_time": format_time(start_time),
                 "end_time": format_time(add_minutes(start_time, duration_minutes)),
+                "duration_minutes": duration_minutes,
+                "slot_interval_minutes": slot_interval_minutes,
                 "idprac": context["idprac"],
                 "idcinnosti": service_config.get("idcinnosti"),
                 "followup_dermatoscope_slot": {
                     "start_time": format_time(follow_start),
                     "end_time": format_time(follow_end),
+                    "duration_minutes": followup_minutes,
                     "written_in_v1": False,
                 },
             }
@@ -252,11 +277,12 @@ def build_skin_options(
 def build_simple_service_options(
     context: dict[str, Any],
     service_config: dict[str, Any],
-    slot_interval_minutes: int,
+    fallback_slot_interval_minutes: int,
     limit: int,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build options for a service needing only consecutive raw-free slots."""
-    duration_minutes = int(service_config.get("appointment_duration_minutes", slot_interval_minutes))
+    slot_interval_minutes = context_slot_interval(context, fallback_slot_interval_minutes)
+    duration_minutes = configured_minutes(service_config, "appointment_duration_minutes", slot_interval_minutes)
     free_slots = {parse_time(slot) for slot in context.get("free_slots", [])}
 
     options: list[dict[str, Any]] = []
@@ -271,6 +297,8 @@ def build_simple_service_options(
             {
                 "start_time": format_time(start_time),
                 "end_time": format_time(add_minutes(start_time, duration_minutes)),
+                "duration_minutes": duration_minutes,
+                "slot_interval_minutes": slot_interval_minutes,
                 "idprac": context["idprac"],
                 "idcinnosti": service_config.get("idcinnosti"),
                 "info_marker": service_config.get("info_marker"),
@@ -288,7 +316,7 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
     days = date_window(config)
     doctors = filter_doctors(load_doctors(cursor), config)
     include_unscheduled_doctors = bool(config.get("include_unscheduled_doctors", False))
-    slot_interval_minutes = int(config.get("slot_interval_minutes", 15))
+    fallback_slot_interval_minutes = int(config.get("slot_interval_minutes", 15))
     limit = int(config.get("max_options_per_service_per_doctor_day", 6))
     blocking_idcinnosti = [int(value) for value in config.get("dermatoscope_blocking_idcinnosti", [1, 2, 5, 6])]
     services = config.get("services", DEFAULT_CONFIG["services"])
@@ -332,13 +360,13 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
                     context,
                     blockers,
                     services["skin"],
-                    slot_interval_minutes,
+                    fallback_slot_interval_minutes,
                     limit,
                 )
                 plasma_options, plasma_rejections = build_simple_service_options(
                     context,
                     services["plasma"],
-                    slot_interval_minutes,
+                    fallback_slot_interval_minutes,
                     limit,
                 )
 
@@ -365,8 +393,8 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
         },
         "rules_version": "v1-precall-context",
         "rules": {
-            "skin": "Book as TYP=1 and IDCINNOSTI=NULL; require immediate free follow-up dermatoscope slot and no shared dermatoscope conflict.",
-            "plasma": "Book as TYP=1 and IDCINNOSTI=3 with plasma marker in INFO; requires consecutive free slots for configured duration.",
+            "skin": "Book as TYP=1 and IDCINNOSTI=NULL; duration and follow-up use the schedule INTERVAL for that doctor/context; require immediate free follow-up dermatoscope slot and no shared dermatoscope conflict.",
+            "plasma": "Book as TYP=1 and IDCINNOSTI=3 with plasma marker in INFO; requires consecutive free slots for configured duration using the schedule INTERVAL.",
             "dermatoscope_blockers": blocking_idcinnosti,
         },
         "days": result_days,
