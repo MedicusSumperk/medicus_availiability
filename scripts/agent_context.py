@@ -243,7 +243,7 @@ def build_skin_options(
 
         follow_start = add_minutes(start_time, duration_minutes)
         follow_end = add_minutes(follow_start, followup_minutes)
-        if follow_start not in free_slots:
+        if not has_required_consecutive_slots(free_slots, follow_start, followup_minutes, slot_interval_minutes):
             rejected.append({"start_time": format_time(start_time), "reason": "missing_followup_dermatoscope_slot"})
             continue
 
