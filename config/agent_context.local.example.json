@@ -8,8 +8,9 @@
   "services": {
     "skin": {
       "label": "Kozni vysetreni",
-      "appointment_duration_minutes": 15,
-      "followup_dermatoscope_minutes": 15,
+      "use_schedule_interval": true,
+      "appointment_duration_minutes": null,
+      "followup_dermatoscope_minutes": null,
       "idcinnosti": null
     },
     "plasma": {
