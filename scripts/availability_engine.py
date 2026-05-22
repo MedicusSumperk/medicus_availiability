@@ -45,6 +45,26 @@ def generate_slots(start_time: time, duration_minutes: int, interval_minutes: in
     return slots
 
 
+def schedule_interval_values(schedule_blocks) -> list[int]:
+    """Return distinct positive INTERVAL values from schedule blocks."""
+    values: set[int] = set()
+    for _cas, _doba, interval in schedule_blocks:
+        if interval is None:
+            continue
+        interval_minutes = int(interval)
+        if interval_minutes > 0:
+            values.add(interval_minutes)
+    return sorted(values)
+
+
+def primary_schedule_interval(schedule_blocks) -> int | None:
+    """Return the schedule interval used for slot calculations in one context."""
+    values = schedule_interval_values(schedule_blocks)
+    if not values:
+        return None
+    return values[0]
+
+
 def load_doctors(cursor) -> list[dict[str, Any]]:
     """Load doctors from UZIVATEL."""
     cursor.execute(
@@ -173,6 +193,7 @@ def compute_day_availability(cursor, doctor: dict[str, Any], target_date: date) 
         schedule_blocks = load_schedule_blocks(cursor, target_date, typtyd, dentyd, idprac, doctor_id)
         appointments = load_appointments(cursor, idprac, doctor_id, target_date)
         theoretical_slots, occupied_slots, free_slots = compute_slots(schedule_blocks, appointments)
+        interval_values = schedule_interval_values(schedule_blocks)
 
         all_theoretical.extend(theoretical_slots)
         all_occupied.extend(occupied_slots)
@@ -183,6 +204,8 @@ def compute_day_availability(cursor, doctor: dict[str, Any], target_date: date) 
                 "idprac": idprac,
                 "typtyd": typtyd,
                 "dentyd": dentyd,
+                "slot_interval_minutes": interval_values[0] if interval_values else None,
+                "slot_interval_minutes_values": interval_values,
                 "schedule_block_count": len(schedule_blocks),
                 "appointment_count": len(appointments),
                 "total_slots": len(theoretical_slots),
