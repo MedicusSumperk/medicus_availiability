@@ -64,7 +64,7 @@ Inspect doctor schedule intervals:
 C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
 ```
 
-Use this read-only diagnostic to confirm 10-minute vs 15-minute doctor schedules, including Rostislav Bednar and any other doctors with non-default intervals.
+Use this read-only diagnostic to confirm 10-minute vs 15-minute doctor schedules. Current findings are recorded in `docs/schedule_interval_findings.md`.
 
 ## Pre-call Agent Context
 
