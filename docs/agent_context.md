@@ -40,7 +40,9 @@ The default config currently uses:
 - weekends: excluded
 - unscheduled doctors: excluded
 - max options per service / doctor / day: 6
-- slot interval: 15 minutes
+- fallback slot interval: 15 minutes
+
+The fallback slot interval is used only when the database schedule context does not expose an `INTERVAL`. Normal planning should use `OBSDNE_PRAVODLIS_SEL.INTERVAL` for the concrete doctor/date/context.
 
 These values are placeholders until the needed pre-call context range and size are confirmed.
 
@@ -58,9 +60,13 @@ Booking shape:
 Bookability rules:
 
 - selected skin slot must be free
+- skin duration defaults to the schedule interval for that doctor/context
+- immediate follow-up dermatoscope duration defaults to the same schedule interval
 - immediate follow-up slot for the same doctor must be free
-- follow-up slot must not overlap shared dermatoscope usage
+- follow-up interval must not overlap shared dermatoscope usage anywhere else
 - follow-up slot is not written automatically in V1
+
+This handles doctors with non-15-minute schedules. Confirmed business finding: Rostislav Bednar should use 10-minute skin and follow-up dermatoscope intervals; verify `IDUZI` and whether other doctors also have 10-minute intervals with `scripts/tests/inspect_schedule_intervals.py`.
 
 ### Plasma
 
@@ -73,6 +79,7 @@ Booking shape:
 Bookability rules:
 
 - configured appointment duration must fit into consecutive free slots
+- consecutive slot checks use the schedule interval for that doctor/context
 - no follow-up dermatoscope slot is required
 
 Current default duration is 30 minutes, based on observed rows. Confirm before production booking.
@@ -85,7 +92,7 @@ The context treats these as shared dermatoscope blockers:
 IDCINNOSTI IN (1, 2, 5, 6)
 ```
 
-Actual blocker intervals are read from `OBJOBJ.CAS` / `OBJOBJ.CASDO`.
+Actual blocker intervals are read from `OBJOBJ.CAS` / `OBJOBJ.CASDO` and compared as time intervals, not just equal slot starts. This matters when one doctor has 10-minute slots and another has 15-minute slots.
 
 ## Doctor Filtering
 
@@ -101,6 +108,21 @@ Current default is to consider all doctors returned by `UZIVATEL`, then include 
 
 For diagnostics, set `include_unscheduled_doctors` to `true` to include doctors without a schedule.
 
+## Schedule Interval Diagnostic
+
+Run this read-only script to verify doctor slot intervals:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
+```
+
+Use it to confirm:
+
+- whether Rostislav Bednar is `IDUZI=6`
+- which doctors have 10-minute intervals
+- whether any doctor/date/context has mixed intervals
+- which `IDPRAC` / `TYPTYD` context produced the interval
+
 ## Output Shape
 
 The JSON contains:
@@ -113,6 +135,8 @@ The JSON contains:
 - raw free-slot count
 - bookable skin options
 - bookable plasma options
+- option `duration_minutes`
+- option `slot_interval_minutes`
 - limited rejection reasons for debugging
 
 The agent should use `services.skin` and `services.plasma` options, not raw free slots.
