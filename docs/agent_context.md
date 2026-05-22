@@ -66,7 +66,7 @@ Bookability rules:
 - follow-up interval must not overlap shared dermatoscope usage anywhere else
 - follow-up slot is not written automatically in V1
 
-This handles doctors with non-15-minute schedules. Confirmed business finding: Rostislav Bednar should use 10-minute skin and follow-up dermatoscope intervals; verify `IDUZI` and whether other doctors also have 10-minute intervals with `scripts/tests/inspect_schedule_intervals.py`.
+This handles doctors with non-15-minute schedules. Confirmed diagnostic finding: Rostislav Bednar is `IDUZI=2` in inspected output and has 10-minute schedule intervals. The same inspected range also showed 10-minute intervals for multiple other doctors, so 10 vs 15 minutes must remain schedule-driven rather than doctor-hardcoded.
 
 ### Plasma
 
@@ -82,7 +82,7 @@ Bookability rules:
 - consecutive slot checks use the schedule interval for that doctor/context
 - no follow-up dermatoscope slot is required
 
-Current default duration is 30 minutes, based on observed rows. Confirm before production booking.
+Current default duration is 30 minutes, based on observed rows. On a 10-minute schedule this means three consecutive free slots are required. Confirm exact production duration before production booking.
 
 ## Dermatoscope Blockers
 
@@ -116,12 +116,19 @@ Run this read-only script to verify doctor slot intervals:
 C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
 ```
 
-Use it to confirm:
+Latest inspected output showed:
 
-- whether Rostislav Bednar is `IDUZI=6`
-- which doctors have 10-minute intervals
-- whether any doctor/date/context has mixed intervals
-- which `IDPRAC` / `TYPTYD` context produced the interval
+| IDUZI | Doctor | Observed interval(s) | Notes |
+| ---: | --- | --- | --- |
+| 2 | Rostislav Bednar | 10 | Confirmed Bednar ID and 10-minute schedule in inspected range. |
+| 8 | Maria Bartonova | 10 | Repeated 10-minute schedule rows in inspected range. |
+| 12 | Marta Skolarova | 10 | Repeated 10-minute schedule rows in inspected range. |
+| 11 | Dusana Selecka | 10 | 10-minute schedule row in inspected range. |
+| 13 | Zuzana Slosarova | 15 and 10 | 15-minute rows on Monday/Tuesday, 10-minute rows on Thursday in inspected range. |
+| 1 | Tereza Perez | 15 | 15-minute rows in inspected range. |
+| 15 | Filip Ferencz | 15 | 15-minute rows in inspected range. |
+
+Use the diagnostic to keep checking wider ranges, especially for doctors with mixed intervals or changing daily patterns.
 
 ## Output Shape
 
