@@ -58,6 +58,14 @@ data/availability/availability_YYYY-Www.csv
 data/availability/availability_YYYY-Www.md
 ```
 
+Inspect doctor schedule intervals:
+
+```powershell
+C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
+```
+
+Use this read-only diagnostic to confirm 10-minute vs 15-minute doctor schedules, including Rostislav Bednar and any other doctors with non-default intervals.
+
 ## Pre-call Agent Context
 
 Build a compact read-only context file before a call:
@@ -79,7 +87,7 @@ agent_context_YYYYMMDD_HHMMSS.json
 agent_context_YYYYMMDD_HHMMSS.md
 ```
 
-The JSON is intended for the agent. The Markdown is a quick human-readable check. Current V1 context includes service-specific options for skin examination and plasma, with skin follow-up dermatoscope checks and shared dermatoscope blockers.
+The JSON is intended for the agent. The Markdown is a quick human-readable check. Current V1 context includes service-specific options for skin examination and plasma, with skin follow-up dermatoscope checks and shared dermatoscope blockers. Slot calculations use the concrete schedule interval from the doctor/day context where available, with the config interval only as fallback.
 
 ## Appointment Type Mapping
 
