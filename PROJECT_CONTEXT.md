@@ -29,7 +29,8 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - First read-only pre-call agent context builder is implemented.
 - Agent context now uses the concrete schedule interval from `OBSDNE_PRAVODLIS_SEL.INTERVAL` for doctor/day/context slot planning, with config interval only as fallback.
 - A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It currently implements read-only targeted availability search and reserves patient lookup / booking endpoints for later phases.
-- Current priority: verify schedule intervals for Bednar and other doctors, then test the agent directly with generated `agent_context_latest.json`.
+- PoC test confirmed that n8n chat agent can call `/doctor-availability` through trycloudflare and receive fast, real DB-derived availability results.
+- Current priority: pass the confirmed webhook/tool flow to an ElevenLabs voice agent.
 
 ## Product Scope V1
 
@@ -279,6 +280,23 @@ Current behavior:
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
 - `/patient-lookup` and `/book-appointment` return `not_implemented` and do not perform database writes.
+
+PoC verification:
+
+- Local `/health` endpoint responded successfully.
+- Local `/doctor-availability` returned real DB-derived options.
+- `cloudflared tunnel --url http://127.0.0.1:8000` exposed the local API through a temporary `https://...trycloudflare.com` URL.
+- n8n HTTP Request tool successfully called the public `/doctor-availability` endpoint.
+- n8n chat agent successfully used the availability lookup tool.
+- Response time was observed as fast enough for the current chat-based tool test.
+- This validates the intended tool-call architecture for the next ElevenLabs voice-agent test.
+
+Tool schema lesson:
+
+- Keep tool inputs simple for the agent.
+- Keep `limit` and `compact` fixed where possible.
+- Avoid requiring the agent to produce list fields unless the tool schema strongly enforces them.
+- Backend can later be hardened to accept scalar `weekday` and normalize it to `weekdays`.
 
 Intended deployment shape:
 
@@ -759,19 +777,19 @@ Questions:
 - Are there any doctor/day/context rows with mixed intervals?
 - Does any service exception need to override the default schedule interval behavior?
 
-### Test Agent With Context File
+### Test ElevenLabs Voice Agent With Webhook Tool
 
 Next product behavior step.
 
-Use generated `data/agent_context/agent_context_latest.json` as an explicit context file for the agent and test realistic reception scenarios.
+The chat-agent PoC confirmed that targeted webhook lookup is preferable to giving the agent a large static context file. Next step is to pass the public availability endpoint to an ElevenLabs voice agent and test realistic reception scenarios.
 
 Questions:
 
-- Can the agent reliably use `services.skin` and `services.plasma` options?
-- Does the agent avoid offering raw free slots that are not service-bookable?
-- Is the JSON too large or too technical?
-- Does the context need a shorter top-options summary layer?
-- What date range gives the best balance between setup/load time and response quality?
+- Does the voice agent call the availability tool at the right point in the conversation?
+- Does voice-mode latency remain acceptable with the same backend/tool path?
+- Can the agent reliably map user preferences to simple tool parameters?
+- Does the agent present only returned options, without inventing extra slots?
+- Is the compact response sufficient, or does the voice agent need extra display text / localized formatting?
 
 ### Verify Plasma Production Shape
 
@@ -841,9 +859,9 @@ Rollback-only insert succeeded. Commit-prompt insert succeeded and was verified 
 
 Remaining Phase 3 work is to finalize production values such as exact plasma `INFO`, service durations, and manual business exceptions.
 
-### Phase 4: Agent Booking Context
+### Phase 4: Agent Booking Context / Tool API
 
-Status: first implementation ready for schedule-interval verification and agent testing.
+Status: PoC confirmed for read-only availability lookup through n8n chat agent and trycloudflare.
 
 Implemented a mechanism that gives the AI receptionist service-specific context, not only raw availability.
 
@@ -856,4 +874,4 @@ Expected output should answer:
 - which schedule interval was used for each option
 - which DB fields should be used if a booking is created
 
-Next step is to run the schedule interval diagnostic, then manual agent testing with `agent_context_latest.json`, then context shape/range tuning based on response quality and real reception scenario mapping.
+Next step is to give the confirmed `/doctor-availability` webhook to an ElevenLabs voice agent, then tune tool schema and response shape based on voice-call behavior.

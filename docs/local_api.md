@@ -103,6 +103,68 @@ powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -Sk
 
 `trycloudflare` URLs are temporary and can change after restart. For production, use a named Cloudflare Tunnel and stable hostname.
 
+## PoC Verification
+
+Status: confirmed for the current PoC phase.
+
+Verified flow:
+
+```text
+n8n chat agent tool
+-> trycloudflare public URL
+-> cloudflared on Medicus server
+-> local FastAPI service
+-> Firebird DB availability logic
+-> compact JSON response
+-> n8n chat agent
+```
+
+Confirmed findings:
+
+- The local API starts and responds on `/health`.
+- `/doctor-availability` returns real DB-derived availability, not dummy data.
+- The endpoint remains fast enough for chat-agent tool use through trycloudflare.
+- The response can be kept compact enough for a conversational agent.
+- n8n can call the endpoint as an HTTP Request tool.
+- The current implementation is sufficient as a PoC for handing the webhook URL to an ElevenLabs voice agent.
+
+Current tested request shape:
+
+```json
+{
+  "service": "skin",
+  "limit": 3,
+  "compact": true
+}
+```
+
+Targeted request shape also works when n8n maps fields explicitly:
+
+```json
+{
+  "service": "skin",
+  "date_from": "2026-08-08",
+  "date_to": "2026-09-08",
+  "time_from": "14:00",
+  "limit": 3,
+  "compact": true
+}
+```
+
+Agent/tool-schema note:
+
+- The backend supports `weekdays` as a list, e.g. `[4]`.
+- The tested agent initially mapped parameters incorrectly when it was allowed to infer too many fields.
+- For the next tests, keep `limit` and `compact` fixed in the n8n/ElevenLabs tool definition.
+- Prefer simple scalar fields for agent input where possible, e.g. `weekday: 4`, then map that to `weekdays: [4]` in the workflow.
+- Later backend hardening can make the API accept `weekday`, single-value `weekdays`, or empty strings more gracefully.
+
+Operational note:
+
+- For the PoC, two foreground processes are acceptable: one terminal for `scripts/api_server.py` and one terminal for `cloudflared`.
+- `scripts/start_trycloudflare_api.ps1 -SkipApiStart` is useful when the API is already running manually.
+- If `cloudflared` is not in `PATH`, pass `-CloudflaredPath "C:\path\to\cloudflared.exe"`.
+
 ## Authentication
 
 If `bearer_token` is set to anything other than `CHANGE_ME`, requests must include:

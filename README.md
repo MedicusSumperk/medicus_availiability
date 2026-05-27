@@ -207,7 +207,8 @@ Use booking write tests only during controlled client-approved UI verification.
 - Phase 1 read-only availability pipeline is validated.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
 - Phase 3 committed `OBJOBJ` insert and `IDCINNOSTI` activity/color propagation are verified in Medicus UI.
-- Current priority: generate compact pre-call context for the agent and refine business rules from real reception call mapping.
+- Local API + trycloudflare + n8n chat agent PoC is confirmed for fast read-only availability lookup against real DB data.
+- Current priority: pass the confirmed `/doctor-availability` webhook to an ElevenLabs voice agent.
 
 ## Detailed Context
 
