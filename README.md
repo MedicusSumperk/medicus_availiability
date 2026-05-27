@@ -89,6 +89,36 @@ agent_context_YYYYMMDD_HHMMSS.md
 
 The JSON is intended for the agent. The Markdown is a quick human-readable check. Current V1 context includes service-specific options for skin examination and plasma, with skin follow-up dermatoscope checks and shared dermatoscope blockers. Slot calculations use the concrete schedule interval from the doctor/day context where available, with the config interval only as fallback.
 
+## Local API Service
+
+Run a small local API service for Cloudflare Tunnel / ElevenLabs tool calls:
+
+```cmd
+copy config\api.local.example.json config\api.local.json
+```
+
+```powershell
+C:\python\python.exe -m pip install -r requirements.txt
+C:\python\python.exe scripts\api_server.py
+```
+
+Default local URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+Implemented endpoints:
+
+```text
+GET  /health
+POST /doctor-availability
+POST /patient-lookup       # reserved stub
+POST /book-appointment     # reserved stub, no writes
+```
+
+`/doctor-availability` returns a short list of bookable options. With no body it returns the first default skin options. With filters it searches a targeted date/time window and stops after the requested limit. See `docs/local_api.md`.
+
 ## Appointment Type Mapping
 
 Inspect appointment rows for a date so Medicus UI colors/types can be mapped to database values:

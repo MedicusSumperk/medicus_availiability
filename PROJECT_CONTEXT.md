@@ -28,6 +28,7 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - Appointment/service type mapping is driven by `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`, not `OBJOBJ.TYP`.
 - First read-only pre-call agent context builder is implemented.
 - Agent context now uses the concrete schedule interval from `OBSDNE_PRAVODLIS_SEL.INTERVAL` for doctor/day/context slot planning, with config interval only as fallback.
+- A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It currently implements read-only targeted availability search and reserves patient lookup / booking endpoints for later phases.
 - Current priority: verify schedule intervals for Bednar and other doctors, then test the agent directly with generated `agent_context_latest.json`.
 
 ## Product Scope V1
@@ -238,6 +239,59 @@ Tuning knobs:
 - `services.skin.followup_dermatoscope_minutes`
 
 Detailed notes are in `docs/agent_context.md`.
+
+## Local API Service
+
+A minimal local API service is prepared for eventual ElevenLabs webhook/tool integration through Cloudflare Tunnel.
+
+Run command:
+
+```powershell
+C:\python\python.exe scripts\api_server.py
+```
+
+Local config:
+
+```text
+config/api.local.json
+```
+
+Example config:
+
+```text
+config/api.local.example.json
+```
+
+Current endpoint plan:
+
+```text
+GET  /health
+POST /doctor-availability
+POST /patient-lookup       # reserved stub
+POST /book-appointment     # reserved stub, no writes
+```
+
+Current behavior:
+
+- `/doctor-availability` is read-only and uses existing service-specific availability logic.
+- With no request body, it returns the first default skin options.
+- With request filters, it searches a targeted date/time window and stops after the configured limit.
+- The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
+- The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
+- `/patient-lookup` and `/book-appointment` return `not_implemented` and do not perform database writes.
+
+Intended deployment shape:
+
+```text
+ElevenLabs
+-> Cloudflare Tunnel public HTTPS URL
+-> cloudflared on Medicus server
+-> http://127.0.0.1:8000
+-> scripts/api_server.py
+-> Firebird DB / availability modules
+```
+
+Detailed notes are in `docs/local_api.md`.
 
 ## Doctor Availability and Booking Scope
 

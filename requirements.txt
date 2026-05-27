@@ -1,1 +1,3 @@
 fdb
+fastapi
+uvicorn

@@ -1,4 +1,5 @@
 config/*.local.json
+config/api.local.json
 data/doctor_directory.xlsx
 data/agent_context/*.json
 data/agent_context/*.md
