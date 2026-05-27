@@ -119,6 +119,14 @@ POST /book-appointment     # reserved stub, no writes
 
 `/doctor-availability` returns a short list of bookable options. With no body it returns the first default skin options. With filters it searches a targeted date/time window and stops after the requested limit. See `docs/local_api.md`.
 
+Quick trycloudflare test tunnel:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1
+```
+
+The script starts the local API, starts `cloudflared tunnel --url http://127.0.0.1:8000`, prints the generated `https://...trycloudflare.com` base URL, and saves it to `data/api/trycloudflare_url.txt`.
+
 ## Appointment Type Mapping
 
 Inspect appointment rows for a date so Medicus UI colors/types can be mapped to database values:

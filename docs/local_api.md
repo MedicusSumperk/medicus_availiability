@@ -67,6 +67,42 @@ https://medicus-api.example.cz -> http://127.0.0.1:8000
 
 No inbound firewall port is needed on the Medicus server when Cloudflare Tunnel is used.
 
+## Quick Trycloudflare Test
+
+For PoC testing without creating a named Cloudflare tunnel, install `cloudflared` and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1
+```
+
+The script:
+
+- starts the local API on `http://127.0.0.1:8000`
+- starts `cloudflared tunnel --url http://127.0.0.1:8000`
+- watches the `cloudflared` output for `https://...trycloudflare.com`
+- prints the generated base URL and endpoint URLs
+- writes the base URL to `data/api/trycloudflare_url.txt`
+
+Example output:
+
+```text
+trycloudflare base URL:
+https://example-random-name.trycloudflare.com
+
+Webhook endpoints:
+https://example-random-name.trycloudflare.com/doctor-availability
+https://example-random-name.trycloudflare.com/patient-lookup
+https://example-random-name.trycloudflare.com/book-appointment
+```
+
+If the API is already running, use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -SkipApiStart
+```
+
+`trycloudflare` URLs are temporary and can change after restart. For production, use a named Cloudflare Tunnel and stable hostname.
+
 ## Authentication
 
 If `bearer_token` is set to anything other than `CHANGE_ME`, requests must include:

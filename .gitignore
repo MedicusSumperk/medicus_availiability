@@ -3,6 +3,7 @@ config/api.local.json
 data/doctor_directory.xlsx
 data/agent_context/*.json
 data/agent_context/*.md
+data/api/*.txt
 logs/
 outputs/
 **pycache**/
