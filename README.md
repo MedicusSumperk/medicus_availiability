@@ -212,4 +212,14 @@ Use booking write tests only during controlled client-approved UI verification.
 
 ## Detailed Context
 
-See `PROJECT_CONTEXT.md` for detailed database findings, tested values, roadmap, open questions, and Phase 3 notes.
+See `PROJECT_CONTEXT.md` for detailed database findings, tested values, roadmap, open questions, file map, and Phase 3/API notes.
+
+Most relevant API files:
+
+```text
+scripts/api_server.py
+scripts/availability_search.py
+scripts/start_trycloudflare_api.ps1
+config/api.local.example.json
+docs/local_api.md
+```

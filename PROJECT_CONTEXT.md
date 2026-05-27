@@ -530,27 +530,39 @@ config/
   activity_insert_test.local.json       # local only, created manually from example
   agent_context.local.example.json
   agent_context.local.json              # local only, created manually from example
+  api.local.example.json
+  api.local.json                        # local only, created manually from example
   booking_insert_test.local.example.json
   booking_insert_test.local.json        # local only, created manually from example
+  db_config.example.json
   db_config.local.json                  # local only
+  settings.json
 data/
   agent_context/
     agent_context_latest.json           # generated, ignored
     agent_context_latest.md             # generated, ignored
+  api/
+    trycloudflare_url.txt               # generated, ignored
   availability/
     .gitkeep
 docs/
   activity_type_mapping.md
   agent_context.md
   appointment_type_mapping.md
+  local_api.md
   phase3_rollback_insert_test.md
+  schedule_interval_findings.md
 scripts/
   agent_context.py
+  api_server.py                         # local FastAPI service
   availability_engine.py
+  availability_search.py                # targeted short availability lookup for API/tool calls
   build_agent_context_cli.py
   check_availability_cli.py
   check_week_availability_cli.py
   db.py
+  load_doctors.py
+  start_trycloudflare_api.ps1           # PoC helper for quick Cloudflare Tunnel URL
   tests/
     find_test_patients.py
     inspect_appointment_types.py
@@ -565,6 +577,29 @@ scripts/
     test_calendar_capacity.py
     compute_free_slots.py
 ```
+
+## Important File Map
+
+For the current webhook/tool-call PoC:
+
+| File | Purpose |
+| --- | --- |
+| `scripts/api_server.py` | Local FastAPI service. Defines `/health`, `/doctor-availability`, `/patient-lookup`, and `/book-appointment`. |
+| `scripts/availability_search.py` | Read-only targeted availability search used by `/doctor-availability`; returns first matching options instead of a full context file. |
+| `scripts/start_trycloudflare_api.ps1` | Windows helper for PoC tunnel startup; captures `https://...trycloudflare.com` and writes it to `data/api/trycloudflare_url.txt`. |
+| `config/api.local.example.json` | Example local API settings: localhost bind, port, token, default lookup window, default limit. |
+| `config/api.local.json` | Local-only API config copied from example; ignored by git. |
+| `docs/local_api.md` | Main operational documentation for local API, trycloudflare, n8n PoC verification, and tool-schema notes. |
+| `data/api/trycloudflare_url.txt` | Generated helper output with the latest temporary trycloudflare base URL; ignored by git. |
+
+For the availability rules the API depends on:
+
+| File | Purpose |
+| --- | --- |
+| `scripts/agent_context.py` | Service-specific booking option logic for skin/plasma, including dermatoscope checks. |
+| `scripts/availability_engine.py` | Core schedule/appointment availability calculation from Firebird schedule data. |
+| `config/agent_context.local.example.json` | Example shared rule/config file for service context and API availability search. |
+| `config/agent_context.local.json` | Local-only shared rule/config file; loaded by API search when present. |
 
 ## Run Commands
 
@@ -594,6 +629,29 @@ copy config\agent_context.local.example.json config\agent_context.local.json
 
 ```powershell
 C:\python\python.exe scripts\build_agent_context_cli.py
+```
+
+Local API service:
+
+```cmd
+copy config\api.local.example.json config\api.local.json
+```
+
+```powershell
+C:\python\python.exe -m pip install -r requirements.txt
+C:\python\python.exe scripts\api_server.py
+```
+
+Trycloudflare PoC helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1
+```
+
+If API is already running manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -SkipApiStart
 ```
 
 Appointment type inspection:

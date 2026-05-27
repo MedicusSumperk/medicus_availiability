@@ -27,6 +27,40 @@ Reserved:
 
 The reserved endpoints return `not_implemented` and do not read or write appointment data.
 
+## File Locations
+
+Core API files:
+
+```text
+scripts/api_server.py
+scripts/availability_search.py
+scripts/start_trycloudflare_api.ps1
+config/api.local.example.json
+config/api.local.json              # local only, ignored
+docs/local_api.md
+data/api/trycloudflare_url.txt     # generated, ignored
+```
+
+Shared availability/rule files used by the API:
+
+```text
+scripts/agent_context.py
+scripts/availability_engine.py
+scripts/db.py
+config/agent_context.local.example.json
+config/agent_context.local.json    # local only, ignored
+config/db_config.local.json        # local only, ignored
+```
+
+Relevant docs:
+
+```text
+PROJECT_CONTEXT.md
+docs/agent_context.md
+docs/schedule_interval_findings.md
+docs/activity_type_mapping.md
+```
+
 ## Setup
 
 Install dependencies:
