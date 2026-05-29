@@ -108,7 +108,8 @@ if (-not $SkipApiStart) {
 Write-Host "Starting trycloudflare tunnel to $LocalUrl ..."
 Write-Host "Waiting for public URL..."
 
-& $ResolvedCloudflaredPath tunnel --url $LocalUrl 2>&1 | ForEach-Object {
+$CloudflaredCommand = "`"$ResolvedCloudflaredPath`" tunnel --url `"$LocalUrl`" 2>&1"
+& cmd.exe /c $CloudflaredCommand | ForEach-Object {
     $Line = $_.ToString()
     Write-Host $Line
 
