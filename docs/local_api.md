@@ -298,6 +298,7 @@ Supported request fields:
 
 - `phone`, `phone_number`, or `caller_phone`: caller phone number, normalized by digits.
 - `idpac`: direct patient ID if already known.
+- `birth_number`, `rodne_cislo`, or `rodcis`: full birth number, matched exactly against `KAR.RODCIS`; also satisfies the last-4 verification check.
 - `first_name` / `name`
 - `last_name` / `surname`
 - `birth_date`: `YYYY-MM-DD`, matched against `KAR.DATNAR`.
@@ -325,6 +326,15 @@ Example verified lookup:
 {
   "phone": "+420 777 123 456",
   "birth_number_last4": "5666",
+  "include_appointments": true
+}
+```
+
+Example lookup with full birth number:
+
+```json
+{
+  "birth_number": "5656565666",
   "include_appointments": true
 }
 ```

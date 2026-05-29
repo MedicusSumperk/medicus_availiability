@@ -119,6 +119,12 @@ def _build_patient_query(
         params.append(int(request["idpac"]))
         applied_filters.append("idpac")
 
+    birth_number_digits = _digits(request.get("birth_number") or request.get("rodne_cislo") or request.get("rodcis"))
+    if birth_number_digits and "RODCIS" in metadata:
+        where_parts.append("CAST(RODCIS AS VARCHAR(20)) = ?")
+        params.append(birth_number_digits)
+        applied_filters.append("birth_number")
+
     phone_digits = _digits(request.get("phone") or request.get("phone_number") or request.get("caller_phone"))
     if phone_digits:
         phone_tail = phone_digits[-9:] if len(phone_digits) > 9 else phone_digits
@@ -154,7 +160,7 @@ def _build_patient_query(
         applied_filters.append("birth_date")
 
     if not where_parts:
-        raise ValueError("patient lookup requires phone, idpac, name, surname, or birth_date")
+        raise ValueError("patient lookup requires phone, idpac, birth_number, name, surname, or birth_date")
 
     safe_limit = min(max(int(limit), 1), 20)
     query = f"""
@@ -244,7 +250,10 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
     limit = min(max(int(request.get("limit") or 5), 1), 20)
     include_appointments = bool(request.get("include_appointments", True))
     appointment_days_ahead = min(max(int(request.get("appointment_days_ahead") or 365), 1), 730)
-    verification_last4 = _last4(request.get("birth_number_last4") or request.get("rodne_cislo_last4"))
+    birth_number_digits = _digits(request.get("birth_number") or request.get("rodne_cislo") or request.get("rodcis"))
+    verification_last4 = _last4(
+        request.get("birth_number_last4") or request.get("rodne_cislo_last4") or birth_number_digits
+    )
 
     metadata = _load_column_metadata(cursor, PATIENT_TABLE)
     query, params, output_columns, applied_filters = _build_patient_query(metadata, request, limit)
