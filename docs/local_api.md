@@ -4,7 +4,7 @@
 
 The local API is intended to run on the Medicus server behind Cloudflare Tunnel. It exposes small HTTP endpoints for ElevenLabs tools while keeping Medicus and Firebird unavailable from the public internet.
 
-Initial implementation is read-only for availability. Patient lookup and booking endpoints are reserved stubs.
+Initial implementation is read-only for availability and patient lookup. Booking is still a reserved stub.
 
 ## Endpoints
 
@@ -19,13 +19,13 @@ Currently implemented:
 
 - `/health`
 - `/doctor-availability`
+- `/patient-lookup`
 
 Reserved:
 
-- `/patient-lookup`
 - `/book-appointment`
 
-The reserved endpoints return `not_implemented` and do not read or write appointment data.
+`/patient-lookup` reads patient card and future appointment data but performs no writes. `/book-appointment` returns `not_implemented` and does not write appointment data.
 
 ## File Locations
 
@@ -34,6 +34,7 @@ Core API files:
 ```text
 scripts/api_server.py
 scripts/availability_search.py
+scripts/patient_lookup.py
 scripts/start_trycloudflare_api.ps1
 scripts/start_named_cloudflare_tunnel.ps1
 config/api.local.example.json
@@ -281,6 +282,54 @@ Authorization: Bearer <token>
 ```
 
 For real deployment, keep the token out of source control. Use `config/api.local.json` or `MEDICUS_API_TOKEN`.
+
+## Patient Lookup Request
+
+`POST /patient-lookup`
+
+Purpose:
+
+- Find a patient in `KAR` from caller/tool data.
+- Validate identity using the last 4 digits of `KAR.RODCIS`.
+- After verification, return future `OBJOBJ` appointments for that patient.
+- Stay read-only.
+
+Supported request fields:
+
+- `phone`, `phone_number`, or `caller_phone`: caller phone number, normalized by digits.
+- `idpac`: direct patient ID if already known.
+- `first_name` / `name`
+- `last_name` / `surname`
+- `birth_date`: `YYYY-MM-DD`, matched against `KAR.DATNAR`.
+- `birth_number_last4` or `rodne_cislo_last4`: verification value.
+- `include_appointments`: defaults to `true`.
+- `appointment_days_ahead`: defaults to `365`, capped at `730`.
+- `limit`: max patient candidates, defaults to `5`, capped at `20`.
+
+Example first lookup from a phone number:
+
+```json
+{
+  "phone": "+420 777 123 456",
+  "limit": 5
+}
+```
+
+If exactly one patient is found but no verification value is provided, response status is `needs_verification`; the agent should ask for the last 4 digits of the birth number before discussing existing appointments.
+
+The API uses `KAR.RODCIS` internally for verification but does not return the expected last 4 digits to the agent.
+
+Example verified lookup:
+
+```json
+{
+  "phone": "+420 777 123 456",
+  "birth_number_last4": "5666",
+  "include_appointments": true
+}
+```
+
+After verification, `appointments` contains future `OBJOBJ` rows with date, time, doctor, activity, and info fields.
 
 ## Availability Request
 

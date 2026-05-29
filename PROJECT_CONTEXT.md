@@ -269,7 +269,7 @@ Current endpoint plan:
 ```text
 GET  /health
 POST /doctor-availability
-POST /patient-lookup       # reserved stub
+POST /patient-lookup       # read-only patient + future appointment lookup
 POST /book-appointment     # reserved stub, no writes
 ```
 
@@ -284,8 +284,9 @@ Current behavior:
 - If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
 - Compact availability responses include `filters`, so tool tests can verify whether a doctor filter was actually applied.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
+- `/patient-lookup` searches `KAR`, asks the agent to verify identity with the last 4 digits of `RODCIS`, and returns future `OBJOBJ` appointments after verification.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
-- `/patient-lookup` and `/book-appointment` return `not_implemented` and do not perform database writes.
+- `/book-appointment` returns `not_implemented` and does not perform database writes.
 
 PoC verification:
 

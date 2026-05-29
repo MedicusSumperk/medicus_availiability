@@ -21,6 +21,7 @@ if str(CURRENT_DIR) not in sys.path:
 
 from availability_search import compact_options, search_availability  # noqa: E402
 from db import connect_to_db  # noqa: E402
+from patient_lookup import lookup_patient  # noqa: E402
 
 
 API_CONFIG_PATH = PROJECT_ROOT / "config" / "api.local.json"
@@ -120,12 +121,20 @@ def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> 
 
 
 @app.post("/patient-lookup", dependencies=[Depends(require_auth)])
-def patient_lookup(_request: PlaceholderRequest | None = None) -> dict[str, Any]:
-    return {
-        "ok": False,
-        "status": "not_implemented",
-        "message": "Patient lookup endpoint is reserved for the next integration phase.",
-    }
+def patient_lookup(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+    connection = None
+    try:
+        payload = {key: value for key, value in (request or {}).items() if value is not None}
+        connection = connect_to_db()
+        cursor = connection.cursor()
+        return lookup_patient(cursor, payload)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"patient lookup failed: {error}") from error
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 @app.post("/book-appointment", dependencies=[Depends(require_auth)])

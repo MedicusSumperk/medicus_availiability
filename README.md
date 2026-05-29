@@ -113,7 +113,7 @@ Implemented endpoints:
 ```text
 GET  /health
 POST /doctor-availability
-POST /patient-lookup       # reserved stub
+POST /patient-lookup       # read-only patient + future appointment lookup
 POST /book-appointment     # reserved stub, no writes
 ```
 
@@ -122,6 +122,8 @@ POST /book-appointment     # reserved stub, no writes
 The availability endpoint also accepts `doctor_name` as free text. The API resolves it against Medicus users and filters by doctor only when the match is clear.
 For tool callers, common aliases such as `doctor`, `preferred_doctor`, and `doctorName` are normalized to `doctor_name`.
 `IDUZI=2` is excluded as a suspected inactive duplicate Bednar row.
+
+`/patient-lookup` finds patient candidates in `KAR`, verifies identity with the last 4 digits of `RODCIS`, and returns future `OBJOBJ` appointments only after verification. It is read-only.
 
 Quick trycloudflare test tunnel:
 
