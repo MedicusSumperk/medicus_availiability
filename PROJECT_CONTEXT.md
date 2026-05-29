@@ -280,6 +280,7 @@ Current behavior:
 - With request filters, it searches a targeted date/time window and stops after the configured limit.
 - `doctor_name` can be passed as free text; API resolves it against `UZIVATEL` and filters only when there is one clear match.
 - The API also accepts common doctor-name aliases (`doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, `lekar`) because tool callers may name the field differently.
+- If Medicus contains duplicate rows with the same doctor name, the API limits the search to those duplicate rows (`match_type: duplicate_name`) instead of falling back to all doctors.
 - If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
 - Compact availability responses include `filters`, so tool tests can verify whether a doctor filter was actually applied.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.

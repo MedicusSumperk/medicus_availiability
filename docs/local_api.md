@@ -338,6 +338,7 @@ Doctor-name behavior:
 - If `doctor_id` is supplied and found, it wins.
 - If `doctor_name` uniquely matches a known doctor, the API filters to that doctor.
 - Matching is case-insensitive and accent-insensitive; partial surname-like input should work.
+- If the same doctor name exists in multiple database rows, the API searches only those matching doctor rows and returns `match_type: "duplicate_name"`.
 - If `doctor_name` is unknown or ambiguous, the API returns general availability and includes an `agent_notes` message explaining that the doctor filter was not applied.
 
 Example with doctor preference:
