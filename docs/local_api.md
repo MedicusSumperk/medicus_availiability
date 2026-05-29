@@ -330,6 +330,7 @@ Supported filters:
 - `doctor_id`: optional `IDUZI`
 - `doctor_name`: optional free-text doctor name from the caller; API resolves it against `UZIVATEL`
 - Doctor-name aliases accepted by the API include `doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, and `lekar`.
+- `system_excluded_doctor_ids` in config marks database users that must never be offered by the API; currently `IDUZI=2` is excluded as an inactive duplicate Bednar row.
 - `limit`: defaults to API config, capped by `max_limit`
 - `compact`: return a shorter voice-agent payload
 
@@ -338,7 +339,6 @@ Doctor-name behavior:
 - If `doctor_id` is supplied and found, it wins.
 - If `doctor_name` uniquely matches a known doctor, the API filters to that doctor.
 - Matching is case-insensitive and accent-insensitive; partial surname-like input should work.
-- If the same doctor name exists in multiple database rows, the API searches only those matching doctor rows and returns `match_type: "duplicate_name"`.
 - If `doctor_name` is unknown or ambiguous, the API returns general availability and includes an `agent_notes` message explaining that the doctor filter was not applied.
 
 Example with doctor preference:

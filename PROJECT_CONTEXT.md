@@ -280,7 +280,7 @@ Current behavior:
 - With request filters, it searches a targeted date/time window and stops after the configured limit.
 - `doctor_name` can be passed as free text; API resolves it against `UZIVATEL` and filters only when there is one clear match.
 - The API also accepts common doctor-name aliases (`doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, `lekar`) because tool callers may name the field differently.
-- If Medicus contains duplicate rows with the same doctor name, the API limits the search to those duplicate rows (`match_type: duplicate_name`) instead of falling back to all doctors.
+- `system_excluded_doctor_ids` excludes database users that must never be offered by the agent; `IDUZI=2` is currently excluded as the suspected inactive duplicate Bednar row.
 - If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
 - Compact availability responses include `filters`, so tool tests can verify whether a doctor filter was actually applied.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
@@ -366,7 +366,7 @@ Known business-rule notes from client discussion:
 - Dermatoscope can be done by all relevant doctors except Dr. Bednar.
 - Dr. Bednar does not do dermatoscope.
 - Dr. Bednar has explicitly confirmed 10-minute schedule slots; for him, both skin examination and the follow-up dermatoscope capacity are 10 minutes.
-- Dr. Bednar's `IDUZI` is believed to be `6`, but this must be verified from `UZIVATEL` / schedule interval diagnostics.
+- Dr. Bednar's active `IDUZI` is believed to be `6`; `IDUZI=2` appears to be an inactive duplicate and is excluded by `system_excluded_doctor_ids`.
 - Need to verify whether any other doctors also have 10-minute slots.
 - Dr. Bednar does laser services but does not do plasma.
 - Dr. Bartonova does moles, fractional laser, and plasma.

@@ -121,7 +121,7 @@ POST /book-appointment     # reserved stub, no writes
 
 The availability endpoint also accepts `doctor_name` as free text. The API resolves it against Medicus users and filters by doctor only when the match is clear.
 For tool callers, common aliases such as `doctor`, `preferred_doctor`, and `doctorName` are normalized to `doctor_name`.
-If Medicus has duplicate rows with the same doctor name, the API searches only those matching rows instead of returning unrelated doctors.
+`IDUZI=2` is excluded as a suspected inactive duplicate Bednar row.
 
 Quick trycloudflare test tunnel:
 

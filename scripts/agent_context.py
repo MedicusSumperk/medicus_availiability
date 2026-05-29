@@ -43,6 +43,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     },
     "dermatoscope_blocking_idcinnosti": [1, 2, 5, 6],
     "allowed_doctor_ids": [],
+    "system_excluded_doctor_ids": [2],
     "excluded_doctor_ids": [],
     "output_dir": "data/agent_context",
 }
@@ -116,7 +117,10 @@ def date_window(config: dict[str, Any]) -> list[date]:
 def filter_doctors(doctors: list[dict[str, Any]], config: dict[str, Any]) -> list[dict[str, Any]]:
     """Apply optional allow/exclude doctor filters."""
     allowed_ids = {int(value) for value in config.get("allowed_doctor_ids", [])}
-    excluded_ids = {int(value) for value in config.get("excluded_doctor_ids", [])}
+    excluded_ids = {
+        *{int(value) for value in config.get("system_excluded_doctor_ids", [])},
+        *{int(value) for value in config.get("excluded_doctor_ids", [])},
+    }
 
     filtered: list[dict[str, Any]] = []
     for doctor in doctors:

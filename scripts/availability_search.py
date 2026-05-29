@@ -130,23 +130,6 @@ def _resolve_doctor_filter(
 
     if len(matches) > 1:
         match_names = ", ".join(str(match["doctor_name"]) for match in matches[:5])
-        normalized_match_names = {_normalize_name(str(match["doctor_name"])) for match in matches}
-        if len(normalized_match_names) == 1:
-            match_ids = [int(match["doctor_id"]) for match in matches]
-            notes.append(
-                f"Doctor name '{doctor_name}' matched multiple database records for the same doctor name ({match_names}); returning only those doctor records."
-            )
-            return (
-                matches,
-                {
-                    "doctor_id": None,
-                    "doctor_ids": match_ids,
-                    "doctor_name": matches[0]["doctor_name"],
-                    "requested_doctor_name": doctor_name,
-                    "match_type": "duplicate_name",
-                },
-                notes,
-            )
         notes.append(
             f"Doctor name '{doctor_name}' matched multiple doctors ({match_names}); returning general availability."
         )
