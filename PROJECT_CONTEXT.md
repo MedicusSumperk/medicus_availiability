@@ -31,7 +31,7 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It currently implements read-only targeted availability search and reserves patient lookup / booking endpoints for later phases.
 - PoC test confirmed that n8n chat agent can call `/doctor-availability` through trycloudflare and receive fast, real DB-derived availability results.
 - ElevenLabs voice agent test also passed; the availability tool works as expected and latency is practically without noticeable delay.
-- Current priority: replace temporary trycloudflare URL with a stable named Cloudflare Tunnel. Token/auth, tool-schema hardening, and business rules can wait for the next step.
+- Current priority: test the two read-only agent tools together in the voice/chat agent flow, then replace temporary trycloudflare URL with a stable named Cloudflare Tunnel before beta.
 
 ## Product Scope V1
 
@@ -299,6 +299,9 @@ PoC verification:
 - ElevenLabs voice agent successfully used the availability tool.
 - Voice-agent response time was observed as very fast, practically without noticeable delay.
 - This validates the intended read-only availability tool-call architecture.
+- Latest API smoke test confirmed `/patient-lookup` by full `RODCIS` for test patient `IDPAC=33411`, successful last-4 verification, and future `OBJOBJ` appointment return.
+- Latest API smoke test confirmed `/doctor-availability` with `doctor_name: Bartonova`; API resolved `IDUZI=8` and returned real options when the search window was extended.
+- Test patient `IDPAC=33411` has no `KARKONTAKT` row, so phone lookup must be tested with another patient that has `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`.
 
 Tool schema lesson:
 
@@ -367,7 +370,7 @@ Known business-rule notes from client discussion:
 - Dermatoscope can be done by all relevant doctors except Dr. Bednar.
 - Dr. Bednar does not do dermatoscope.
 - Dr. Bednar has explicitly confirmed 10-minute schedule slots; for him, both skin examination and the follow-up dermatoscope capacity are 10 minutes.
-- Dr. Bednar's active `IDUZI` is believed to be `6`; `IDUZI=2` appears to be an inactive duplicate and is excluded by `system_excluded_doctor_ids`.
+- Dr. Bednar's active `IDUZI` is confirmed as `4`; `IDUZI=2` is an inactive duplicate and is excluded by `system_excluded_doctor_ids`.
 - Need to verify whether any other doctors also have 10-minute slots.
 - Dr. Bednar does laser services but does not do plasma.
 - Dr. Bartonova does moles, fractional laser, and plasma.

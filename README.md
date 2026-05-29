@@ -214,8 +214,10 @@ Use booking write tests only during controlled client-approved UI verification.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
 - Phase 3 committed `OBJOBJ` insert and `IDCINNOSTI` activity/color propagation are verified in Medicus UI.
 - Local API + trycloudflare + n8n chat agent PoC is confirmed for fast read-only availability lookup against real DB data.
+- `/patient-lookup` is implemented and smoke-tested by full `RODCIS` for test patient `IDPAC=33411`; phone lookup uses `KARKONTAKT`, but the test patient has no contact row.
+- Dr. Bednar active `IDUZI` is confirmed as `4`; inactive duplicate `IDUZI=2` is excluded.
 - ElevenLabs voice agent availability tool test is confirmed and very fast.
-- Current priority: replace the temporary trycloudflare URL with a stable named Cloudflare Tunnel.
+- Current priority: test both read-only tools in the agent flow, then replace the temporary trycloudflare URL with a stable named Cloudflare Tunnel.
 
 ## Detailed Context
 
