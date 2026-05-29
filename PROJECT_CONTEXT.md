@@ -279,7 +279,9 @@ Current behavior:
 - With no request body, it returns the first default skin options.
 - With request filters, it searches a targeted date/time window and stops after the configured limit.
 - `doctor_name` can be passed as free text; API resolves it against `UZIVATEL` and filters only when there is one clear match.
+- The API also accepts common doctor-name aliases (`doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, `lekar`) because tool callers may name the field differently.
 - If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
+- Compact availability responses include `filters`, so tool tests can verify whether a doctor filter was actually applied.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
 - `/patient-lookup` and `/book-appointment` return `not_implemented` and do not perform database writes.

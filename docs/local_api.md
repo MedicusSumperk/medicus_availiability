@@ -329,6 +329,7 @@ Supported filters:
 - `time_to`: `HH:MM`
 - `doctor_id`: optional `IDUZI`
 - `doctor_name`: optional free-text doctor name from the caller; API resolves it against `UZIVATEL`
+- Doctor-name aliases accepted by the API include `doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, and `lekar`.
 - `limit`: defaults to API config, capped by `max_limit`
 - `compact`: return a shorter voice-agent payload
 
@@ -369,6 +370,14 @@ With `"compact": true`:
 {
   "ok": true,
   "service": "skin",
+  "filters": {
+    "doctor": {
+      "doctor_id": 8,
+      "doctor_name": "Maria Bartonova",
+      "requested_doctor_name": "Bartonova",
+      "match_type": "partial"
+    }
+  },
   "agent_notes": [],
   "options": [
     {

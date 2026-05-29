@@ -276,6 +276,7 @@ def compact_options(response: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": response["ok"],
         "service": response["service"],
+        "filters": response.get("filters", {}),
         "agent_notes": response.get("agent_notes", []),
         "options": [
             {

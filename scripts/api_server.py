@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Body, Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 
 CURRENT_DIR = Path(__file__).resolve().parent
@@ -71,16 +71,35 @@ def require_auth(authorization: str | None = Header(default=None)) -> None:
 app = FastAPI(title="Medicus Local API", version="0.1.0")
 
 
+def normalize_availability_payload(request: dict[str, Any] | AvailabilityRequest | None) -> dict[str, Any]:
+    if request is None:
+        payload: dict[str, Any] = {}
+    elif isinstance(request, AvailabilityRequest):
+        payload = request.dict(exclude_none=True)
+    elif isinstance(request, dict):
+        payload = {key: value for key, value in request.items() if value is not None}
+    else:
+        raise ValueError("request body must be a JSON object")
+
+    if not payload.get("doctor_name"):
+        for alias in ("doctor", "preferred_doctor", "doctorName", "doctor_text", "physician", "lekar"):
+            if payload.get(alias):
+                payload["doctor_name"] = payload[alias]
+                break
+
+    return payload
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "service": "medicus-local-api"}
 
 
 @app.post("/doctor-availability", dependencies=[Depends(require_auth)])
-def doctor_availability(request: AvailabilityRequest | None = None) -> dict[str, Any]:
+def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
     connection = None
     try:
-        payload = request.dict(exclude_none=True) if request is not None else {}
+        payload = normalize_availability_payload(request)
         payload.setdefault("days_ahead", API_CONFIG.get("default_days_ahead", 30))
         payload.setdefault("limit", API_CONFIG.get("default_limit", 3))
         payload.setdefault("max_limit", API_CONFIG.get("max_limit", 10))
