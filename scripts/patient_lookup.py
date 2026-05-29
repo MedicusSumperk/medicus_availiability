@@ -137,6 +137,21 @@ def _build_patient_query(
                 column_parts.append(f"CAST({column} AS VARCHAR(80)) LIKE ?")
                 params.append(f"%{group}%")
             phone_parts.append("(" + " AND ".join(column_parts) + ")")
+        contact_parts = ["CAST(kk.TELEFON_ADJ AS VARCHAR(80)) LIKE ?"]
+        contact_params: list[Any] = [f"%{phone_tail}%"]
+        contact_group_parts = []
+        for group in phone_groups:
+            contact_group_parts.append("CAST(kk.KONTAKT AS VARCHAR(80)) LIKE ?")
+            contact_params.append(f"%{group}%")
+        contact_parts.append("(" + " AND ".join(contact_group_parts) + ")")
+        phone_parts.append(
+            "EXISTS ("
+            "SELECT 1 FROM KARKONTAKT kk "
+            "WHERE kk.IDPAC = KAR.IDPAC "
+            "AND (" + " OR ".join(contact_parts) + ")"
+            ")"
+        )
+        params.extend(contact_params)
         if phone_parts:
             where_parts.append("(" + " OR ".join(phone_parts) + ")")
             applied_filters.append("phone")

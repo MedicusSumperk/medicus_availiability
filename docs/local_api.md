@@ -296,7 +296,7 @@ Purpose:
 
 Supported request fields:
 
-- `phone`, `phone_number`, or `caller_phone`: caller phone number, normalized by digits.
+- `phone`, `phone_number`, or `caller_phone`: caller phone number, normalized by digits and matched through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`.
 - `idpac`: direct patient ID if already known.
 - `birth_number`, `rodne_cislo`, or `rodcis`: full birth number, matched exactly against `KAR.RODCIS`; also satisfies the last-4 verification check.
 - `first_name` / `name`
