@@ -284,7 +284,7 @@ Current behavior:
 - If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
 - Compact availability responses include `filters`, so tool tests can verify whether a doctor filter was actually applied.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
-- `/patient-lookup` searches `KAR` by name/date/full `RODCIS` and searches phone through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`; it asks the agent to verify identity with the last 4 digits of `RODCIS` when needed and returns future `OBJOBJ` appointments after verification.
+- `/patient-lookup` searches `KAR` by name/date/full `RODCIS` and searches phone through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`; it asks the agent to verify identity with the last 4 digits of `RODCIS` when needed and returns future plus optionally past `OBJOBJ` appointments after verification.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
 - `/book-appointment` returns `not_implemented` and does not perform database writes.
 

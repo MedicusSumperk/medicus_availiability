@@ -211,11 +211,27 @@ def _sanitize_patient(patient: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in patient.items() if not key.startswith("_")}
 
 
-def _load_future_appointments(cursor, idpac: int, days_ahead: int) -> list[dict[str, Any]]:
-    date_from = date.today()
-    date_to = date_from + timedelta(days=max(int(days_ahead), 1) - 1)
+def _appointment_row_to_dict(row: tuple[Any, ...]) -> dict[str, Any]:
+    idobj, datum, cas, casdo, iduzi, jmeno, prijmeni, idprac, idcinnosti, activity_name, info = row
+    doctor_name = " ".join(part for part in [_clean(jmeno), _clean(prijmeni)] if part)
+    return {
+        "idobj": int(idobj),
+        "date": _date_iso(datum),
+        "start_time": cas.strftime("%H:%M") if hasattr(cas, "strftime") else _clean(cas),
+        "end_time": casdo.strftime("%H:%M") if hasattr(casdo, "strftime") else _clean(casdo),
+        "doctor_id": int(iduzi) if iduzi is not None else None,
+        "doctor_name": doctor_name,
+        "idprac": int(idprac) if idprac is not None else None,
+        "idcinnosti": int(idcinnosti) if idcinnosti is not None else None,
+        "activity_name": _clean(activity_name),
+        "info": _clean(info),
+    }
+
+
+def _load_appointments(cursor, idpac: int, date_from: date, date_to: date, sort_desc: bool = False) -> list[dict[str, Any]]:
+    order_direction = "DESC" if sort_desc else "ASC"
     cursor.execute(
-        """
+        f"""
         SELECT FIRST 20
             o.IDOBJ,
             o.DATUM,
@@ -235,36 +251,32 @@ def _load_future_appointments(cursor, idpac: int, days_ahead: int) -> list[dict[
           AND o.DATUM >= ?
           AND o.DATUM <= ?
           AND o.TYP NOT IN (9, 10)
-        ORDER BY o.DATUM, o.CAS
+        ORDER BY o.DATUM {order_direction}, o.CAS {order_direction}
         """,
         (idpac, date_from, date_to),
     )
+    return [_appointment_row_to_dict(row) for row in cursor.fetchall()]
 
-    appointments: list[dict[str, Any]] = []
-    for idobj, datum, cas, casdo, iduzi, jmeno, prijmeni, idprac, idcinnosti, activity_name, info in cursor.fetchall():
-        doctor_name = " ".join(part for part in [_clean(jmeno), _clean(prijmeni)] if part)
-        appointments.append(
-            {
-                "idobj": int(idobj),
-                "date": _date_iso(datum),
-                "start_time": cas.strftime("%H:%M") if hasattr(cas, "strftime") else _clean(cas),
-                "end_time": casdo.strftime("%H:%M") if hasattr(casdo, "strftime") else _clean(casdo),
-                "doctor_id": int(iduzi) if iduzi is not None else None,
-                "doctor_name": doctor_name,
-                "idprac": int(idprac) if idprac is not None else None,
-                "idcinnosti": int(idcinnosti) if idcinnosti is not None else None,
-                "activity_name": _clean(activity_name),
-                "info": _clean(info),
-            }
-        )
-    return appointments
+
+def _load_future_appointments(cursor, idpac: int, days_ahead: int) -> list[dict[str, Any]]:
+    date_from = date.today()
+    date_to = date_from + timedelta(days=max(int(days_ahead), 1) - 1)
+    return _load_appointments(cursor, idpac, date_from, date_to)
+
+
+def _load_past_appointments(cursor, idpac: int, days_back: int) -> list[dict[str, Any]]:
+    date_to = date.today() - timedelta(days=1)
+    date_from = date_to - timedelta(days=max(int(days_back), 1) - 1)
+    return _load_appointments(cursor, idpac, date_from, date_to, sort_desc=True)
 
 
 def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, Any]:
     request = request or {}
     limit = min(max(int(request.get("limit") or 5), 1), 20)
     include_appointments = bool(request.get("include_appointments", True))
+    include_past_appointments = bool(request.get("include_past_appointments", False))
     appointment_days_ahead = min(max(int(request.get("appointment_days_ahead") or 365), 1), 730)
+    past_appointment_days = min(max(int(request.get("past_appointment_days") or 365), 1), 1825)
     birth_number_digits = _digits(request.get("birth_number") or request.get("rodne_cislo") or request.get("rodcis"))
     verification_last4 = _last4(
         request.get("birth_number_last4") or request.get("rodne_cislo_last4") or birth_number_digits
@@ -286,6 +298,7 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
         },
         "patients": [_sanitize_patient(patient) for patient in raw_patients],
         "appointments": [],
+        "past_appointments": [],
         "agent_next_step": None,
     }
 
@@ -312,5 +325,7 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
 
     if include_appointments and patient.get("idpac") is not None:
         response["appointments"] = _load_future_appointments(cursor, int(patient["idpac"]), appointment_days_ahead)
+    if include_past_appointments and patient.get("idpac") is not None:
+        response["past_appointments"] = _load_past_appointments(cursor, int(patient["idpac"]), past_appointment_days)
     response["agent_next_step"] = "Patient identity verified. Use appointments to answer questions about existing bookings."
     return response

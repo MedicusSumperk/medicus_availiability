@@ -123,7 +123,7 @@ The availability endpoint also accepts `doctor_name` as free text. The API resol
 For tool callers, common aliases such as `doctor`, `preferred_doctor`, and `doctorName` are normalized to `doctor_name`.
 `IDUZI=2` is excluded as a suspected inactive duplicate Bednar row.
 
-`/patient-lookup` finds patient candidates in `KAR`, supports phone lookup through `KARKONTAKT`, supports name/date/full `RODCIS` lookup, verifies identity with the last 4 digits of `RODCIS`, and returns future `OBJOBJ` appointments only after verification. It is read-only.
+`/patient-lookup` finds patient candidates in `KAR`, supports phone lookup through `KARKONTAKT`, supports name/date/full `RODCIS` lookup, verifies identity with the last 4 digits of `RODCIS`, and returns future plus optionally past `OBJOBJ` appointments after verification. It is read-only.
 
 Quick trycloudflare test tunnel:
 

@@ -305,6 +305,8 @@ Supported request fields:
 - `birth_number_last4` or `rodne_cislo_last4`: verification value.
 - `include_appointments`: defaults to `true`.
 - `appointment_days_ahead`: defaults to `365`, capped at `730`.
+- `include_past_appointments`: defaults to `false`.
+- `past_appointment_days`: defaults to `365`, capped at `1825`.
 - `limit`: max patient candidates, defaults to `5`, capped at `20`.
 
 Example first lookup from a phone number:
@@ -335,11 +337,13 @@ Example lookup with full birth number:
 ```json
 {
   "birth_number": "5656565666",
-  "include_appointments": true
+  "include_appointments": true,
+  "include_past_appointments": true
 }
 ```
 
 After verification, `appointments` contains future `OBJOBJ` rows with date, time, doctor, activity, and info fields.
+If `include_past_appointments` is true, `past_appointments` contains recent past rows ordered newest first.
 
 ## Availability Request
 
