@@ -29,10 +29,10 @@ API_CONFIG_EXAMPLE_PATH = PROJECT_ROOT / "config" / "api.local.example.json"
 
 def load_api_config() -> dict[str, Any]:
     if API_CONFIG_PATH.exists():
-        with API_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+        with API_CONFIG_PATH.open("r", encoding="utf-8-sig") as config_file:
             return json.load(config_file)
     if API_CONFIG_EXAMPLE_PATH.exists():
-        with API_CONFIG_EXAMPLE_PATH.open("r", encoding="utf-8") as config_file:
+        with API_CONFIG_EXAMPLE_PATH.open("r", encoding="utf-8-sig") as config_file:
             return json.load(config_file)
     return {}
 

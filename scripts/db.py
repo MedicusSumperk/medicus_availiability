@@ -13,7 +13,7 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "db_config.loc
 
 def _load_db_config() -> dict:
     """Load database connection settings from local config file."""
-    with CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+    with CONFIG_PATH.open("r", encoding="utf-8-sig") as config_file:
         return json.load(config_file)
 
 

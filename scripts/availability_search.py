@@ -142,7 +142,7 @@ def _resolve_doctor_filter(
 def load_search_config() -> dict[str, Any]:
     """Load the same local rule config used by the agent context builder."""
     if LOCAL_CONFIG_PATH.exists():
-        with LOCAL_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+        with LOCAL_CONFIG_PATH.open("r", encoding="utf-8-sig") as config_file:
             return normalize_config(json.load(config_file))
     return normalize_config(DEFAULT_CONFIG)
 

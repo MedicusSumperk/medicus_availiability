@@ -21,7 +21,7 @@ OUTPUT_DIR_FALLBACK = PROJECT_ROOT / "data" / "agent_context"
 
 def _load_config() -> dict[str, Any]:
     if LOCAL_CONFIG_PATH.exists():
-        with LOCAL_CONFIG_PATH.open("r", encoding="utf-8") as config_file:
+        with LOCAL_CONFIG_PATH.open("r", encoding="utf-8-sig") as config_file:
             config = json.load(config_file)
         print(f"Loaded config from {LOCAL_CONFIG_PATH}")
         return normalize_config(config)
