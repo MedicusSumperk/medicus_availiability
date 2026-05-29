@@ -27,6 +27,17 @@ Reserved:
 
 `/patient-lookup` reads patient card and future appointment data but performs no writes. `/book-appointment` returns `not_implemented` and does not write appointment data.
 
+## Agent Tool Contract
+
+Target beta behavior:
+
+1. Use `/doctor-availability` whenever the caller asks for available appointment terms, changes doctor/date/time/service preference, or asks for a specific doctor.
+2. Use `/patient-lookup` at the start of a call when caller phone is available, or later when the caller provides identifying data.
+3. Treat `status: "not_found"` as an unregistered-or-not-yet-matched patient. The agent should ask for name and birth date, then retry lookup; registration/write is not implemented yet.
+4. Treat `status: "needs_verification"` as a registered patient candidate that still requires identity verification. Ask for the last 4 digits of birth number, then call `/patient-lookup` again with `birth_number_last4`.
+5. After successful verification, use `appointments` for future bookings and `past_appointments` when `include_past_appointments` was requested.
+6. Never discuss existing appointments before verification succeeds.
+
 ## File Locations
 
 Core API files:
