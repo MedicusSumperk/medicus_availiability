@@ -278,6 +278,8 @@ Current behavior:
 - `/doctor-availability` is read-only and uses existing service-specific availability logic.
 - With no request body, it returns the first default skin options.
 - With request filters, it searches a targeted date/time window and stops after the configured limit.
+- `doctor_name` can be passed as free text; API resolves it against `UZIVATEL` and filters only when there is one clear match.
+- If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
 - `/patient-lookup` and `/book-appointment` return `not_implemented` and do not perform database writes.
@@ -297,6 +299,7 @@ PoC verification:
 Tool schema lesson:
 
 - Keep tool inputs simple for the agent.
+- Let the API resolve doctor-name strings rather than making the agent choose `IDUZI`.
 - Keep `limit` and `compact` fixed where possible.
 - Avoid requiring the agent to produce list fields unless the tool schema strongly enforces them.
 - Backend can later be hardened to accept scalar `weekday` and normalize it to `weekdays`.

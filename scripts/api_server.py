@@ -51,6 +51,7 @@ class AvailabilityRequest(BaseModel):
     time_from: str | None = None
     time_to: str | None = None
     doctor_id: int | None = None
+    doctor_name: str | None = None
     limit: int | None = None
     compact: bool = False
 

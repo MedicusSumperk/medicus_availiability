@@ -297,6 +297,7 @@ Filtered request:
   "service": "skin",
   "date_from": "2026-07-01",
   "date_to": "2026-08-31",
+  "doctor_name": "Bartonova",
   "weekdays": [4],
   "time_from": "14:00",
   "limit": 3,
@@ -327,8 +328,38 @@ Supported filters:
 - `time_from`: `HH:MM`
 - `time_to`: `HH:MM`
 - `doctor_id`: optional `IDUZI`
+- `doctor_name`: optional free-text doctor name from the caller; API resolves it against `UZIVATEL`
 - `limit`: defaults to API config, capped by `max_limit`
 - `compact`: return a shorter voice-agent payload
+
+Doctor-name behavior:
+
+- If `doctor_id` is supplied and found, it wins.
+- If `doctor_name` uniquely matches a known doctor, the API filters to that doctor.
+- Matching is case-insensitive and accent-insensitive; partial surname-like input should work.
+- If `doctor_name` is unknown or ambiguous, the API returns general availability and includes an `agent_notes` message explaining that the doctor filter was not applied.
+
+Example with doctor preference:
+
+```json
+{
+  "service": "skin",
+  "doctor_name": "Bartonova",
+  "date_from": "2026-07-01",
+  "limit": 3,
+  "compact": true
+}
+```
+
+Example note when the doctor was not found:
+
+```json
+{
+  "agent_notes": [
+    "Doctor name 'Novak' was not found; returning general availability."
+  ]
+}
+```
 
 ## Compact Response
 
@@ -338,6 +369,7 @@ With `"compact": true`:
 {
   "ok": true,
   "service": "skin",
+  "agent_notes": [],
   "options": [
     {
       "date": "2026-07-24",
@@ -364,8 +396,14 @@ Without `"compact": true`, the response includes DB-facing fields needed for lat
     "weekdays": [4],
     "time_from": "14:00",
     "time_to": null,
-    "doctor_id": null
+    "doctor": {
+      "doctor_id": 8,
+      "doctor_name": "Maria Bartonova",
+      "requested_doctor_name": "Bartonova",
+      "match_type": "partial"
+    }
   },
+  "agent_notes": [],
   "options": [
     {
       "date": "2026-07-02",

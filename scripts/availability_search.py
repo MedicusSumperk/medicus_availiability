@@ -7,6 +7,7 @@ context export. It is read-only.
 from __future__ import annotations
 
 import json
+import unicodedata
 from datetime import date, datetime, time, timedelta
 from typing import Any
 
@@ -73,6 +74,71 @@ def _filtered_doctors(doctors: list[dict[str, Any]], doctor_id: int | None) -> l
     return [doctor for doctor in doctors if int(doctor["doctor_id"]) == doctor_id]
 
 
+def _normalize_name(value: str) -> str:
+    decomposed = unicodedata.normalize("NFKD", value.lower())
+    ascii_text = "".join(char for char in decomposed if not unicodedata.combining(char))
+    title_words = {"dr", "mudr", "doktor", "doktorka", "pan", "pani"}
+    parts = ascii_text.replace(".", " ").replace(",", " ").split()
+    return " ".join(part for part in parts if part not in title_words)
+
+
+def _resolve_doctor_filter(
+    doctors: list[dict[str, Any]],
+    doctor_id: int | None,
+    doctor_name: str | None,
+) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
+    notes: list[str] = []
+    if doctor_id is not None:
+        filtered = _filtered_doctors(doctors, doctor_id)
+        if filtered:
+            return filtered, {"doctor_id": doctor_id, "doctor_name": filtered[0]["doctor_name"], "match_type": "doctor_id"}, notes
+        notes.append(f"Doctor ID {doctor_id} was not found; returning general availability.")
+        return doctors, {"doctor_id": doctor_id, "doctor_name": doctor_name, "match_type": "not_found"}, notes
+
+    if not doctor_name:
+        return doctors, {"doctor_id": None, "doctor_name": None, "match_type": "none"}, notes
+
+    requested = _normalize_name(str(doctor_name))
+    if not requested:
+        return doctors, {"doctor_id": None, "doctor_name": doctor_name, "match_type": "empty"}, notes
+
+    exact_matches: list[dict[str, Any]] = []
+    partial_matches: list[dict[str, Any]] = []
+    requested_parts = set(requested.split())
+
+    for doctor in doctors:
+        normalized = _normalize_name(str(doctor["doctor_name"]))
+        normalized_parts = set(normalized.split())
+        if requested == normalized:
+            exact_matches.append(doctor)
+        elif requested in normalized or requested_parts.issubset(normalized_parts):
+            partial_matches.append(doctor)
+
+    matches = exact_matches or partial_matches
+    if len(matches) == 1:
+        matched = matches[0]
+        return (
+            [matched],
+            {
+                "doctor_id": matched["doctor_id"],
+                "doctor_name": matched["doctor_name"],
+                "requested_doctor_name": doctor_name,
+                "match_type": "exact" if exact_matches else "partial",
+            },
+            notes,
+        )
+
+    if len(matches) > 1:
+        match_names = ", ".join(str(match["doctor_name"]) for match in matches[:5])
+        notes.append(
+            f"Doctor name '{doctor_name}' matched multiple doctors ({match_names}); returning general availability."
+        )
+        return doctors, {"doctor_id": None, "doctor_name": doctor_name, "match_type": "ambiguous"}, notes
+
+    notes.append(f"Doctor name '{doctor_name}' was not found; returning general availability.")
+    return doctors, {"doctor_id": None, "doctor_name": doctor_name, "match_type": "not_found"}, notes
+
+
 def load_search_config() -> dict[str, Any]:
     """Load the same local rule config used by the agent context builder."""
     if LOCAL_CONFIG_PATH.exists():
@@ -101,12 +167,14 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
     time_from = _parse_time(request.get("time_from"))
     time_to = _parse_time(request.get("time_to"))
     doctor_id = int(request["doctor_id"]) if request.get("doctor_id") is not None else None
+    doctor_name = str(request.get("doctor_name") or "").strip() or None
     limit = min(max(int(request.get("limit") or DEFAULT_LIMIT), 1), int(request.get("max_limit") or MAX_LIMIT))
 
     fallback_slot_interval_minutes = int(config.get("slot_interval_minutes", 15))
     blocking_idcinnosti = [int(value) for value in config.get("dermatoscope_blocking_idcinnosti", [1, 2, 5, 6])]
     services = config.get("services", DEFAULT_CONFIG["services"])
-    doctors = _filtered_doctors(filter_doctors(load_doctors(cursor), config), doctor_id)
+    all_doctors = filter_doctors(load_doctors(cursor), config)
+    doctors, doctor_filter, agent_notes = _resolve_doctor_filter(all_doctors, doctor_id, doctor_name)
 
     options: list[dict[str, Any]] = []
     scanned_days = 0
@@ -171,8 +239,9 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                                 "weekdays": sorted(weekdays),
                                 "time_from": time_from.strftime("%H:%M") if time_from else None,
                                 "time_to": time_to.strftime("%H:%M") if time_to else None,
-                                "doctor_id": doctor_id,
+                                "doctor": doctor_filter,
                             },
+                            "agent_notes": agent_notes,
                             "options": options,
                             "scanned": {
                                 "days": scanned_days,
@@ -191,8 +260,9 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
             "weekdays": sorted(weekdays),
             "time_from": time_from.strftime("%H:%M") if time_from else None,
             "time_to": time_to.strftime("%H:%M") if time_to else None,
-            "doctor_id": doctor_id,
+            "doctor": doctor_filter,
         },
+        "agent_notes": agent_notes,
         "options": options,
         "scanned": {
             "days": scanned_days,
@@ -206,6 +276,7 @@ def compact_options(response: dict[str, Any]) -> dict[str, Any]:
     return {
         "ok": response["ok"],
         "service": response["service"],
+        "agent_notes": response.get("agent_notes", []),
         "options": [
             {
                 "date": option["date"],

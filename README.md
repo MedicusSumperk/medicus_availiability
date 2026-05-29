@@ -119,6 +119,8 @@ POST /book-appointment     # reserved stub, no writes
 
 `/doctor-availability` returns a short list of bookable options. With no body it returns the first default skin options. With filters it searches a targeted date/time window and stops after the requested limit. See `docs/local_api.md`.
 
+The availability endpoint also accepts `doctor_name` as free text. The API resolves it against Medicus users and filters by doctor only when the match is clear.
+
 Quick trycloudflare test tunnel:
 
 ```powershell
