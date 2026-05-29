@@ -30,7 +30,8 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - Agent context now uses the concrete schedule interval from `OBSDNE_PRAVODLIS_SEL.INTERVAL` for doctor/day/context slot planning, with config interval only as fallback.
 - A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It currently implements read-only targeted availability search and reserves patient lookup / booking endpoints for later phases.
 - PoC test confirmed that n8n chat agent can call `/doctor-availability` through trycloudflare and receive fast, real DB-derived availability results.
-- Current priority: pass the confirmed webhook/tool flow to an ElevenLabs voice agent.
+- ElevenLabs voice agent test also passed; the availability tool works as expected and latency is practically without noticeable delay.
+- Current priority: replace temporary trycloudflare URL with a stable named Cloudflare Tunnel. Token/auth, tool-schema hardening, and business rules can wait for the next step.
 
 ## Product Scope V1
 
@@ -289,7 +290,9 @@ PoC verification:
 - n8n HTTP Request tool successfully called the public `/doctor-availability` endpoint.
 - n8n chat agent successfully used the availability lookup tool.
 - Response time was observed as fast enough for the current chat-based tool test.
-- This validates the intended tool-call architecture for the next ElevenLabs voice-agent test.
+- ElevenLabs voice agent successfully used the availability tool.
+- Voice-agent response time was observed as very fast, practically without noticeable delay.
+- This validates the intended read-only availability tool-call architecture.
 
 Tool schema lesson:
 
@@ -562,6 +565,7 @@ scripts/
   check_week_availability_cli.py
   db.py
   load_doctors.py
+  start_named_cloudflare_tunnel.ps1     # helper for stable named Cloudflare Tunnel
   start_trycloudflare_api.ps1           # PoC helper for quick Cloudflare Tunnel URL
   tests/
     find_test_patients.py
@@ -587,6 +591,7 @@ For the current webhook/tool-call PoC:
 | `scripts/api_server.py` | Local FastAPI service. Defines `/health`, `/doctor-availability`, `/patient-lookup`, and `/book-appointment`. |
 | `scripts/availability_search.py` | Read-only targeted availability search used by `/doctor-availability`; returns first matching options instead of a full context file. |
 | `scripts/start_trycloudflare_api.ps1` | Windows helper for PoC tunnel startup; captures `https://...trycloudflare.com` and writes it to `data/api/trycloudflare_url.txt`. |
+| `scripts/start_named_cloudflare_tunnel.ps1` | Windows helper for running a stable named Cloudflare Tunnel after Cloudflare is configured. |
 | `config/api.local.example.json` | Example local API settings: localhost bind, port, token, default lookup window, default limit. |
 | `config/api.local.json` | Local-only API config copied from example; ignored by git. |
 | `docs/local_api.md` | Main operational documentation for local API, trycloudflare, n8n PoC verification, and tool-schema notes. |
@@ -652,6 +657,18 @@ If API is already running manually:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -SkipApiStart
+```
+
+Named Cloudflare Tunnel helper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_named_cloudflare_tunnel.ps1 -TunnelName medicus-api
+```
+
+If API is already running manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_named_cloudflare_tunnel.ps1 -TunnelName medicus-api -SkipApiStart
 ```
 
 Appointment type inspection:
@@ -835,19 +852,19 @@ Questions:
 - Are there any doctor/day/context rows with mixed intervals?
 - Does any service exception need to override the default schedule interval behavior?
 
-### Test ElevenLabs Voice Agent With Webhook Tool
+### Stabilize Cloudflare Tunnel
 
 Next product behavior step.
 
-The chat-agent PoC confirmed that targeted webhook lookup is preferable to giving the agent a large static context file. Next step is to pass the public availability endpoint to an ElevenLabs voice agent and test realistic reception scenarios.
+The chat-agent and ElevenLabs voice-agent PoCs confirmed that targeted webhook lookup is preferable to giving the agent a large static context file. Next step is infrastructure stabilization.
 
 Questions:
 
-- Does the voice agent call the availability tool at the right point in the conversation?
-- Does voice-mode latency remain acceptable with the same backend/tool path?
-- Can the agent reliably map user preferences to simple tool parameters?
-- Does the agent present only returned options, without inventing extra slots?
-- Is the compact response sufficient, or does the voice agent need extra display text / localized formatting?
+- What stable hostname should be used for the named Cloudflare Tunnel?
+- Where should `cloudflared.exe` live on the server?
+- Should `cloudflared` run as a Windows Service immediately, or first as manual beta process?
+- Should the local API be wrapped as a Windows Service or Task Scheduler job after tunnel stabilization?
+- When should bearer token authentication be enabled?
 
 ### Verify Plasma Production Shape
 
@@ -919,7 +936,7 @@ Remaining Phase 3 work is to finalize production values such as exact plasma `IN
 
 ### Phase 4: Agent Booking Context / Tool API
 
-Status: PoC confirmed for read-only availability lookup through n8n chat agent and trycloudflare.
+Status: PoC confirmed for read-only availability lookup through n8n chat agent, trycloudflare, and ElevenLabs voice agent.
 
 Implemented a mechanism that gives the AI receptionist service-specific context, not only raw availability.
 
@@ -932,4 +949,4 @@ Expected output should answer:
 - which schedule interval was used for each option
 - which DB fields should be used if a booking is created
 
-Next step is to give the confirmed `/doctor-availability` webhook to an ElevenLabs voice agent, then tune tool schema and response shape based on voice-call behavior.
+Next step is to replace the temporary trycloudflare URL with a stable named Cloudflare Tunnel, then continue with service hardening and business rules.

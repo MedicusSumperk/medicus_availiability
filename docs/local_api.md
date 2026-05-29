@@ -35,6 +35,7 @@ Core API files:
 scripts/api_server.py
 scripts/availability_search.py
 scripts/start_trycloudflare_api.ps1
+scripts/start_named_cloudflare_tunnel.ps1
 config/api.local.example.json
 config/api.local.json              # local only, ignored
 docs/local_api.md
@@ -103,10 +104,26 @@ No inbound firewall port is needed on the Medicus server when Cloudflare Tunnel 
 
 ## Quick Trycloudflare Test
 
-For PoC testing without creating a named Cloudflare tunnel, install `cloudflared` and run:
+For PoC testing without creating a named Cloudflare tunnel, download `cloudflared.exe` and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1
+```
+
+The helper tries to find `cloudflared.exe` in:
+
+```text
+<repo>\cloudflared.exe
+<repo>\tools\cloudflared.exe
+C:\tools\cloudflared\cloudflared.exe
+C:\cloudflared\cloudflared.exe
+PATH
+```
+
+If needed, pass the path explicitly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -CloudflaredPath "C:\tools\cloudflared\cloudflared.exe"
 ```
 
 The script:
@@ -137,6 +154,60 @@ powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -Sk
 
 `trycloudflare` URLs are temporary and can change after restart. For production, use a named Cloudflare Tunnel and stable hostname.
 
+## Stable Named Cloudflare Tunnel
+
+Next beta step: replace temporary `trycloudflare` URLs with a named Cloudflare Tunnel and stable hostname, for example:
+
+```text
+https://medicus-api.example.cz -> http://127.0.0.1:8000
+```
+
+One-time Cloudflare setup outline:
+
+```powershell
+C:\tools\cloudflared\cloudflared.exe tunnel login
+C:\tools\cloudflared\cloudflared.exe tunnel create medicus-api
+C:\tools\cloudflared\cloudflared.exe tunnel route dns medicus-api medicus-api.example.cz
+```
+
+Create a local `cloudflared` config file on the server. Exact path can vary by installation, but a common service-friendly location is:
+
+```text
+C:\Windows\System32\config\systemprofile\.cloudflared\config.yml
+```
+
+Example config:
+
+```yaml
+tunnel: medicus-api
+credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\<tunnel-id>.json
+
+ingress:
+  - hostname: medicus-api.example.cz
+    service: http://127.0.0.1:8000
+  - service: http_status:404
+```
+
+Manual run for testing:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_named_cloudflare_tunnel.ps1 -TunnelName medicus-api
+```
+
+If API is already running manually:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start_named_cloudflare_tunnel.ps1 -TunnelName medicus-api -SkipApiStart
+```
+
+For beta/production, install `cloudflared` as a Windows Service after the named tunnel works manually:
+
+```powershell
+C:\tools\cloudflared\cloudflared.exe service install
+```
+
+Keep the local API as a separate service/process. Do not expose the API directly to the public interface; keep it bound to `127.0.0.1`.
+
 ## PoC Verification
 
 Status: confirmed for the current PoC phase.
@@ -160,7 +231,9 @@ Confirmed findings:
 - The endpoint remains fast enough for chat-agent tool use through trycloudflare.
 - The response can be kept compact enough for a conversational agent.
 - n8n can call the endpoint as an HTTP Request tool.
-- The current implementation is sufficient as a PoC for handing the webhook URL to an ElevenLabs voice agent.
+- ElevenLabs voice agent can call the availability webhook/tool successfully.
+- Voice-agent latency was observed as very fast, practically without noticeable delay.
+- The current implementation is sufficient as a PoC; the next infrastructure step is a stable named Cloudflare Tunnel.
 
 Current tested request shape:
 

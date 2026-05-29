@@ -208,7 +208,8 @@ Use booking write tests only during controlled client-approved UI verification.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
 - Phase 3 committed `OBJOBJ` insert and `IDCINNOSTI` activity/color propagation are verified in Medicus UI.
 - Local API + trycloudflare + n8n chat agent PoC is confirmed for fast read-only availability lookup against real DB data.
-- Current priority: pass the confirmed `/doctor-availability` webhook to an ElevenLabs voice agent.
+- ElevenLabs voice agent availability tool test is confirmed and very fast.
+- Current priority: replace the temporary trycloudflare URL with a stable named Cloudflare Tunnel.
 
 ## Detailed Context
 
@@ -220,6 +221,7 @@ Most relevant API files:
 scripts/api_server.py
 scripts/availability_search.py
 scripts/start_trycloudflare_api.ps1
+scripts/start_named_cloudflare_tunnel.ps1
 config/api.local.example.json
 docs/local_api.md
 ```
