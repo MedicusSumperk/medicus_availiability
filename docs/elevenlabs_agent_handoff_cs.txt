@@ -1,0 +1,239 @@
+MEDICUS API - podklady pro nastaveni ElevenLabs testovaciho agenta
+================================================================
+
+Datum pripravy: 2026-06-02
+
+API je dostupne pres docasny Cloudflare Tunnel. Po kazdem novem spusteni serveru
+se muze zmenit base URL. Pred testem doplnte aktualni hodnotu:
+
+BASE_URL: https://DOPLNIT-AKTUALNI-URL.trycloudflare.com
+
+Health check:
+GET {BASE_URL}/health
+
+Pro test jsou pripraveny dva read-only POST tooly:
+
+1. doctor_availability
+2. patient_lookup
+
+Tool book_appointment zatim neni implementovany. Agent tedy zatim nesmi tvrdit,
+ze objednavku finalne ulozil do systemu.
+
+
+1. TOOL: doctor_availability
+============================
+
+Endpoint:
+POST {BASE_URL}/doctor-availability
+
+Kratky popis toolu:
+Vyhledejte realne dostupne terminy v Medicus databazi. Tool pouzijte vzdy,
+kdyz pacient hleda termin, zmeni preferovaneho lekare, typ sluzby, datum,
+den v tydnu nebo cas. Dostupnost nikdy neodhadujte z pameti ani ze starsiho
+vysledku. Pokud pacient uvede konkretniho lekare, poslete jeho jmeno jako
+doctor_name. Nepouzivejte doctor_id.
+
+Doporucene JSON schema vstupu:
+
+{
+  "type": "object",
+  "properties": {
+    "service": {
+      "type": "string",
+      "enum": ["skin", "plasma"],
+      "description": "Typ sluzby. Pouzijte skin pro kozni vysetreni. Pouzijte plasma pouze pokud pacient vyslovne zada plazmu."
+    },
+    "doctor_name": {
+      "type": "string",
+      "description": "Jmeno nebo prijmeni pozadovaneho lekare tak, jak ho rekl pacient, napr. Bednar nebo Bartonova. Neprevadejte jmeno na interni ID."
+    },
+    "date_from": {
+      "type": "string",
+      "description": "Pocatecni datum hledani ve formatu YYYY-MM-DD, pouze pokud pacient uvede datum nebo obdobi."
+    },
+    "date_to": {
+      "type": "string",
+      "description": "Koncove datum hledani ve formatu YYYY-MM-DD, pouze pokud pacient uvede rozsah."
+    },
+    "days_ahead": {
+      "type": "integer",
+      "description": "Pocet dni dopredu pro hledani. Pouzijte jen kdyz je potreba rozsirit vyhledavani."
+    },
+    "weekdays": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 7
+      },
+      "description": "Preferovane dny v tydnu podle ISO: pondeli=1, utery=2, streda=3, ctvrtek=4, patek=5, sobota=6, nedele=7."
+    },
+    "time_from": {
+      "type": "string",
+      "description": "Nejdrivejsi prijatelny cas ve formatu HH:MM, pouze pokud pacient uvede casovou preferenci."
+    },
+    "time_to": {
+      "type": "string",
+      "description": "Nejpozdejsi prijatelny cas ve formatu HH:MM, pouze pokud pacient uvede casovou preferenci."
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Pocet nabizenych variant. Pro test nastavte vzdy 3."
+    },
+    "compact": {
+      "type": "boolean",
+      "description": "Pro hlasoveho agenta nastavte vzdy true."
+    }
+  }
+}
+
+Doporucene pevne hodnoty:
+
+{
+  "limit": 3,
+  "compact": true
+}
+
+Priklad:
+
+{
+  "service": "skin",
+  "doctor_name": "Bednar",
+  "limit": 3,
+  "compact": true
+}
+
+Poznamky k vysledku:
+- options obsahuje nabizene terminy.
+- agent_notes obsahuje pripadne upozorneni pro agenta.
+- filters ukazuje, jaky filtr API skutecne aplikovalo.
+- match_type partial je v poradku, pokud pacient uvedl pouze prijmeni.
+
+
+2. TOOL: patient_lookup
+=======================
+
+Endpoint:
+POST {BASE_URL}/patient-lookup
+
+Kratky popis toolu:
+Vyhledejte pacienta v Medicus kartotece. Na zacatku hovoru pouzijte telefonni
+cislo volajiciho z call metadata, pokud je dostupne. Pokud lookup pacienta
+nenajde nebo vrati vice kandidatu, doptavejte se na identifikacni udaje a tool
+zavolejte znovu. Existujici objednavky pacienta nikdy nesdelujte, dokud
+verification.verified neni true.
+
+Doporucene JSON schema vstupu:
+
+{
+  "type": "object",
+  "properties": {
+    "phone": {
+      "type": "string",
+      "description": "Telefonni cislo volajiciho. Pri prvnim lookupu pouzijte hodnotu z call metadata nebo dynamic variable."
+    },
+    "first_name": {
+      "type": "string",
+      "description": "Krestni jmeno pacienta, pokud ho pacient uvede."
+    },
+    "last_name": {
+      "type": "string",
+      "description": "Prijmeni pacienta, pokud ho pacient uvede."
+    },
+    "birth_date": {
+      "type": "string",
+      "description": "Datum narozeni pacienta ve formatu YYYY-MM-DD, pokud ho pacient uvede."
+    },
+    "birth_number_last4": {
+      "type": "string",
+      "description": "Posledni 4 cislice rodneho cisla. Pouzijte pro overeni totoznosti nalezeneho pacienta."
+    },
+    "birth_number": {
+      "type": "string",
+      "description": "Cele rodne cislo. Pouzijte pouze pro test nebo pokud ho pacient vyslovne poskytne."
+    },
+    "include_appointments": {
+      "type": "boolean",
+      "description": "Po uspesnem overeni vratit budouci objednavky. Pro bezny lookup nastavte true."
+    },
+    "include_past_appointments": {
+      "type": "boolean",
+      "description": "Po uspesnem overeni vratit i predchozi objednavky. Nastavte false, pokud historie neni potreba."
+    }
+  }
+}
+
+Doporucene pevne hodnoty:
+
+{
+  "include_appointments": true,
+  "include_past_appointments": false
+}
+
+Prvni lookup na zacatku hovoru:
+
+{
+  "phone": "<caller_phone>",
+  "include_appointments": true,
+  "include_past_appointments": false
+}
+
+Lookup po zadani jmena:
+
+{
+  "first_name": "Jan",
+  "last_name": "Novak",
+  "include_appointments": true,
+  "include_past_appointments": false
+}
+
+Overeni nalezeneho pacienta:
+
+{
+  "phone": "<caller_phone>",
+  "birth_number_last4": "1234",
+  "include_appointments": true,
+  "include_past_appointments": false
+}
+
+Poznamky k vysledku:
+- status=not_found: pacient nebyl dohledan. Pozadejte o jmeno, prijmeni a datum
+  narozeni a zavolejte lookup znovu. Registrace noveho pacienta zatim neni
+  implementovana.
+- status=multiple_matches: existuje vice kandidatu. Pozadejte o dalsi udaje,
+  idealne datum narozeni.
+- status=needs_verification: pacient byl nalezen. Pozadejte o posledni 4
+  cislice rodneho cisla a zavolejte lookup znovu.
+- verification.verified=true: totoznost je overena. Teprve ted lze mluvit
+  o existujicich objednavkach.
+- appointments obsahuje budouci objednavky.
+- past_appointments obsahuje minulou historii, pokud byla vyzadana.
+
+
+Doporucena pravidla do system promptu ElevenLabs agenta
+=======================================================
+
+1. Mluvte cesky.
+2. Pri zahajeni hovoru zavolejte patient_lookup s telefonem volajiciho, pokud
+   je dostupny v call metadata. Kvuli lookupu neprerusujte prirozeny zacatek
+   konverzace.
+3. Dostupne terminy muzete pacientovi nabidnout jeste pred overenim totoznosti.
+4. Pred finalnim potvrzenim nebo ulozenim objednavky musi byt pacient
+   identifikovany a overeny.
+5. O existujicich objednavkach nikdy nemluvte pred uspesnym overenim totoznosti.
+6. Dostupnost terminu vzdy overujte novym volanim doctor_availability. Pokud
+   pacient zmeni lekare, sluzbu, datum nebo cas, zavolejte tool znovu.
+7. Pokud pacient pozaduje konkretniho lekare, predejte jeho jmeno jako
+   doctor_name. Nikdy sami neurcujte doctor_id.
+8. Tool book_appointment zatim neni implementovany. V testu neslibujte, ze byl
+   termin definitivne ulozen do Medicusu.
+
+
+Aktualni omezeni testovaci verze
+================================
+
+- API je zatim read-only pro availability a patient lookup.
+- Registrace noveho pacienta neni implementovana.
+- Finalni zapis objednavky pres API neni implementovany.
+- BASE_URL z trycloudflare je docasne a po restartu se muze zmenit.
+- Telefonni lookup pouziva KARKONTAKT.TELEFON_ADJ / KARKONTAKT.KONTAKT.
