@@ -8,6 +8,10 @@ Podrobnejsi verzovane dokumenty:
   prompt.
 - docs/elevenlabs_tool_config_cs.md
   Nastaveni ElevenLabs toolu, body parametru, dynamic variables a smoke testy.
+- docs/elevenlabs_dynamic_variables_compact_v0.json
+  Kompaktni copy-ready enum seed pro procedure_list a doctor_list.
+- docs/elevenlabs_dynamic_variables_v0.json
+  Detailni referencni katalog pro n8n, prompt design a audit.
 
 Pred testem doplnte aktualni BASE_URL z trycloudflare:
 

@@ -1,0 +1,214 @@
+{
+  "agent_version": "elevenlabs-agent-v0",
+  "clinic_name": "Dermatologické středisko Šumperk",
+  "procedure_enum": [
+    {
+      "key": "skin",
+      "label": "Kožní vyšetření",
+      "spoken_names": [
+        "kožní vyšetření",
+        "vyšetření kůže",
+        "kontrola kůže",
+        "kontrola znamének"
+      ],
+      "availability_service": "skin",
+      "action": "availability_lookup"
+    },
+    {
+      "key": "plasma",
+      "label": "Plazma",
+      "spoken_names": [
+        "plazma",
+        "plazmové ošetření"
+      ],
+      "availability_service": "plasma",
+      "action": "availability_lookup"
+    },
+    {
+      "key": "existing_appointment",
+      "label": "Existující objednávka",
+      "spoken_names": [
+        "mám termín",
+        "kdy jsem objednaný",
+        "ověřit termín",
+        "moje objednávka"
+      ],
+      "availability_service": null,
+      "action": "patient_lookup_verified_only"
+    },
+    {
+      "key": "appointment_change",
+      "label": "Změna termínu",
+      "spoken_names": [
+        "změnit termín",
+        "přeobjednat",
+        "posunout termín",
+        "zrušit termín"
+      ],
+      "availability_service": null,
+      "action": "verify_then_handoff_or_lookup_availability"
+    },
+    {
+      "key": "dermatoscope_standalone",
+      "label": "Samostatný dermatoskop",
+      "spoken_names": [
+        "dermatoskop",
+        "dermatoskopie",
+        "sken znamének",
+        "vyšetření znamének"
+      ],
+      "availability_service": null,
+      "action": "handoff"
+    },
+    {
+      "key": "laser_other",
+      "label": "Laser mimo plazmu",
+      "spoken_names": [
+        "laser",
+        "laserový zákrok",
+        "frakční laser"
+      ],
+      "availability_service": null,
+      "action": "handoff"
+    },
+    {
+      "key": "test_results",
+      "label": "Výsledky testů",
+      "spoken_names": [
+        "výsledky",
+        "výsledky testů",
+        "laboratorní výsledky"
+      ],
+      "availability_service": null,
+      "action": "handoff"
+    },
+    {
+      "key": "prescription",
+      "label": "Recept / léky",
+      "spoken_names": [
+        "recept",
+        "předpis",
+        "léky"
+      ],
+      "availability_service": null,
+      "action": "handoff"
+    },
+    {
+      "key": "lab_or_blood_request",
+      "label": "Krevní nebo laboratorní požadavek",
+      "spoken_names": [
+        "odběry",
+        "krev",
+        "laboratoř",
+        "žádanka"
+      ],
+      "availability_service": null,
+      "action": "handoff"
+    },
+    {
+      "key": "personal_data_change",
+      "label": "Změna osobních údajů",
+      "spoken_names": [
+        "změna údajů",
+        "změnit telefon",
+        "změnit adresu",
+        "změnit pojišťovnu"
+      ],
+      "availability_service": null,
+      "action": "handoff"
+    },
+    {
+      "key": "new_patient_registration",
+      "label": "Registrace nového pacienta",
+      "spoken_names": [
+        "nový pacient",
+        "nejsem registrovaný",
+        "registrace"
+      ],
+      "availability_service": null,
+      "action": "handoff_or_general_availability"
+    }
+  ],
+  "doctor_enum": [
+    {
+      "key": "bartonova",
+      "label": "doktorka Bartoňová",
+      "spoken_names": [
+        "Bartoňová",
+        "Bartonova",
+        "doktorka Bartoňová"
+      ],
+      "doctor_name_for_api": "Bartonova"
+    },
+    {
+      "key": "bednar",
+      "label": "doktor Bednář",
+      "spoken_names": [
+        "Bednář",
+        "Bednar",
+        "doktor Bednář"
+      ],
+      "doctor_name_for_api": "Bednar"
+    },
+    {
+      "key": "perez",
+      "label": "doktorka Perez",
+      "spoken_names": [
+        "Perez",
+        "Pérez",
+        "Tereza Perez"
+      ],
+      "doctor_name_for_api": "Perez"
+    },
+    {
+      "key": "skolarova",
+      "label": "doktorka Skolárová",
+      "spoken_names": [
+        "Skolárová",
+        "Skolarova",
+        "Marta Skolárová"
+      ],
+      "doctor_name_for_api": "Skolarova"
+    },
+    {
+      "key": "selecka",
+      "label": "doktorka Selecká",
+      "spoken_names": [
+        "Selecká",
+        "Selecka",
+        "Dušana Selecká"
+      ],
+      "doctor_name_for_api": "Selecka"
+    },
+    {
+      "key": "slosarova",
+      "label": "doktorka Slošárová",
+      "spoken_names": [
+        "Slošárová",
+        "Slosarova",
+        "Zuzana Slošárová"
+      ],
+      "doctor_name_for_api": "Slosarova"
+    },
+    {
+      "key": "ferencz",
+      "label": "doktor Ferencz",
+      "spoken_names": [
+        "Ferencz",
+        "Ferenc",
+        "Filip Ferencz"
+      ],
+      "doctor_name_for_api": "Ferencz"
+    }
+  ],
+  "privacy_rules": [
+    "patient_lookup_data_is_internal_only",
+    "never_repeat_patient_personal_data_from_lookup",
+    "appointments_can_be_shared_only_after_verification"
+  ],
+  "transfer_actions": [
+    "handoff",
+    "verify_then_handoff_or_lookup_availability",
+    "handoff_or_general_availability"
+  ]
+}

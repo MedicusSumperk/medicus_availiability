@@ -8,6 +8,10 @@ Tento dokument shrnuje informace potřebné pro nastavení toolů přímo v
 ElevenLabs. Chování agenta a pravidla vyhodnocování jsou podrobněji popsané
 v `docs/elevenlabs_agent_behavior_cs.md`.
 
+Kompaktní copy-ready seed pro dynamic variables je v
+`docs/elevenlabs_dynamic_variables_compact_v0.json`. Detailní referenční katalog
+pro n8n, prompt design a audit je v `docs/elevenlabs_dynamic_variables_v0.json`.
+
 ## Společné nastavení
 
 Aktuální testovací architektura:
@@ -76,8 +80,14 @@ Pracovní doporučení:
   během dne.
 - API dostupnosti má stále rozhodovat podle reálné DB dostupnosti, ne podle
   statického seznamu v promptu.
+- Pro reálné ElevenLabs dynamic variables použít hlavně kompaktní enum soubor
+  `docs/elevenlabs_dynamic_variables_compact_v0.json`.
+- Detailní katalog `docs/elevenlabs_dynamic_variables_v0.json` je spíš pro n8n
+  orkestraci, interní pravidla a audit, ne pro celý prompt context.
+- Níže uvedené `procedure_list` a `doctor_list` jsou jen zkrácené orientační
+  ukázky.
 
-## Navržený `procedure_list` v0
+## Zkrácená ukázka `procedure_list` v0
 
 ```json
 [
@@ -132,7 +142,7 @@ Pracovní doporučení:
 ]
 ```
 
-## Navržený `doctor_list` v0
+## Zkrácená ukázka `doctor_list` v0
 
 Tento seznam je pro orientaci agenta a případnou výslovnost. API má pro
 dostupnost stále dostat přirozený text v `doctor_name`.
@@ -149,7 +159,7 @@ dostupnost stále dostat přirozený text v `doctor_name`.
     "display_name": "doktor Bednář",
     "doctor_name_for_api": "Bednar",
     "known_services": ["skin"],
-    "notes": "Bednář nedělá dermatoskop; aktivní DB ID ověřuje API, agent neposílá doctor_id."
+    "notes": "Bednář nedělá dermatoskop; duplicitní DB ID je řešené lokálním configem. Agent neposílá doctor_id."
   }
 ]
 ```

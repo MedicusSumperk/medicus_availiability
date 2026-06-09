@@ -1,0 +1,480 @@
+{
+  "version": 0,
+  "date": "2026-06-09",
+  "status": "draft",
+  "intended_use": "Detailed reference catalog for n8n, prompt design and audits. For actual compact ElevenLabs dynamic variables, prefer docs/elevenlabs_dynamic_variables_compact_v0.json. API remains the source of truth for live availability.",
+  "verification_notes": {
+    "procedure_list": "Derived from PROJECT_CONTEXT.md and current V1 scope.",
+    "doctor_list": "Seeded from project documentation and schedule interval findings. Live DB verification was not run in this workspace because config/db_config.local.json and the fdb dependency are not available here.",
+    "doctor_verification_command": "C:\\python\\python.exe scripts\\load_doctors.py",
+    "schedule_interval_verification_command": "C:\\python\\python.exe scripts\\tests\\inspect_schedule_intervals.py",
+    "agent_rule": "The agent must pass doctor_name to doctor_availability and must never choose or send doctor_id."
+  },
+  "clinic": {
+    "clinic_name": "Dermatologické středisko Šumperk",
+    "clinic_address": null,
+    "clinic_opening_hours": null,
+    "clinic_phone": null,
+    "handoff_phone": null,
+    "notes": "Address, opening hours and handoff phone are intentionally left for later operational confirmation."
+  },
+  "procedure_list": [
+    {
+      "key": "skin",
+      "display_name": "Kožní vyšetření",
+      "spoken_names": [
+        "kožní vyšetření",
+        "vyšetření kůže",
+        "kontrola kůže",
+        "prohlídka kůže",
+        "znaménka",
+        "kontrola znamének"
+      ],
+      "category": "appointment_availability",
+      "v1_status": "supported_for_availability_lookup",
+      "availability_tool": "doctor_availability",
+      "availability_service": "skin",
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": false,
+      "agent_guidance": "Použij service=skin. Dostupnost lze hledat i před ověřením identity. Agent nesmí tvrdit, že termín finálně zapsal.",
+      "backend_notes": "Skin appointment is represented as IDCINNOSTI=null and requires immediate follow-up dermatoscope capacity check. Follow-up row is not written in V1.",
+      "source": [
+        "PROJECT_CONTEXT.md Product Scope V1",
+        "PROJECT_CONTEXT.md V1 Skin Examination Booking Rule"
+      ]
+    },
+    {
+      "key": "plasma",
+      "display_name": "Plazma",
+      "spoken_names": [
+        "plazma",
+        "plazmové ošetření",
+        "plazmový zákrok"
+      ],
+      "category": "appointment_availability",
+      "v1_status": "supported_for_availability_lookup",
+      "availability_tool": "doctor_availability",
+      "availability_service": "plasma",
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": false,
+      "agent_guidance": "Použij service=plasma pouze pokud volající výslovně požaduje plazmu.",
+      "backend_notes": "Plasma is currently mapped as IDCINNOSTI=3 with plasma marker in INFO. Existing examples are 30 minutes. Exact production INFO text still needs confirmation.",
+      "source": [
+        "PROJECT_CONTEXT.md Product Scope V1",
+        "PROJECT_CONTEXT.md V1 Plasma Rule"
+      ]
+    },
+    {
+      "key": "dermatoscope_standalone",
+      "display_name": "Samostatný dermatoskop / sken znamének",
+      "spoken_names": [
+        "dermatoskop",
+        "dermatoskopie",
+        "sken znamének",
+        "sken znamenek",
+        "vyšetření znamének"
+      ],
+      "category": "out_of_v1_scope",
+      "v1_status": "not_supported_as_standalone_booking",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": true,
+      "agent_guidance": "Samostatný dermatoskop v aktuální V1 neobjednávej. Pokud požadavek nejde převést na běžné kožní vyšetření, předej živé osobě.",
+      "backend_notes": "Dermatoscope is a shared constrained resource and is only checked as follow-up capacity for skin in V1.",
+      "source": [
+        "PROJECT_CONTEXT.md V1 Dermatoscope Rule"
+      ]
+    },
+    {
+      "key": "laser_other",
+      "display_name": "Laserové výkony mimo plazmu",
+      "spoken_names": [
+        "laser",
+        "laserový zákrok",
+        "frakční laser",
+        "laserové ošetření"
+      ],
+      "category": "out_of_v1_scope",
+      "v1_status": "not_supported_except_plasma",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": true,
+      "agent_guidance": "Laser mimo výslovnou plazmu v aktuální V1 neobjednávej a předej živé osobě.",
+      "backend_notes": "Laser activity bucket is IDCINNOSTI=3, but V1 supports only plasma-specific behavior.",
+      "source": [
+        "PROJECT_CONTEXT.md Product Scope V1",
+        "PROJECT_CONTEXT.md Manual Business Exceptions"
+      ]
+    },
+    {
+      "key": "existing_appointment_lookup",
+      "display_name": "Zjištění existující objednávky",
+      "spoken_names": [
+        "mám termín",
+        "kdy jsem objednaný",
+        "ověřit termín",
+        "potvrdit objednávku",
+        "moje objednávka"
+      ],
+      "category": "patient_lookup",
+      "v1_status": "supported_after_verification",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": false,
+      "agent_guidance": "Použij patient_lookup. Existující termíny sděl pouze pokud verification.verified=true. Osobní údaje z patients nikdy nepřeříkávej.",
+      "backend_notes": "patient_lookup can return future appointments after verification.",
+      "source": [
+        "docs/local_api.md Patient Lookup Request"
+      ]
+    },
+    {
+      "key": "appointment_change",
+      "display_name": "Změna termínu",
+      "spoken_names": [
+        "změnit termín",
+        "přeobjednat",
+        "posunout termín",
+        "zrušit termín"
+      ],
+      "category": "patient_lookup_and_handoff",
+      "v1_status": "partial_triage_only",
+      "availability_tool": "doctor_availability",
+      "availability_service": null,
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": true,
+      "agent_guidance": "Nejdřív ověř identitu, pokud máš pracovat s existujícím termínem. Můžeš vyhledat nové volné termíny, ale finální změnu nebo zrušení předej živé osobě, dokud není booking/change endpoint.",
+      "backend_notes": "No final write/change endpoint is implemented.",
+      "source": [
+        "docs/local_api.md Endpoints",
+        "docs/elevenlabs_agent_behavior_cs.md"
+      ]
+    },
+    {
+      "key": "follow_up_exam",
+      "display_name": "Navazující vyšetření / kontrola",
+      "spoken_names": [
+        "kontrola",
+        "navazující vyšetření",
+        "další kontrola",
+        "kontrola po vyšetření"
+      ],
+      "category": "triage",
+      "v1_status": "needs_clarification",
+      "availability_tool": "doctor_availability",
+      "availability_service": null,
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": true,
+      "transfer_to_human": false,
+      "agent_guidance": "Zjisti, zda jde o běžné kožní vyšetření nebo plazmu. Pokud ano, použij příslušné service. Pokud je požadavek specifický nebo navazuje na konkrétní léčbu, po ověření a/nebo při nejistotě předej živé osobě.",
+      "backend_notes": "Specific follow-up procedure mapping is not finalized.",
+      "source": [
+        "User baseline notes 2026-06-09",
+        "PROJECT_CONTEXT.md Open Verification Items"
+      ]
+    },
+    {
+      "key": "test_results",
+      "display_name": "Výsledky testů",
+      "spoken_names": [
+        "výsledky",
+        "výsledky testů",
+        "laboratorní výsledky",
+        "výsledky odběrů"
+      ],
+      "category": "handoff",
+      "v1_status": "handoff_to_human",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": false,
+      "transfer_to_human": true,
+      "agent_guidance": "Výsledky testů nesděluj. Předej živé osobě.",
+      "backend_notes": "Out of current API scope.",
+      "source": [
+        "PROJECT_CONTEXT.md Product Scope V1"
+      ]
+    },
+    {
+      "key": "prescription",
+      "display_name": "Recept / léky",
+      "spoken_names": [
+        "recept",
+        "předpis",
+        "léky",
+        "napsat léky"
+      ],
+      "category": "handoff",
+      "v1_status": "handoff_to_human",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": false,
+      "transfer_to_human": true,
+      "agent_guidance": "Recepty a léky neřeš. Předej živé osobě.",
+      "backend_notes": "Out of current API scope.",
+      "source": [
+        "PROJECT_CONTEXT.md Product Scope V1"
+      ]
+    },
+    {
+      "key": "lab_or_blood_request",
+      "display_name": "Krevní / laboratorní požadavek",
+      "spoken_names": [
+        "odběry",
+        "krev",
+        "laboratoř",
+        "žádanka"
+      ],
+      "category": "handoff",
+      "v1_status": "handoff_to_human",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": false,
+      "transfer_to_human": true,
+      "agent_guidance": "Krevní a laboratorní požadavky neřeš. Předej živé osobě.",
+      "backend_notes": "Out of current API scope.",
+      "source": [
+        "PROJECT_CONTEXT.md Product Scope V1"
+      ]
+    },
+    {
+      "key": "personal_data_change",
+      "display_name": "Změna osobních údajů",
+      "spoken_names": [
+        "změna údajů",
+        "změnit telefon",
+        "změnit adresu",
+        "změnit pojišťovnu"
+      ],
+      "category": "handoff",
+      "v1_status": "handoff_to_human",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": false,
+      "transfer_to_human": true,
+      "agent_guidance": "Osobní údaje neměň a nepřeříkávej. Předej živé osobě.",
+      "backend_notes": "Out of current API scope and privacy-sensitive.",
+      "source": [
+        "User baseline notes 2026-06-09",
+        "docs/elevenlabs_agent_behavior_cs.md"
+      ]
+    },
+    {
+      "key": "new_patient_registration",
+      "display_name": "Registrace nového pacienta",
+      "spoken_names": [
+        "nový pacient",
+        "nejsem registrovaný",
+        "registrace",
+        "chci se zaregistrovat"
+      ],
+      "category": "handoff_or_future_flow",
+      "v1_status": "not_implemented",
+      "availability_tool": null,
+      "availability_service": null,
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": false,
+      "requires_patient_verification_for_availability": false,
+      "requires_patient_verification_for_existing_appointments": false,
+      "transfer_to_human": true,
+      "agent_guidance": "Registrace není implementovaná. Agent může obecně zjistit dostupnost termínů, ale registraci a finální objednání nového pacienta předej živé osobě.",
+      "backend_notes": "No patient registration/write endpoint is implemented.",
+      "source": [
+        "docs/local_api.md Agent Tool Contract"
+      ]
+    }
+  ],
+  "doctor_list": [
+    {
+      "key": "bartonova",
+      "display_name": "doktorka Bartoňová",
+      "spoken_names": [
+        "Bartoňová",
+        "Bartonová",
+        "Bartonova",
+        "doktorka Bartoňová"
+      ],
+      "doctor_name_for_api": "Bartonova",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [
+        "skin",
+        "plasma"
+      ],
+      "service_notes": "Bartoňová does moles, fractional laser and plasma per client notes. Plasma as Bartoňová-only/year-round still needs final confirmation.",
+      "verification_status": "partially_confirmed_from_docs_and_api_smoke_note",
+      "source": [
+        "PROJECT_CONTEXT.md Latest API smoke test",
+        "PROJECT_CONTEXT.md Manual Business Exceptions",
+        "docs/schedule_interval_findings.md"
+      ]
+    },
+    {
+      "key": "bednar",
+      "display_name": "doktor Bednář",
+      "spoken_names": [
+        "Bednář",
+        "Bednar",
+        "doktor Bednář"
+      ],
+      "doctor_name_for_api": "Bednar",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [
+        "skin"
+      ],
+      "service_notes": "Does not do dermatoscope and does not do plasma per client notes. Bednář had a duplicate DB row issue; current project notes say active IDUZI=4 and inactive duplicate IDUZI=2 is excluded by local config. Agent still must not pass doctor_id.",
+      "verification_status": "duplicate_resolved_by_local_config_pending_live_recheck",
+      "source": [
+        "PROJECT_CONTEXT.md Manual Business Exceptions",
+        "README.md Current Status",
+        "docs/schedule_interval_findings.md"
+      ]
+    },
+    {
+      "key": "perez",
+      "display_name": "doktorka Perez",
+      "spoken_names": [
+        "Perez",
+        "Pérez",
+        "Tereza Perez",
+        "doktorka Perez"
+      ],
+      "doctor_name_for_api": "Perez",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [],
+      "service_notes": "Observed in schedule interval findings. Bookable service permissions are not confirmed in current docs.",
+      "verification_status": "observed_in_schedule_findings_not_confirmed_for_agent_booking",
+      "source": [
+        "docs/schedule_interval_findings.md"
+      ]
+    },
+    {
+      "key": "skolarova",
+      "display_name": "doktorka Skolárová",
+      "spoken_names": [
+        "Skolárová",
+        "Skolarova",
+        "Marta Skolárová",
+        "doktorka Skolárová"
+      ],
+      "doctor_name_for_api": "Skolarova",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [],
+      "service_notes": "Observed in schedule interval findings. Bookable service permissions are not confirmed in current docs.",
+      "verification_status": "observed_in_schedule_findings_not_confirmed_for_agent_booking",
+      "source": [
+        "docs/schedule_interval_findings.md"
+      ]
+    },
+    {
+      "key": "selecka",
+      "display_name": "doktorka Selecká",
+      "spoken_names": [
+        "Selecká",
+        "Selecka",
+        "Dušana Selecká",
+        "doktorka Selecká"
+      ],
+      "doctor_name_for_api": "Selecka",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [],
+      "service_notes": "Observed in schedule interval findings. Bookable service permissions are not confirmed in current docs.",
+      "verification_status": "observed_in_schedule_findings_not_confirmed_for_agent_booking",
+      "source": [
+        "docs/schedule_interval_findings.md"
+      ]
+    },
+    {
+      "key": "slosarova",
+      "display_name": "doktorka Slošárová",
+      "spoken_names": [
+        "Slošárová",
+        "Slosarova",
+        "Zuzana Slošárová",
+        "doktorka Slošárová"
+      ],
+      "doctor_name_for_api": "Slosarova",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [],
+      "service_notes": "Observed in schedule interval findings. Bookable service permissions are not confirmed in current docs.",
+      "verification_status": "observed_in_schedule_findings_not_confirmed_for_agent_booking",
+      "source": [
+        "docs/schedule_interval_findings.md"
+      ]
+    },
+    {
+      "key": "ferencz",
+      "display_name": "doktor Ferencz",
+      "spoken_names": [
+        "Ferencz",
+        "Ferenc",
+        "Filip Ferencz",
+        "doktor Ferencz"
+      ],
+      "doctor_name_for_api": "Ferencz",
+      "agent_may_pass_doctor_name": true,
+      "agent_must_not_pass_doctor_id": true,
+      "known_services": [],
+      "service_notes": "Observed in schedule interval findings. Bookable service permissions are not confirmed in current docs.",
+      "verification_status": "observed_in_schedule_findings_not_confirmed_for_agent_booking",
+      "source": [
+        "docs/schedule_interval_findings.md"
+      ]
+    }
+  ],
+  "transfer_reasons": [
+    "výsledky testů",
+    "recepty a léky",
+    "krevní nebo laboratorní požadavky",
+    "změna osobních údajů",
+    "samostatný dermatoskop mimo V1",
+    "laserové výkony mimo plazmu",
+    "registrace nového pacienta",
+    "neúspěšné ověření identity",
+    "požadavek mimo rozsah AI recepční"
+  ],
+  "privacy_rules": {
+    "never_repeat_patient_personal_data_from_lookup": true,
+    "patient_lookup_data_is_internal_only": true,
+    "appointments_can_be_shared_only_after_verification": true,
+    "verification_required_field": "verification.verified=true"
+  }
+}
