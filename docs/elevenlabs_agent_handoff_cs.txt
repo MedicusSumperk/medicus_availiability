@@ -1,6 +1,14 @@
 MEDICUS API - kratky handover pro ElevenLabs testovaciho agenta
 =============================================================
 
+Podrobnejsi verzovane dokumenty:
+
+- docs/elevenlabs_agent_behavior_cs.md
+  Pravidla chovani agenta, overovani, opakovane hledani terminu a copy-ready
+  prompt.
+- docs/elevenlabs_tool_config_cs.md
+  Nastaveni ElevenLabs toolu, body parametru, dynamic variables a smoke testy.
+
 Pred testem doplnte aktualni BASE_URL z trycloudflare:
 
 BASE_URL: https://DOPLNIT-AKTUALNI-URL.trycloudflare.com
@@ -104,6 +112,15 @@ Poznamky k testovaci verzi
 
 - BASE_URL z trycloudflare se po restartu muze zmenit.
 - Oba tooly jsou read-only.
+- Agent se predstavuje za Dermatologicke stredisko Sumperk.
+- Pokud je dostupny telefon volajiciho z webhooku/dynamic variable, agent ma
+  na zacatku hovoru provest tichy patient_lookup.
+- Volne terminy lze resit i pred overenim identity.
+- Existujici objednavky se nesmi sdelovat pred verification.verified=true.
+- Osobni udaje z lookupu agent nikdy nesdeluje volajicimu; pouziva je jen
+  interne pro dohledani a overeni. Aktualni vyjimka jsou objednane terminy
+  overeneho pacienta.
+- Pri osobnich udajich a vybranem terminu ma agent udaj zopakovat a potvrdit.
 - Telefonni lookup pouziva KARKONTAKT.
 - patient_lookup sklada vice vstupnich parametru pomoci AND. Dalsi udaje tedy
   zpresnuji predchozi lookup.
