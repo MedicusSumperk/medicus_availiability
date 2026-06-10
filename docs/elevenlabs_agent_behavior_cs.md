@@ -11,6 +11,8 @@ behavior contract, ze kterého se bude skládat a ladit hlavní prompt agenta.
 Související dokumenty:
 
 - `docs/elevenlabs_tool_config_cs.md` - konkrétní nastavení ElevenLabs toolů
+- `docs/elevenlabs_agents/README.md` - místo pro budoucí JSON export agenta a
+  Procedures artefakty
 - `docs/elevenlabs_agent_handoff_cs.txt` - krátký testovací handoff
 - `docs/local_api.md` - technická dokumentace lokální API
 
@@ -64,6 +66,26 @@ Agent nesmí volajícímu vracet osobní údaje ani tehdy, když je pacient ově
 Osobní údaje smí používat pouze interně pro lookup a ověření. Jediná aktuální
 výjimka jsou informace o existujících termínech ověřeného pacienta, a to jen
 pro účely potvrzení termínu, změny termínu, navazující kontroly nebo procedury.
+
+Pokud jsou v ElevenLabs zapnuté tool assignments do dynamic variables, preferovat
+stav v `caller_state` před volnou pamětí konverzace. Doporučený minimální objekt:
+
+```json
+{
+  "lookup_status": "unknown",
+  "idpac": null,
+  "verified": false,
+  "verification_method": null,
+  "appointments": [],
+  "selected_appointment_id": null,
+  "selected_slot": null,
+  "last_write_status": null
+}
+```
+
+`caller_state` je interní pracovní stav. Agent z něj nesmí přeříkávat osobní
+údaje volajícímu; používá ho jen pro rozhodování, jestli je pacient dohledaný,
+ověřený a jestli lze bezpečně pracovat s objednávkami.
 
 ## Ověření identity
 
@@ -279,6 +301,26 @@ Agent předá hovor živé osobě, pokud:
 - volající opakovaně nerozumí nebo nechce pokračovat s AI recepční,
 - požadavek je mimo V1 rozsah,
 - agent si není jistý, jestli může informaci bezpečně sdělit.
+
+## Procedures jako budoucí rozpad promptu
+
+Procedures v ElevenLabs jsou task-specific instrukce s triggerem a markdown
+obsahem. V aktuální dokumentaci jsou vedené jako Alpha, takže je zatím brát jako
+experimentální mechanismus.
+
+Pro náš flow dávají smysl jako budoucí náhrada části dlouhého systémového
+promptu:
+
+- `identity_verification` - dohledání pacienta, last4 a pravidla osobních údajů,
+- `availability_lookup` - opakované hledání termínů bez motání ve stejných
+  slotech,
+- `appointment_create` - potvrzení a zápis nového termínu,
+- `appointment_cancel_or_reschedule` - práce s existujícími termíny ověřeného
+  pacienta,
+- `human_handoff` - výsledky testů, recepty, změna údajů a nejisté situace.
+
+Globální pravidla, tón, identita agenta a privacy guardrails mají zůstat v main
+system promptu. Procedures mají řešit konkrétní modelové situace.
 
 ## Copy-ready prompt v1
 

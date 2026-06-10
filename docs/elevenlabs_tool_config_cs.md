@@ -11,6 +11,9 @@ v `docs/elevenlabs_agent_behavior_cs.md`.
 Kompaktní copy-ready seed pro dynamic variables je v
 `docs/elevenlabs_dynamic_variables_compact_v0.json`. Detailní referenční katalog
 pro n8n, prompt design a audit je v `docs/elevenlabs_dynamic_variables_v0.json`.
+JSON mode export aktuálně nastaveného toolu `appointment_write` je v
+`docs/elevenlabs_tools/appointment_write_v1.json`.
+Budoucí JSON exporty celého agenta patří do `docs/elevenlabs_agents/`.
 
 ## Společné nastavení
 
@@ -27,17 +30,32 @@ ElevenLabs agent
 Před testem doplnit:
 
 ```text
-BASE_URL=https://DOPLNIT-AKTUALNI-URL.trycloudflare.com
+medicus_base_url=https://DOPLNIT-AKTUALNI-URL.trycloudflare.com
 ```
 
 Endpointy:
 
 ```text
-GET  {BASE_URL}/health
-POST {BASE_URL}/doctor-availability
-POST {BASE_URL}/patient-lookup
-POST {BASE_URL}/book-appointment
+GET  {medicus_base_url}/health
+POST {medicus_base_url}/doctor-availability
+POST {medicus_base_url}/patient-lookup
+POST {medicus_base_url}/book-appointment
 ```
+
+Poznámka k ElevenLabs URL fields:
+
+- Save aktuálně potvrzeně prochází s natvrdo vloženou validní `https://...`
+  URL.
+- Env variable syntaxe má obecný tvar `{{system__env_<label>}}`.
+- Název env proměnné musí začínat malým písmenem a smí obsahovat jen malá
+  písmena, čísla a podtržítka.
+- URL musí začínat `https://` ještě před env proměnnou. Env proměnná tedy nemá
+  řídit protokol. Pro server tool URL je vhodnější host-only proměnná, například
+  `medicus_api_host`, a URL `https://{{system__env_medicus_api_host}}/...`.
+- Použití env proměnné přímo v našem workspace zatím není potvrzené, protože
+  editace env variables vyžaduje práva.
+- Pro MVP tedy v JSON artefaktech držet save-ready hardcoded tunnel URL a env
+  variantu ověřit samostatně, až budou práva.
 
 Aktuálně používat jen dva read-only tooly:
 
@@ -64,8 +82,11 @@ získané z ElevenLabs call metadata nebo načtené dynamicky přes webhook.
 
 | Název | Typ | Zdroj | Povinné | Použití |
 | --- | --- | --- | --- | --- |
-| `base_url` | string | static / n8n workflow | ano | Aktuální veřejná URL API. Pro trycloudflare se po restartu mění. |
+| `medicus_base_url` | string | static / n8n workflow | ano | Aktuální veřejná URL API pro textové nastavení a handoff. Pro trycloudflare se po restartu mění. |
+| `medicus_api_host` | string | environment | volitelné | Host-only varianta pro ElevenLabs env URL, například `abc.trycloudflare.com`. Použít jako `https://{{system__env_medicus_api_host}}/...`, až budou práva k env variables. |
 | `caller_phone` | string | ElevenLabs call metadata / webhook | ne | První tichý `patient_lookup` na začátku hovoru. |
+| `caller_state` | object | tool assignments / n8n workflow | doporučeno | Stav volajícího v průběhu hovoru. Defaultně prázdný objekt; tooly do něj mohou ukládat lookup, verification a vybraný termín. |
+| `availability_state` | object | tool assignments / n8n workflow | doporučeno | Poslední hledání dostupnosti, nabídnuté sloty a odmítnuté sloty, aby agent neopakoval stejné termíny. |
 | `clinic_name` | string | static | ano | Představení agenta. Výchozí: Dermatologické středisko Šumperk. |
 | `clinic_address` | string | static | ne | Odpovědi na základní dotazy o adrese. Hodnota zatím doplnit. |
 | `clinic_opening_hours` | string/object | static | ne | Odpovědi na dotazy k otevírací době. Hodnota zatím doplnit. |
@@ -80,6 +101,12 @@ Pracovní doporučení:
 
 - `doctor_list` a `procedure_list` zatím držet jako static nebo n8n-managed
   dynamic variables.
+- `medicus_base_url` pro MVP zatím držet jako hardcoded `https://...` URL v
+  každém toolu.
+- Env variantu ověřit jako `medicus_api_host`, ne jako full base URL, protože
+  ElevenLabs URL validátor vyžaduje `https://` před placeholderem.
+- `caller_state` a `availability_state` jsou nový doporučený pattern pro robustní
+  stav hovoru. Agent díky nim nemusí spoléhat jen na krátkodobou paměť konverzace.
 - Nedělat pro ně samostatný API tool, pokud nejde o data, která se často mění
   během dne.
 - API dostupnosti má stále rozhodovat podle reálné DB dostupnosti, ne podle
@@ -190,7 +217,7 @@ POST
 URL:
 
 ```text
-{{base_url}}/doctor-availability
+https://DOPLNIT-AKTUALNI-URL.trycloudflare.com/doctor-availability
 ```
 
 Tool description:
@@ -276,7 +303,7 @@ POST
 URL:
 
 ```text
-{{base_url}}/patient-lookup
+https://DOPLNIT-AKTUALNI-URL.trycloudflare.com/patient-lookup
 ```
 
 Tool description:
@@ -387,7 +414,20 @@ POST
 URL:
 
 ```text
-{{base_url}}/book-appointment
+https://DOPLNIT-AKTUALNI-URL.trycloudflare.com/book-appointment
+```
+
+Copy-ready JSON mode export:
+
+```text
+docs/elevenlabs_tools/appointment_write_v1.json
+```
+
+Save-ready varianta pro aktuální MVP je stejná hardcoded `https://...` URL v
+JSON artefaktu. Env varianta k ověření po získání práv:
+
+```text
+https://{{system__env_medicus_api_host}}/book-appointment
 ```
 
 Tool description:
@@ -436,6 +476,70 @@ Pokud ElevenLabs dovolí fixed body parameter, nastav:
   "include_related": true
 }
 ```
+
+V aktuálním JSON exportu je `include_related` nastaven jako constant parameter:
+
+```json
+{
+  "id": "include_related",
+  "type": "boolean",
+  "value_type": "constant",
+  "constant_value": "true"
+}
+```
+
+### Dynamic variable assignments
+
+Aktuální export má zatím:
+
+```json
+"assignments": []
+```
+
+Další iterace by měla přidat assignments pro stav hovoru. Doporučený směr:
+
+- `patient_lookup` po úspěšném lookupu zapíše `caller_state.lookup_status`,
+  `caller_state.idpac`, `caller_state.verified` a případně `caller_state.appointments`.
+- `doctor_availability` zapíše `availability_state.last_query`,
+  `availability_state.last_offered_slots` a při odmítnutí termínů také
+  `availability_state.rejected_slots`.
+- `appointment_write` zapíše `caller_state.last_write_status`,
+  `caller_state.last_write_action` a ID vytvořených, zrušených nebo přesunutých
+  termínů.
+
+Agent stále nesmí hodnoty z `caller_state` přeříkávat jako osobní údaje. Slouží
+jen pro rozhodování, ověření a bezpečné pokračování flow.
+
+## Agent JSON, Workflows a Procedures
+
+ElevenLabs agent nastavení lze chápat jako verzovatelnou konfiguraci. Samostatné
+artefakty pro celý agent JSON budou patřit do `docs/elevenlabs_agents/`.
+
+Potvrzené z dokumentace:
+
+- ElevenLabs CLI podporuje správu agentů jako konfiguračních souborů a push zpět
+  do platformy.
+- Workflows jsou uložené v `conversation_config.workflow`, takže je lze verzovat
+  spolu s agent configem.
+- Dynamic variables lze použít v system promptu, first message a tool
+  parametrech. System dynamic variables mají prefix `system__`; vlastní custom
+  dynamic variables tento prefix používat nesmí.
+- Užitečné system variables pro audit a ladění mohou být například
+  `system__conversation_id`, `system__caller_id`, `system__agent_turns` a
+  `system__conversation_history`.
+- Tool calls mohou aktualizovat dynamic variables přes assignments z JSON
+  response pomocí dot notation.
+- Procedures jsou task-specific instrukce s triggerem a markdown contentem.
+  Jsou vhodné pro oddělení modelových situací, ale jsou aktuálně Alpha.
+
+Doporučení pro náš agent:
+
+- System prompt držet pro globální identitu, bezpečnostní pravidla a privacy
+  guardrails.
+- Procedures zvažovat pro opakované situace: ověření identity, opakovaný lookup
+  termínů, změna termínu, zrušení termínu a předání živé osobě.
+- Procedures zatím nebrat jako stabilní produkční základ bez testu, protože
+  Alpha feature může měnit schema i dashboard chování.
 
 ### Nepřidávat agentovi jako běžné parametry
 
