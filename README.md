@@ -114,7 +114,7 @@ Implemented endpoints:
 GET  /health
 POST /doctor-availability
 POST /patient-lookup       # read-only patient + future appointment lookup
-POST /book-appointment     # reserved stub, no writes
+POST /book-appointment     # create/cancel/reschedule behind local write flags
 ```
 
 `/doctor-availability` returns a short list of bookable options. With no body it returns the first default skin options. With filters it searches a targeted date/time window and stops after the requested limit. See `docs/local_api.md`.
@@ -124,6 +124,8 @@ For tool callers, common aliases such as `doctor`, `preferred_doctor`, and `doct
 `IDUZI=2` is excluded as a suspected inactive duplicate Bednar row.
 
 `/patient-lookup` finds patient candidates in `KAR`, supports phone lookup through `KARKONTAKT`, supports name/date/full `RODCIS` lookup, verifies identity with the last 4 digits of `RODCIS`, and returns future plus optionally past `OBJOBJ` appointments after verification. It is read-only.
+
+`/book-appointment` can create, cancel, or reschedule appointments when local write flags are enabled. It revalidates create/reschedule requests against live availability before writing. For `service=skin`, it writes the main skin appointment plus the immediate dermatoscope reservation in one transaction.
 
 Quick trycloudflare test tunnel:
 
@@ -228,6 +230,7 @@ Most relevant API files:
 ```text
 scripts/api_server.py
 scripts/availability_search.py
+scripts/appointment_write.py
 scripts/start_trycloudflare_api.ps1
 scripts/start_named_cloudflare_tunnel.ps1
 config/api.local.example.json

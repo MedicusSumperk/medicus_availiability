@@ -12,7 +12,7 @@
         "kontrola znamének"
       ],
       "availability_service": "skin",
-      "action": "availability_lookup"
+      "action": "availability_lookup_or_appointment_write"
     },
     {
       "key": "plasma",
@@ -22,7 +22,7 @@
         "plazmové ošetření"
       ],
       "availability_service": "plasma",
-      "action": "availability_lookup"
+      "action": "availability_lookup_or_appointment_write"
     },
     {
       "key": "existing_appointment",
@@ -46,7 +46,7 @@
         "zrušit termín"
       ],
       "availability_service": null,
-      "action": "verify_then_handoff_or_lookup_availability"
+      "action": "verify_then_appointment_write_reschedule"
     },
     {
       "key": "dermatoscope_standalone",
@@ -208,7 +208,7 @@
   ],
   "transfer_actions": [
     "handoff",
-    "verify_then_handoff_or_lookup_availability",
+    "verify_then_appointment_write_reschedule",
     "handoff_or_general_availability"
   ]
 }

@@ -20,13 +20,16 @@ BASE_URL: https://DOPLNIT-AKTUALNI-URL.trycloudflare.com
 Health check:
 GET {BASE_URL}/health
 
-Aktualne jsou pripraveny dva read-only POST tooly:
+Aktualne jsou pripraveny dva read-only POST tooly a jeden zapisovaci tool
+zapnutelny lokalnim configem:
 
 1. doctor_availability
 2. patient_lookup
+3. appointment_write
 
-Finalni zapis objednavky ani registrace noveho pacienta zatim nejsou
-implementovane.
+Registrace noveho pacienta zatim neni implementovana. Zapis objednavky,
+zruseni a presun terminu jsou dostupne pres appointment_write pouze pokud jsou
+zapnute lokalni write flags.
 
 
 TOOL 1: doctor_availability
@@ -129,4 +132,4 @@ Poznamky k testovaci verzi
 - patient_lookup sklada vice vstupnich parametru pomoci AND. Dalsi udaje tedy
   zpresnuji predchozi lookup.
 - Registrace noveho pacienta zatim neni implementovana.
-- Finalni zapis objednavky zatim neni implementovany.
+- Zapis terminu smi agent potvrdit pouze pokud appointment_write vrati ok=true.

@@ -20,6 +20,7 @@ if str(CURRENT_DIR) not in sys.path:
     sys.path.insert(0, str(CURRENT_DIR))
 
 from availability_search import compact_options, search_availability  # noqa: E402
+from appointment_write import write_appointment  # noqa: E402
 from db import connect_to_db  # noqa: E402
 from patient_lookup import lookup_patient  # noqa: E402
 
@@ -138,12 +139,30 @@ def patient_lookup(request: dict[str, Any] | None = Body(default=None)) -> dict[
 
 
 @app.post("/book-appointment", dependencies=[Depends(require_auth)])
-def book_appointment(_request: PlaceholderRequest | None = None) -> dict[str, Any]:
-    return {
-        "ok": False,
-        "status": "not_implemented",
-        "message": "Booking endpoint is reserved for the next integration phase and performs no database writes.",
-    }
+def book_appointment(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+    connection = None
+    try:
+        payload = {key: value for key, value in (request or {}).items() if value is not None}
+        payload.setdefault("action", "create")
+        connection = connect_to_db()
+        cursor = connection.cursor()
+        response = write_appointment(cursor, payload, API_CONFIG)
+        if response.get("ok"):
+            connection.commit()
+        else:
+            connection.rollback()
+        return response
+    except ValueError as error:
+        if connection is not None:
+            connection.rollback()
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:  # noqa: BLE001
+        if connection is not None:
+            connection.rollback()
+        raise HTTPException(status_code=500, detail=f"appointment write failed: {error}") from error
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 if __name__ == "__main__":

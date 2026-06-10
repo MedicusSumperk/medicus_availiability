@@ -44,8 +44,12 @@ Aktuálně používat jen dva read-only tooly:
 - `doctor_availability`
 - `patient_lookup`
 
-`book-appointment` je zatím pouze stub a nesmí se používat jako potvrzení
-objednávky.
+Zapisovací tool používat až po explicitním zapnutí v lokálním API configu:
+
+- `appointment_write`
+
+`appointment_write` volá endpoint `/book-appointment` a podporuje akce
+`create`, `cancel` a `reschedule`.
 
 Pokud je v API nastaven bearer token, každý webhook request musí posílat:
 
@@ -96,15 +100,15 @@ Pracovní doporučení:
     "spoken_names": ["kožní vyšetření", "vyšetření kůže", "kontrola kůže"],
     "availability_service": "skin",
     "agent_can_offer_availability": true,
-    "agent_can_book_finally": false,
-    "notes": "V1 podporuje hledání dostupnosti. Finální zápis objednávky zatím není implementovaný."
+    "agent_can_book_finally": true,
+    "notes": "V1 podporuje hledání dostupnosti i zápis přes appointment_write po ověření pacienta a potvrzení termínu."
   },
   {
     "key": "plasma",
     "spoken_names": ["plazma", "plazmové ošetření"],
     "availability_service": "plasma",
     "agent_can_offer_availability": true,
-    "agent_can_book_finally": false,
+    "agent_can_book_finally": true,
     "notes": "Použít pouze když pacient výslovně požaduje plazmu."
   },
   {
@@ -363,6 +367,73 @@ pacienta z `appointments` nebo `past_appointments`.
 - Agent opakuje stejné 3 termíny, když volající řekne, že nevyhovují.
 - Body object nemá vlastní description a agent neví, odkud parametry brát.
 - Jednotlivé parametry nemají description a agent je špatně mapuje.
+
+## Tool `appointment_write`
+
+### Základ
+
+Name:
+
+```text
+appointment_write
+```
+
+Method:
+
+```text
+POST
+```
+
+URL:
+
+```text
+{{base_url}}/book-appointment
+```
+
+Tool description:
+
+```text
+Vytvoří, zruší nebo přesune termín v Medicus databázi. Použij pouze po
+úspěšném ověření pacienta a po tom, co volající výslovně potvrdil konkrétní
+datum, čas, lékaře a službu. Pokud tool vrátí ok=false, termín nebyl zapsán,
+zrušen ani přesunut. Pro kožní vyšetření backend automaticky vytvoří také
+navazující dermatoskopickou rezervaci podle availability pravidel.
+```
+
+Body description:
+
+```text
+Vyplň action jako create, cancel nebo reschedule. Nastav patient_verified=true
+jen pokud předchozí patient_lookup vrátil verification.verified=true. Pro create
+a reschedule pošli service, date, time a doctor_name z potvrzeného termínu.
+Pro cancel a reschedule pošli appointment_id nebo appointment_ids z ověřeného
+patient_lookup výsledku. Neposílej osobní údaje pacienta kromě idpac.
+```
+
+### Body parameters
+
+| Name | Type | Required | Description |
+| --- | --- | --- | --- |
+| `action` | string | ano | `create`, `cancel`, nebo `reschedule`. |
+| `idpac` | integer | ano | Ověřený pacient z `patient_lookup`. |
+| `patient_verified` | boolean | ano | Nastavit na `true` jen po `verification.verified=true`. |
+| `service` | string | pro create/reschedule | `skin` nebo `plasma`. |
+| `doctor_name` | string | pro create/reschedule | Lékař potvrzený volajícím, například `Bartonova`. Pro zápis je lékař povinný; agent nemá posílat `doctor_id`. |
+| `date` | string | pro create/reschedule | Datum vybraného termínu ve formátu `YYYY-MM-DD`. |
+| `time` | string | pro create/reschedule | Začátek vybraného termínu ve formátu `HH:MM`. |
+| `appointment_id` | integer | pro cancel/reschedule | ID existujícího termínu z ověřených `appointments`. |
+| `appointment_ids` | integer[] | ne | Použít pokud má agent explicitně rušit více souvisejících řádků. |
+| `include_related` | boolean | ne | Výchozí `true`; pro kožní termín zahrne navazující dermatoskopickou rezervaci. |
+
+### Interpretace response
+
+- `ok=true`, `status=created`: termín byl vytvořen. U `skin` očekávej dvě ID.
+- `ok=true`, `status=cancelled`: termín byl zrušen.
+- `ok=true`, `status=rescheduled`: původní termín byl zrušen a nový vytvořen.
+- `ok=false`, `status=writes_not_enabled`: zapisování není zapnuté v lokálním configu.
+- `ok=false`, `status=slot_not_bookable`: vybraný termín už není dostupný; agent má nabídnout nový lookup.
+- `ok=false`, `status=doctor_not_resolved`: lékař nebyl jednoznačně rozpoznán; agent má upřesnit lékaře nebo znovu vyhledat dostupnost.
+- `ok=false`: agent nesmí tvrdit, že změna proběhla.
 
 ## Minimální smoke test po změně konfigurace
 

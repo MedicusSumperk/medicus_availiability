@@ -268,7 +268,7 @@ def build_skin_options(
                     "start_time": format_time(follow_start),
                     "end_time": format_time(follow_end),
                     "duration_minutes": followup_minutes,
-                    "written_in_v1": False,
+                    "written_in_v1": True,
                 },
             }
         )
@@ -397,7 +397,7 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
         },
         "rules_version": "v1-precall-context",
         "rules": {
-            "skin": "Book as TYP=1 and IDCINNOSTI=NULL; duration and follow-up use the schedule INTERVAL for that doctor/context; require immediate free follow-up dermatoscope slot and no shared dermatoscope conflict.",
+            "skin": "Book main row as TYP=1 and IDCINNOSTI=NULL, and write an immediate dermatoscope reservation row; duration and follow-up use the schedule INTERVAL for that doctor/context; require immediate free follow-up dermatoscope slot and no shared dermatoscope conflict.",
             "plasma": "Book as TYP=1 and IDCINNOSTI=3 with plasma marker in INFO; requires consecutive free slots for configured duration using the schedule INTERVAL.",
             "dermatoscope_blockers": blocking_idcinnosti,
         },
