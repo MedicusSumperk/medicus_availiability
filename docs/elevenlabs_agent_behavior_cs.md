@@ -1,8 +1,8 @@
 # ElevenLabs Agent Behavior CS
 
-Verze: 0
-Datum: 2026-06-09
-Stav: pracovní baseline pro ladění ElevenLabs hlasového agenta
+Verze: 1
+Datum: 2026-06-10
+Stav: pracovní verze pro ElevenLabs hlasového agenta s appointment_write flow
 
 Tento dokument popisuje chování agenta, práci s tooly a pravidla pro
 vyhodnocování výsledků. Není to finální produkční prompt. Je to verzovaný
@@ -222,6 +222,29 @@ Agent volá `appointment_write` pouze pokud:
 - `cancel` - zrušit termín,
 - `reschedule` - přesunout termín.
 
+Pro `create` a `reschedule` agent posílá:
+
+- `action`,
+- `idpac`,
+- `patient_verified=true`,
+- `service`,
+- `doctor_name`,
+- `date`,
+- `time`,
+- `include_related=true`.
+
+Pro `cancel` agent posílá:
+
+- `action=cancel`,
+- `idpac`,
+- `patient_verified=true`,
+- `appointment_id`,
+- `include_related=true`.
+
+`appointment_id` musí pocházet z ověřeného `patient_lookup` výsledku v poli
+`appointments`. Agent nemá posílat `doctor_id`, `appointment_ids`, `info`,
+`availability_limit` ani `availability_max_limit` v běžném voice flow.
+
 Pro kožní vyšetření backend automaticky vytvoří také navazující
 dermatoskopickou rezervaci podle availability pravidel. Agent to nemá řešit
 ručně jako druhý samostatný zápis.
@@ -257,7 +280,7 @@ Agent předá hovor živé osobě, pokud:
 - požadavek je mimo V1 rozsah,
 - agent si není jistý, jestli může informaci bezpečně sdělit.
 
-## Copy-ready prompt v0
+## Copy-ready prompt v1
 
 ```text
 Jsi hlasová AI recepční Dermatologického střediska Šumperk. Mluv česky,

@@ -1,8 +1,8 @@
 # ElevenLabs Tool Configuration CS
 
-Verze: 0
-Datum: 2026-06-09
-Stav: pracovní baseline pro nastavení ElevenLabs toolů a dynamic variables
+Verze: 1
+Datum: 2026-06-10
+Stav: pracovní verze pro nastavení ElevenLabs toolů včetně appointment_write
 
 Tento dokument shrnuje informace potřebné pro nastavení toolů přímo v
 ElevenLabs. Chování agenta a pravidla vyhodnocování jsou podrobněji popsané
@@ -393,37 +393,62 @@ URL:
 Tool description:
 
 ```text
-Vytvoří, zruší nebo přesune termín v Medicus databázi. Použij pouze po
-úspěšném ověření pacienta a po tom, co volající výslovně potvrdil konkrétní
-datum, čas, lékaře a službu. Pokud tool vrátí ok=false, termín nebyl zapsán,
-zrušen ani přesunut. Pro kožní vyšetření backend automaticky vytvoří také
-navazující dermatoskopickou rezervaci podle availability pravidel.
+Vytvoří, zruší nebo přesune objednaný termín v Medicus databázi. Tool použij
+pouze po úspěšném ověření pacienta přes patient_lookup, tedy když
+verification.verified=true, a až poté, co volající výslovně potvrdil konkrétní
+termín nebo změnu. Pro kožní vyšetření backend automaticky vytvoří nebo zruší
+také navazující dermatoskopickou rezervaci. Pokud tool vrátí ok=false, termín
+nebyl vytvořen, zrušen ani přesunut.
 ```
 
 Body description:
 
 ```text
-Vyplň action jako create, cancel nebo reschedule. Nastav patient_verified=true
-jen pokud předchozí patient_lookup vrátil verification.verified=true. Pro create
-a reschedule pošli service, date, time a doctor_name z potvrzeného termínu.
-Pro cancel a reschedule pošli appointment_id nebo appointment_ids z ověřeného
-patient_lookup výsledku. Neposílej osobní údaje pacienta kromě idpac.
+Vyplň pouze údaje nutné pro zvolenou akci. action nastav na create, cancel nebo
+reschedule. idpac vezmi pouze z ověřeného patient_lookup výsledku.
+patient_verified nastav na true pouze pokud patient_lookup vrátil
+verification.verified=true. Pro create a reschedule pošli service, doctor_name,
+date a time podle termínu, který volající potvrdil. Pro cancel a reschedule
+pošli appointment_id z ověřených appointments. Neposílej osobní údaje pacienta
+kromě idpac. Neposílej doctor_id; lékaře posílej jako doctor_name.
 ```
 
 ### Body parameters
 
 | Name | Type | Required | Description |
 | --- | --- | --- | --- |
-| `action` | string | ano | `create`, `cancel`, nebo `reschedule`. |
-| `idpac` | integer | ano | Ověřený pacient z `patient_lookup`. |
-| `patient_verified` | boolean | ano | Nastavit na `true` jen po `verification.verified=true`. |
-| `service` | string | pro create/reschedule | `skin` nebo `plasma`. |
-| `doctor_name` | string | pro create/reschedule | Lékař potvrzený volajícím, například `Bartonova`. Pro zápis je lékař povinný; agent nemá posílat `doctor_id`. |
-| `date` | string | pro create/reschedule | Datum vybraného termínu ve formátu `YYYY-MM-DD`. |
-| `time` | string | pro create/reschedule | Začátek vybraného termínu ve formátu `HH:MM`. |
-| `appointment_id` | integer | pro cancel/reschedule | ID existujícího termínu z ověřených `appointments`. |
-| `appointment_ids` | integer[] | ne | Použít pokud má agent explicitně rušit více souvisejících řádků. |
-| `include_related` | boolean | ne | Výchozí `true`; pro kožní termín zahrne navazující dermatoskopickou rezervaci. |
+| `action` | string | ano | Akce, kterou má backend provést. Použij přesně `create`, `cancel`, nebo `reschedule`. |
+| `idpac` | integer | ano | ID ověřeného pacienta z `patient_lookup`. Použít pouze po úspěšném ověření identity. |
+| `patient_verified` | boolean | ano | Nastav na `true` pouze pokud `patient_lookup` vrátil `verification.verified=true`. Jinak tool nevolej. |
+| `service` | string | ne | Povinné pro `create` a `reschedule`. Použij `skin` pro kožní vyšetření nebo `plasma` pro plazmu. |
+| `doctor_name` | string | ne | Povinné pro `create` a `reschedule`. Jméno nebo příjmení lékaře potvrzené volajícím, např. `Bartonova` nebo `Bednar`. Neposílej `doctor_id`. |
+| `date` | string | ne | Povinné pro `create` a `reschedule`. Datum nového termínu ve formátu `YYYY-MM-DD`. |
+| `time` | string | ne | Povinné pro `create` a `reschedule`. Začátek nového termínu ve formátu `HH:MM`. |
+| `appointment_id` | integer | ne | Povinné pro `cancel` a `reschedule`. ID existujícího termínu z ověřeného pole `appointments`. |
+| `include_related` | boolean | ne | Nastav na `true`. Při zrušení nebo přesunu kožního termínu backend zahrne i navazující dermatoskopickou rezervaci. |
+
+### Recommended fixed value
+
+Pokud ElevenLabs dovolí fixed body parameter, nastav:
+
+```json
+{
+  "include_related": true
+}
+```
+
+### Nepřidávat agentovi jako běžné parametry
+
+```text
+doctor_id
+appointment_ids
+info
+availability_limit
+availability_max_limit
+```
+
+Tyhle parametry jsou backendové nebo pokročilé. Pro první agent test držet jen
+scalar `appointment_id`, ne array `appointment_ids`.
 
 ### Interpretace response
 
