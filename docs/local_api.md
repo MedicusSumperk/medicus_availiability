@@ -4,7 +4,9 @@
 
 The local API is intended to run on the Medicus server behind Cloudflare Tunnel. It exposes small HTTP endpoints for ElevenLabs tools while keeping Medicus and Firebird unavailable from the public internet.
 
-Initial implementation is read-only for availability and patient lookup. Booking is still a reserved stub.
+Availability and patient lookup are read-only. Appointment writes are available
+behind explicit local config flags and must be used only after patient
+verification and a final caller confirmation.
 
 ## Endpoints
 
@@ -20,12 +22,11 @@ Currently implemented:
 - `/health`
 - `/doctor-availability`
 - `/patient-lookup`
-
-Reserved:
-
 - `/book-appointment`
 
-`/patient-lookup` reads patient card and future appointment data but performs no writes. `/book-appointment` returns `not_implemented` and does not write appointment data.
+`/patient-lookup` reads patient card and future appointment data but performs no
+writes. `/book-appointment` can create, cancel, or reschedule appointments only
+when `enable_appointment_writes` is enabled in local config.
 
 ## Agent Tool Contract
 
@@ -37,6 +38,11 @@ Target beta behavior:
 4. Treat `status: "needs_verification"` as a registered patient candidate that still requires identity verification. Ask for the last 4 digits of birth number, then call `/patient-lookup` again with `birth_number_last4`.
 5. After successful verification, use `appointments` for future bookings and `past_appointments` when `include_past_appointments` was requested.
 6. Never discuss existing appointments before verification succeeds.
+7. Use `/book-appointment` only after the caller has selected a concrete term
+   and the agent has repeated the selected date, time, doctor, and service back
+   to the caller for confirmation.
+8. Treat `/book-appointment` response as authoritative. If it returns `ok:false`,
+   do not claim that the appointment was changed.
 
 ## File Locations
 
@@ -294,6 +300,21 @@ Authorization: Bearer <token>
 
 For real deployment, keep the token out of source control. Use `config/api.local.json` or `MEDICUS_API_TOKEN`.
 
+Appointment writes are disabled unless local config explicitly enables them:
+
+```json
+{
+  "enable_appointment_writes": true,
+  "enable_appointment_cancellations": true,
+  "appointment_created_by": 10,
+  "appointment_info_prefix": "AI_RECEPTION",
+  "include_related_appointments_by_default": true,
+  "skin_followup_idcinnosti": 6,
+  "skin_followup_info": "AI_DERMATOSCOPE_RESERVATION",
+  "plasma_info_marker": "plazma"
+}
+```
+
 ## Patient Lookup Request
 
 `POST /patient-lookup`
@@ -355,6 +376,144 @@ Example lookup with full birth number:
 
 After verification, `appointments` contains future `OBJOBJ` rows with date, time, doctor, activity, and info fields.
 If `include_past_appointments` is true, `past_appointments` contains recent past rows ordered newest first.
+
+## Appointment Write Request
+
+`POST /book-appointment`
+
+Purpose:
+
+- Create, cancel, or reschedule appointment rows in `OBJOBJ`.
+- Revalidate create/reschedule requests against live `/doctor-availability`
+  logic before writing.
+- For `service=skin`, create both the main skin appointment and the immediate
+  follow-up dermatoscope reservation in one transaction.
+- Keep cancellation/reschedule transactional: if any step fails, the API rolls
+  back the whole request.
+
+Supported actions:
+
+- `create`
+- `cancel`
+- `reschedule`
+
+Common required fields:
+
+- `action`: `create`, `cancel`, or `reschedule`; defaults to `create`
+- `idpac`: verified patient ID
+- `patient_verified`: must be `true`; the agent sets this only after
+  `patient_lookup` returned `verification.verified=true`
+
+Create/reschedule fields:
+
+- `service`: `skin` or `plasma`
+- `date`: appointment date, `YYYY-MM-DD`
+- `time` or `start_time`: selected start time, `HH:MM`
+- `doctor_name`: natural-language doctor name, or `doctor_id` when the caller is
+  using a DB-facing full availability option
+- `info`: optional explicit `OBJOBJ.INFO`; if omitted, API uses configured
+  markers
+
+Cancel/reschedule fields:
+
+- `appointment_id` or `appointment_ids`: existing `OBJOBJ.IDOBJ` row(s)
+- `include_related`: defaults to `true`; when cancelling/moving a skin main row,
+  API tries to include the immediate dermatoscope reservation row as well
+
+Example create skin appointment:
+
+```json
+{
+  "action": "create",
+  "idpac": 33411,
+  "patient_verified": true,
+  "service": "skin",
+  "doctor_name": "Bartonova",
+  "date": "2026-08-08",
+  "time": "14:00"
+}
+```
+
+Successful skin response returns two IDs:
+
+```json
+{
+  "ok": true,
+  "status": "created",
+  "service": "skin",
+  "appointment_ids": [140001, 140002],
+  "appointments": [
+    {
+      "idobj": 140001,
+      "idcinnosti": null
+    },
+    {
+      "idobj": 140002,
+      "idcinnosti": 6
+    }
+  ]
+}
+```
+
+Example create plasma appointment:
+
+```json
+{
+  "action": "create",
+  "idpac": 33411,
+  "patient_verified": true,
+  "service": "plasma",
+  "doctor_name": "Bartonova",
+  "date": "2026-08-08",
+  "time": "14:00"
+}
+```
+
+Example cancel appointment:
+
+```json
+{
+  "action": "cancel",
+  "idpac": 33411,
+  "patient_verified": true,
+  "appointment_id": 140001,
+  "include_related": true
+}
+```
+
+Example reschedule appointment:
+
+```json
+{
+  "action": "reschedule",
+  "idpac": 33411,
+  "patient_verified": true,
+  "appointment_id": 140001,
+  "include_related": true,
+  "service": "skin",
+  "doctor_name": "Bartonova",
+  "date": "2026-08-15",
+  "time": "10:00"
+}
+```
+
+Important write behavior:
+
+- Writes are disabled by default in `config/api.local.example.json`.
+- Create and reschedule re-run live availability for the exact date/time/service
+  before insert.
+- Skin writes create two rows in one transaction:
+  - main skin appointment with `IDCINNOSTI=NULL`
+  - follow-up dermatoscope reservation with configured `skin_followup_idcinnosti`
+    defaulting to `6`
+- Plasma writes create one row with `IDCINNOSTI=3` and configured plasma marker
+  in `INFO`.
+- Cancel currently uses `DELETE FROM OBJOBJ` for the selected row(s) when
+  `enable_appointment_cancellations=true`.
+- If the selected slot is no longer bookable, response status is
+  `slot_not_bookable` and no write is committed.
+- If `doctor_name` cannot be resolved clearly, response status is
+  `doctor_not_resolved` and no write is committed.
 
 ## Availability Request
 
@@ -505,7 +664,7 @@ Without `"compact": true`, the response includes DB-facing fields needed for lat
         "start_time": "14:20",
         "end_time": "14:30",
         "duration_minutes": 10,
-        "written_in_v1": false
+        "written_in_v1": true
       }
     }
   ],

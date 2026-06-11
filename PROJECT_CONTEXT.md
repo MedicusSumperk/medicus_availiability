@@ -28,7 +28,7 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - Appointment/service type mapping is driven by `OBJOBJ.IDCINNOSTI -> CINNOSTI.ID`, not `OBJOBJ.TYP`.
 - First read-only pre-call agent context builder is implemented.
 - Agent context now uses the concrete schedule interval from `OBSDNE_PRAVODLIS_SEL.INTERVAL` for doctor/day/context slot planning, with config interval only as fallback.
-- A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It currently implements read-only targeted availability search and reserves patient lookup / booking endpoints for later phases.
+- A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It implements targeted availability search, patient lookup, and an appointment write endpoint guarded by local write flags.
 - PoC test confirmed that n8n chat agent can call `/doctor-availability` through trycloudflare and receive fast, real DB-derived availability results.
 - ElevenLabs voice agent test also passed; the availability tool works as expected and latency is practically without noticeable delay.
 - Current priority: test the two read-only agent tools together in the voice/chat agent flow, then replace temporary trycloudflare URL with a stable named Cloudflare Tunnel before beta.
@@ -116,7 +116,10 @@ Detailed mapping notes are in `docs/activity_type_mapping.md`.
 
 ## V1 Skin Examination Booking Rule
 
-A skin examination is booked as a single appointment row, but booking logic must reserve capacity for the follow-up dermatoscope slot.
+A skin examination write creates the main skin appointment row and an immediate
+follow-up dermatoscope reservation row in one transaction. Availability logic
+must therefore reserve capacity for the follow-up dermatoscope slot before the
+write runs.
 
 For a skin examination slot to be offered:
 
@@ -126,12 +129,14 @@ For a skin examination slot to be offered:
 4. The immediately following slot for the same doctor must be free.
 5. The immediately following dermatoscope interval must not overlap an existing dermatoscope appointment for any doctor, because the clinic has only one dermatoscope.
 6. The last available slot in a doctor's working block must not be offered for skin examination, because there is no room for the follow-up dermatoscope slot.
-7. In V1, the follow-up dermatoscope slot is not written to the database automatically. It is only checked as required free capacity.
+7. In the appointment write endpoint, the follow-up dermatoscope slot is written
+   automatically as a reservation row after the main skin row.
 
-Likely DB write shape for skin examination:
+DB write shape for skin examination:
 
-- `TYP = 1`
-- `IDCINNOSTI = NULL`
+- main row: `TYP = 1`, `IDCINNOSTI = NULL`
+- follow-up row: `TYP = 1`, configured `skin_followup_idcinnosti`, currently
+  defaulting to `6` (`rezervace dermatoskop`)
 - standard appointment row fields as already tested in committed insert
 
 Example for a 15-minute schedule:
@@ -152,7 +157,8 @@ Example for a 10-minute schedule, such as the confirmed Bednar rule:
 - 08:10-08:20 does not overlap dermatoscope usage for another doctor
 ```
 
-Future phase: once dermatoscope appointment behavior is confirmed, consider automatically writing the follow-up dermatoscope/reservation row. This is intentionally out of scope for V1.
+The write endpoint now handles the follow-up dermatoscope/reservation row
+automatically for `service=skin`.
 
 ## V1 Dermatoscope Rule
 
@@ -270,7 +276,7 @@ Current endpoint plan:
 GET  /health
 POST /doctor-availability
 POST /patient-lookup       # read-only patient + future appointment lookup
-POST /book-appointment     # reserved stub, no writes
+POST /book-appointment     # create/cancel/reschedule behind local write flags
 ```
 
 Current behavior:
@@ -286,7 +292,8 @@ Current behavior:
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
 - `/patient-lookup` searches `KAR` by name/date/full `RODCIS` and searches phone through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`; it asks the agent to verify identity with the last 4 digits of `RODCIS` when needed and returns future plus optionally past `OBJOBJ` appointments after verification.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
-- `/book-appointment` returns `not_implemented` and does not perform database writes.
+- `/book-appointment` can create, cancel, or reschedule `OBJOBJ` appointments when local write flags are enabled. Create/reschedule revalidates the selected slot with live availability before writing.
+- For `service=skin`, `/book-appointment` writes both the main skin row and the immediate dermatoscope reservation row in one transaction.
 
 PoC verification:
 
@@ -600,6 +607,7 @@ For the current webhook/tool-call PoC:
 | --- | --- |
 | `scripts/api_server.py` | Local FastAPI service. Defines `/health`, `/doctor-availability`, `/patient-lookup`, and `/book-appointment`. |
 | `scripts/availability_search.py` | Read-only targeted availability search used by `/doctor-availability`; returns first matching options instead of a full context file. |
+| `scripts/appointment_write.py` | Appointment write helper used by `/book-appointment`; supports create/cancel/reschedule behind local write flags and revalidates create/reschedule with availability logic. |
 | `scripts/start_trycloudflare_api.ps1` | Windows helper for PoC tunnel startup; captures `https://...trycloudflare.com` and writes it to `data/api/trycloudflare_url.txt`. |
 | `scripts/start_named_cloudflare_tunnel.ps1` | Windows helper for running a stable named Cloudflare Tunnel after Cloudflare is configured. |
 | `config/api.local.example.json` | Example local API settings: localhost bind, port, token, default lookup window, default limit. |

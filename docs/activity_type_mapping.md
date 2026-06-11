@@ -104,7 +104,7 @@ Confirmed/working interpretation:
 
 | DB condition | Meaning | Booking impact |
 | --- | --- | --- |
-| `IDCINNOSTI IS NULL` | normal skin/default appointment | skin examination candidate; V1 skin booking still requires follow-up dermatoscope capacity |
+| `IDCINNOSTI IS NULL` | normal skin/default appointment | skin examination candidate; skin write also creates follow-up dermatoscope reservation |
 | `IDCINNOSTI = 1` | first mole scan / dermatoscope | blocks shared dermatoscope |
 | `IDCINNOSTI = 2` | post-scan check | treat as dermatoscope blocker unless client later narrows this |
 | `IDCINNOSTI = 5` | repeated / higher-number mole scan | blocks shared dermatoscope |
@@ -136,16 +136,16 @@ Still confirm before final production automation:
 
 ### Skin Examination
 
-Likely DB write shape:
+DB write shape:
 
-- `TYP = 1`
-- `IDCINNOSTI = NULL`
+- main row: `TYP = 1`, `IDCINNOSTI = NULL`
+- follow-up reservation row: `TYP = 1`, `IDCINNOSTI = 6` by current API config default
 - standard appointment row fields as already tested in committed insert
 
 Availability rules still apply:
 
 - selected skin slot must be free
-- immediate follow-up slot for the same doctor must be free
+- immediate follow-up slot for the same doctor must be free and is written as a reservation row by the write endpoint
 - follow-up slot must not overlap shared dermatoscope usage by another doctor
 - last available slot in a doctor block must not be offered for skin examination
 

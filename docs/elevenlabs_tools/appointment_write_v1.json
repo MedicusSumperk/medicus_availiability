@@ -1,0 +1,132 @@
+{
+  "type": "webhook",
+  "name": "appointment_write",
+  "description": "Vytvoří, zruší nebo přesune objednaný termín v Medicus databázi. Tool použij pouze po úspěšném ověření pacienta přes patient_lookup, tedy když verification.verified=true, a až poté, co volající výslovně potvrdil konkrétní termín nebo změnu. Pro kožní vyšetření backend automaticky vytvoří nebo zruší také navazující dermatoskopickou rezervaci. Pokud tool vrátí ok=false, termín nebyl vytvořen, zrušen ani přesunut.\n",
+  "api_schema": {
+    "url": "https://DOPLNIT-AKTUALNI-URL.trycloudflare.com/book-appointment",
+    "method": "POST",
+    "path_params_schema": [],
+    "query_params_schema": [],
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Vyplň pouze údaje nutné pro zvolenou akci. action nastav na create, cancel nebo reschedule. idpac vezmi pouze z ověřeného patient_lookup výsledku. patient_verified nastav na true pouze pokud patient_lookup vrátil verification.verified=true. Pro create a reschedule pošli service, doctor_name, date a time podle termínu, který volající potvrdil. Pro cancel a reschedule pošli appointment_id z ověřených appointments. Neposílej osobní údaje pacienta kromě idpac. Neposílej doctor_id; lékaře posílej jako doctor_name.",
+      "required": true,
+      "properties": [
+        {
+          "id": "action",
+          "type": "string",
+          "description": "Akce, kterou má backend provést.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "value_type": "llm_prompt",
+          "required": true,
+          "enum": [
+            "create",
+            "cancel",
+            "reschedule"
+          ]
+        },
+        {
+          "id": "idpac",
+          "description": "ID ověřeného pacienta z patient_lookup. Použít pouze po úspěšném ověření identity.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true,
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "is_system_provided": false
+        },
+        {
+          "id": "patient_verified",
+          "description": "Nastav na true pouze pokud patient_lookup vrátil verification.verified=true. Jinak tool nevolej.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": true,
+          "type": "boolean",
+          "value_type": "llm_prompt",
+          "is_system_provided": false
+        },
+        {
+          "id": "service",
+          "description": "Povinné pro create a reschedule. Použij skin pro kožní vyšetření nebo plasma pro plazmu.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false,
+          "type": "string",
+          "value_type": "llm_prompt",
+          "enum": [
+            "skin",
+            "plasma"
+          ]
+        },
+        {
+          "id": "doctor_name",
+          "description": "Povinné pro create a reschedule. Jméno nebo příjmení lékaře potvrzené volajícím, např. Bartonova nebo Bednar. Neposílej doctor_id.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false,
+          "type": "string",
+          "value_type": "llm_prompt",
+          "enum": null
+        },
+        {
+          "id": "date",
+          "description": "Povinné pro create a reschedule. Datum nového termínu ve formátu YYYY-MM-DD.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false,
+          "type": "string",
+          "value_type": "llm_prompt",
+          "enum": null
+        },
+        {
+          "id": "time",
+          "description": "Povinné pro create a reschedule. Začátek nového termínu ve formátu HH:MM.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false,
+          "type": "string",
+          "value_type": "llm_prompt",
+          "enum": null
+        },
+        {
+          "id": "appointment_id",
+          "description": "Povinné pro cancel a reschedule. ID existujícího termínu z ověřeného pole appointments.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "required": false,
+          "type": "integer",
+          "value_type": "llm_prompt",
+          "is_system_provided": false
+        },
+        {
+          "id": "include_related",
+          "description": "",
+          "dynamic_variable": "",
+          "constant_value": "true",
+          "required": false,
+          "type": "boolean",
+          "value_type": "constant",
+          "is_system_provided": false
+        }
+      ],
+      "value_type": "llm_prompt"
+    },
+    "request_headers": [],
+    "content_type": "application/json",
+    "auth_connection": null
+  },
+  "dynamic_variables": {
+    "dynamic_variable_placeholders": {}
+  },
+  "assignments": [],
+  "disable_interruptions": false,
+  "tool_call_sound": null,
+  "tool_call_sound_behavior": "auto",
+  "tool_error_handling_mode": "auto",
+  "response_mocks": [],
+  "response_timeout_secs": 20,
+  "pre_tool_speech": "auto",
+  "execution_mode": "immediate"
+}

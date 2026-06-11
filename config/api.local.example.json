@@ -4,5 +4,13 @@
   "bearer_token": "CHANGE_ME",
   "default_days_ahead": 30,
   "default_limit": 3,
-  "max_limit": 10
+  "max_limit": 10,
+  "enable_appointment_writes": false,
+  "enable_appointment_cancellations": false,
+  "appointment_created_by": 10,
+  "appointment_info_prefix": "AI_RECEPTION",
+  "include_related_appointments_by_default": true,
+  "skin_followup_idcinnosti": 6,
+  "skin_followup_info": "AI_DERMATOSCOPE_RESERVATION",
+  "plasma_info_marker": "plazma"
 }

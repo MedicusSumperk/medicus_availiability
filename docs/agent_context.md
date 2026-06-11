@@ -64,7 +64,7 @@ Bookability rules:
 - immediate follow-up dermatoscope duration defaults to the same schedule interval
 - immediate follow-up slot for the same doctor must be free
 - follow-up interval must not overlap shared dermatoscope usage anywhere else
-- follow-up slot is not written automatically in V1
+- follow-up slot is written automatically by the appointment write endpoint for `service=skin`
 
 This handles doctors with non-15-minute schedules. Confirmed diagnostic finding: Rostislav Bednar is `IDUZI=2` in inspected output and has 10-minute schedule intervals. The same inspected range also showed 10-minute intervals for multiple other doctors, so 10 vs 15 minutes must remain schedule-driven rather than doctor-hardcoded.
 
