@@ -11,6 +11,8 @@ behavior contract, ze kterého se bude skládat a ladit hlavní prompt agenta.
 Související dokumenty:
 
 - `docs/elevenlabs_tool_config_cs.md` - konkrétní nastavení ElevenLabs toolů
+- `docs/elevenlabs_agent_prompt_v2_cs.md` - samostatný copy-ready prompt ve
+  struktuře vhodné pro ElevenLabs UI
 - `docs/elevenlabs_agents/README.md` - místo pro budoucí JSON export agenta a
   Procedures artefakty
 - `docs/elevenlabs_agent_handoff_cs.txt` - krátký testovací handoff
