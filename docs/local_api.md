@@ -376,6 +376,8 @@ Example lookup with full birth number:
 
 After verification, `appointments` contains future `OBJOBJ` rows with date, time, doctor, activity, and info fields.
 If `include_past_appointments` is true, `past_appointments` contains recent past rows ordered newest first.
+The response also includes `appointments_json` and `past_appointments_json` as
+stringified JSON arrays for ElevenLabs flattened dynamic variable assignments.
 
 ## Appointment Write Request
 
@@ -557,7 +559,11 @@ Supported filters:
 - `date_to`: ISO date; optional
 - `days_ahead`: used when `date_to` is omitted; default from API config
 - `include_weekends`: default `false`
-- `weekdays`: ISO weekday numbers
+- `weekdays`: explicit ISO weekday filter from the request
+- `weekday`: optional scalar alias; normalized to `weekdays: [weekday]`
+- `effective_weekdays`: ISO weekday numbers effectively scanned by the backend;
+  when `include_weekends=false` and no explicit `weekdays` are provided, this is
+  `[1, 2, 3, 4, 5]`
 - `time_from`: `HH:MM`
 - `time_to`: `HH:MM`
 - `doctor_id`: optional `IDUZI`
@@ -605,6 +611,9 @@ With `"compact": true`:
   "ok": true,
   "service": "skin",
   "filters": {
+    "weekdays": [],
+    "effective_weekdays": [1, 2, 3, 4, 5],
+    "include_weekends": false,
     "doctor": {
       "doctor_id": 8,
       "doctor_name": "Maria Bartonova",
@@ -616,12 +625,20 @@ With `"compact": true`:
   "options": [
     {
       "date": "2026-07-24",
+      "weekday": "Friday",
+      "weekday_iso": 5,
+      "weekday_cs": "pátek",
       "time": "14:00",
       "doctor_name": "Maria Bartonova"
     }
-  ]
+  ],
+  "options_json": "[{\"date\":\"2026-07-24\",\"weekday\":\"Friday\",\"weekday_iso\":5,\"weekday_cs\":\"pátek\",\"time\":\"14:00\",\"doctor_name\":\"Maria Bartonova\"}]"
 }
 ```
+
+`options_json` is intentionally included as a string for ElevenLabs dynamic
+variable assignments, because the beta agent uses flattened string/number/boolean
+runtime variables instead of a nested state object.
 
 ## Full Response
 
@@ -651,6 +668,8 @@ Without `"compact": true`, the response includes DB-facing fields needed for lat
     {
       "date": "2026-07-02",
       "weekday": "Thursday",
+      "weekday_iso": 4,
+      "weekday_cs": "čtvrtek",
       "service": "skin",
       "start_time": "14:10",
       "end_time": "14:20",

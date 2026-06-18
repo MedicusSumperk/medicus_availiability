@@ -89,6 +89,9 @@ def normalize_availability_payload(request: dict[str, Any] | AvailabilityRequest
                 payload["doctor_name"] = payload[alias]
                 break
 
+    if not payload.get("weekdays") and payload.get("weekday") not in (None, ""):
+        payload["weekdays"] = [payload["weekday"]]
+
     return payload
 
 

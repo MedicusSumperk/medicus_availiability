@@ -11,9 +11,26 @@ v `docs/elevenlabs_agent_behavior_cs.md`.
 Kompaktní copy-ready seed pro dynamic variables je v
 `docs/elevenlabs_dynamic_variables_compact_v0.json`. Detailní referenční katalog
 pro n8n, prompt design a audit je v `docs/elevenlabs_dynamic_variables_v0.json`.
+Navržený state-first objekt pro další iteraci je v
+`docs/elevenlabs_dynamic_state_v1.json`.
+Návrh konkrétních dynamic variable assignments je v
+`docs/elevenlabs_dynamic_assignments_v1_cs.md`.
+Aktuální beta-pragmatický flattened state seed je v
+`docs/elevenlabs_flat_dynamic_variables_v1.json`.
+Praktická assignment matice pro živé ověření response paths, canary variables a
+fallbacku přes n8n je v `docs/elevenlabs_state_assignment_test_matrix_v1_cs.md`.
 JSON mode export aktuálně nastaveného toolu `appointment_write` je v
 `docs/elevenlabs_tools/appointment_write_v1.json`.
-Budoucí JSON exporty celého agenta patří do `docs/elevenlabs_agents/`.
+Aktuální upload-ready agent JSON a související branch artefakty jsou v
+`docs/elevenlabs_agents/`.
+
+Živý test po nastavení toolů vést podle:
+
+```text
+docs/elevenlabs_agent_test_plan_v1_cs.md
+docs/elevenlabs_live_test_run_sheet_v1_cs.md
+docs/elevenlabs_live_test_log_template_v1_cs.md
+```
 
 ## Společné nastavení
 
@@ -84,9 +101,20 @@ získané z ElevenLabs call metadata nebo načtené dynamicky přes webhook.
 | --- | --- | --- | --- | --- |
 | `medicus_base_url` | string | static / n8n workflow | ano | Aktuální veřejná URL API pro textové nastavení a handoff. Pro trycloudflare se po restartu mění. |
 | `medicus_api_host` | string | environment | volitelné | Host-only varianta pro ElevenLabs env URL, například `abc.trycloudflare.com`. Použít jako `https://{{system__env_medicus_api_host}}/...`, až budou práva k env variables. |
-| `caller_phone` | string | ElevenLabs call metadata / webhook | ne | První tichý `patient_lookup` na začátku hovoru. |
-| `caller_state` | object | tool assignments / n8n workflow | doporučeno | Stav volajícího v průběhu hovoru. Defaultně prázdný objekt; tooly do něj mohou ukládat lookup, verification a vybraný termín. |
-| `availability_state` | object | tool assignments / n8n workflow | doporučeno | Poslední hledání dostupnosti, nabídnuté sloty a odmítnuté sloty, aby agent neopakoval stejné termíny. |
+| `caller_phone` | string | ElevenLabs call metadata / webhook / n8n trigger | ne | Telefon z triggeru hovoru. Nepoužívat pro turn-0 lookup; použít až jako první údaj v identity gate při rezervaci, změně, zrušení nebo dotazu na existující termíny. |
+| `patient_lookup_status` | string | tool assignment | ano | Poslední `patient_lookup.status`, například `not_started`, `needs_verification`, `verified`, `not_found`. |
+| `patient_verified` | boolean | tool assignment | ano | Hlavní gate pro sdělení appointments a write tool. |
+| `patient_idpac` | number | tool assignment | ano | Technické ID ověřovaného pacienta pro write tool; použít jen při `patient_verified=true`. |
+| `patient_appointments_json` | string | tool assignment | doporučeno | JSON string budoucích appointments po ověření pacienta. |
+| `availability_options_json` | string | tool assignment | doporučeno | JSON string posledních nabídnutých availability options. |
+| `availability_doctor_match_type` | string | tool assignment | doporučeno | `exact`, `partial`, `not_found`, `ambiguous` atd.; hlídá tvrzení o konkrétním lékaři. |
+| `write_ok` | boolean | tool assignment | ano | Hlavní gate pro potvrzení write akce. |
+| `write_status` | string | tool assignment | ano | `created`, `cancelled`, `rescheduled`, nebo důvod selhání. |
+| `handoff_required` | boolean | prompt / workflow | doporučeno | Stav, že má být hovor předán živé osobě. |
+| `handoff_reason` | string | prompt / workflow | doporučeno | Důvod handoffu. |
+| `medicus_state` | object | legacy / budoucí n8n workflow | ne | Starší návrh jednoho objektu pro decision tree. Pro beta preferovat flattened variables. |
+| `caller_state` | object | legacy návrh | ne | Starší rozdělený stav volajícího. Pro další iteraci preferovat sjednocený `medicus_state`. |
+| `availability_state` | object | legacy návrh | ne | Starší rozdělený stav dostupnosti. Pro další iteraci preferovat sjednocený `medicus_state`. |
 | `clinic_name` | string | static | ano | Představení agenta. Výchozí: Dermatologické středisko Šumperk. |
 | `clinic_address` | string | static | ne | Odpovědi na základní dotazy o adrese. Hodnota zatím doplnit. |
 | `clinic_opening_hours` | string/object | static | ne | Odpovědi na dotazy k otevírací době. Hodnota zatím doplnit. |
@@ -105,8 +133,12 @@ Pracovní doporučení:
   každém toolu.
 - Env variantu ověřit jako `medicus_api_host`, ne jako full base URL, protože
   ElevenLabs URL validátor vyžaduje `https://` před placeholderem.
-- `caller_state` a `availability_state` jsou nový doporučený pattern pro robustní
-  stav hovoru. Agent díky nim nemusí spoléhat jen na krátkodobou paměť konverzace.
+- Pro beta preferovat flattened variables, protože odpovídají potvrzeným typům
+  dynamic variables v ElevenLabs.
+- Jeden sjednocený objekt `medicus_state` držet jako budoucí/n8n variantu, ne jako
+  první dashboard implementaci.
+- `caller_state` a `availability_state` brát jako starší rozdělený návrh, ne jako
+  cílový state-first model.
 - Nedělat pro ně samostatný API tool, pokud nejde o data, která se často mění
   během dne.
 - API dostupnosti má stále rozhodovat podle reálné DB dostupnosti, ne podle
@@ -262,12 +294,17 @@ Agent čte hlavně:
 - `ok`
 - `service`
 - `filters.doctor`
+- `filters.effective_weekdays`
 - `agent_notes`
 - `options`
 
 Pravidla:
 
 - Pokud `options` obsahuje termíny, agent nabídne nejvýše 3.
+- Pro den v týdnu agent používá `options[].weekday_cs`. Den týdne neodvozuje z
+  data vlastní úvahou.
+- Pokud `filters.effective_weekdays` obsahuje jen `[1,2,3,4,5]`, backend hledal
+  pouze pracovní dny, i když `filters.weekdays` je prázdné.
 - Pokud `agent_notes` říká, že lékař nebyl nalezen nebo byl nejednoznačný,
   agent nesmí tvrdit, že termíny jsou u požadovaného lékaře.
 - Pokud `options` je prázdné, agent se zeptá na rozšíření hledání nebo změnu
@@ -310,10 +347,20 @@ Tool description:
 
 ```text
 Vyhledá pacienta v Medicus kartotéce, ověří identitu pomocí posledních 4 číslic
-rodného čísla a po úspěšném ověření vrátí existující objednávky. Použij tento
-tool na začátku hovoru podle telefonu z call metadata, pokud je dostupný, a
-potom vždy, když volající poskytne další identifikační údaj. Existující
-objednávky smíš sdělit pouze pokud response obsahuje verification.verified=true.
+rodného čísla a po úspěšném ověření vrátí existující objednávky. Pokud je
+caller_phone dostupný z triggeru nebo call metadata, použij ho jako první údaj až
+v identity gate; nevolej tool v turnu 0 na začátku hovoru. Tool používej
+pro práci s existujícím termínem, změnu termínu, zrušení termínu nebo finální
+rezervaci nového termínu po tom, co si volající vybral konkrétní slot. V identity
+gate s caller_phone nejdřív zavolej lookup jen s phone. Neříkej, že jsi našla
+odpovídající kartu, dokud lookup skutečně neproběhl. Pokud lookup podle telefonu
+vrátí multiple_matches, požádej nejdřív o datum narození, ne hned o poslední
+4 číslice rodného čísla. Pokud lookup vrátí needs_verification, požádej o
+poslední 4 číslice rodného čísla. Nepoužívej aktivní lookup jen proto, že
+volající řekl, že už u nás byl. Při novém objednání nejdřív
+ověř dostupnost přes doctor_availability a nabídni termíny; identitu řeš až před
+rezervací vybraného termínu. Existující objednávky smíš sdělit pouze pokud
+response obsahuje verification.verified=true.
 Osobní údaje z response nikdy neříkej volajícímu; používej je jen interně pro
 lookup a ověření.
 ```
@@ -321,10 +368,22 @@ lookup a ověření.
 Body description:
 
 ```text
-Vyplň jen údaje, které máš z call metadata nebo které volající právě poskytl a
-které jsi s ním potvrdil. Při prvním tichém lookupu použij phone z caller_phone,
-pokud je dostupný. Pokud tool vrátí needs_verification, požádej o poslední
-4 číslice rodného čísla a volej znovu s birth_number_last4. Pevně nastav
+Vyplň jen údaje, které máš z call metadata nebo které volající poskytl a potvrdil
+po kontrolní otázce. Pokud jsi údaj právě zopakoval a zeptal ses „Je to
+správně?“, ještě ho neposílej do toolu; počkej na odpověď volajícího. Pokud je
+caller_phone dostupný z triggeru nebo call metadata, použij ho až ve chvíli, kdy
+je potřeba identity gate. Nevolej patient_lookup v turnu 0. V identity gate s
+caller_phone nejdřív pošli jen phone, include_appointments=true a
+include_past_appointments=false. Pokud lookup podle telefonu vrátí
+multiple_matches, další lookup zpřesni nejdřív datem narození. Birth_number_last4
+posílej hlavně až po status=needs_verification nebo pokud datum narození nestačí.
+Telefon posílej jen jako přesně
+potvrzenou sekvenci číslic bez mezer. České mobilní číslo bez
+předvolby má obvykle 9 číslic; pokud volající potvrdil 9 číslic, neposílej
+10 číslic. Nikdy nepřidávej nulu ani jinou číslici, kterou volající neřekl a
+nepotvrdil. Pokud lookup podle caller_phone vrátí jednu pravděpodobnou shodu
+nebo needs_verification, neříkej jméno z databáze; požádej neutrálně o poslední
+4 číslice rodného čísla. Pevně nastav
 include_appointments=true a include_past_appointments=false, pokud volající
 neřeší historii.
 ```
@@ -333,7 +392,7 @@ neřeší historii.
 
 | Name | Type | Required | Fixed | Description |
 | --- | --- | --- | --- | --- |
-| `phone` | string | ne | ne | Telefon volajícího. Při prvním lookupu použít call metadata nebo dynamic variable `caller_phone`, pokud je dostupná. |
+| `phone` | string | ne | ne | Telefon volajícího jako přesně potvrzené číslice bez mezer. Použít call metadata nebo dynamic variable `caller_phone`, pokud je dostupná a agent je právě v identity gate. Nepoužívat v turnu 0. Pokud číslo diktuje volající, poslat ho až po výslovném potvrzení. Nepřidávat číslice, neodhadovat předvolbu ani nulu; u českého mobilu bez předvolby typicky očekávat 9 číslic. |
 | `first_name` | string | ne | ne | Křestní jméno pacienta, až když ho volající poskytne a agent ho potvrdí. |
 | `last_name` | string | ne | ne | Příjmení pacienta, až když ho volající poskytne a agent ho potvrdí. |
 | `birth_date` | string | ne | ne | Datum narození ve formátu `YYYY-MM-DD`, až když ho volající poskytne a agent ho potvrdí. |
@@ -358,8 +417,9 @@ Pravidla:
 
 - `status=not_found`: požádat o jméno, příjmení a datum narození, potom lookup
   zopakovat.
-- `status=multiple_matches`: požádat o doplňující údaj, ideálně datum narození
-  nebo poslední 4 číslice rodného čísla.
+- `status=multiple_matches` po lookupu podle telefonu: požádat nejdřív o datum narození.
+  Poslední 4 číslice rodného čísla použít až po `needs_verification` nebo pokud
+  datum narození nestačí.
 - `status=needs_verification`: požádat o poslední 4 číslice rodného čísla.
 - `status=verification_failed`: požádat o zopakování údaje; při opakovaném
   neúspěchu předat živé osobě.
@@ -496,18 +556,21 @@ Aktuální export má zatím:
 "assignments": []
 ```
 
-Další iterace by měla přidat assignments pro stav hovoru. Doporučený směr:
+Další iterace by měla přidat assignments pro flattened variables podle
+`docs/elevenlabs_flat_dynamic_variables_v1.json`.
 
-- `patient_lookup` po úspěšném lookupu zapíše `caller_state.lookup_status`,
-  `caller_state.idpac`, `caller_state.verified` a případně `caller_state.appointments`.
-- `doctor_availability` zapíše `availability_state.last_query`,
-  `availability_state.last_offered_slots` a při odmítnutí termínů také
-  `availability_state.rejected_slots`.
-- `appointment_write` zapíše `caller_state.last_write_status`,
-  `caller_state.last_write_action` a ID vytvořených, zrušených nebo přesunutých
-  termínů.
+Kandidátní `value_path` pro aktuální response objekty API a minimální canary
+variables pro živý test jsou v
+`docs/elevenlabs_state_assignment_test_matrix_v1_cs.md`.
 
-Agent stále nesmí hodnoty z `caller_state` přeříkávat jako osobní údaje. Slouží
+- `patient_lookup` aktualizuje `patient_lookup_status`, `patient_verified`,
+  `patient_idpac` a `patient_appointments_json`.
+- `doctor_availability` aktualizuje `availability_options_json` a
+  `availability_doctor_match_type`.
+- `appointment_write` aktualizuje `write_ok` a `write_status`.
+- Handoff větve aktualizují `handoff_required` a `handoff_reason`.
+
+Agent stále nesmí hodnoty z dynamic variables přeříkávat jako osobní údaje. Slouží
 jen pro rozhodování, ověření a bezpečné pokračování flow.
 
 ## Agent JSON, Workflows a Procedures
@@ -566,7 +629,17 @@ scalar `appointment_id`, ne array `appointment_ids`.
 
 ## Minimální smoke test po změně konfigurace
 
-1. Start hovoru s dostupným `caller_phone`: agent má zavolat `patient_lookup`.
+Detailní provedení a logování testu:
+
+```text
+docs/elevenlabs_agent_test_plan_v1_cs.md
+docs/elevenlabs_live_test_run_sheet_v1_cs.md
+docs/elevenlabs_live_test_log_template_v1_cs.md
+```
+
+1. Nové objednání s dostupným `caller_phone`: agent nemá volat `patient_lookup`
+   v turnu 0 ani před nabídkou dostupnosti. `caller_phone` použije až při
+   rezervaci vybraného termínu.
 2. Volající chce kožní vyšetření: agent zavolá `doctor_availability` se
    `service=skin`, `limit=3`, `compact=true`.
 3. Volající chce Bartoňovou: agent pošle `doctor_name`.

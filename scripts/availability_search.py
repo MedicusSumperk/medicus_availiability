@@ -27,6 +27,15 @@ from availability_engine import compute_day_availability, load_doctors
 DEFAULT_DAYS_AHEAD = 30
 DEFAULT_LIMIT = 3
 MAX_LIMIT = 10
+WEEKDAY_NAMES_CS = {
+    1: "pondělí",
+    2: "úterý",
+    3: "středa",
+    4: "čtvrtek",
+    5: "pátek",
+    6: "sobota",
+    7: "neděle",
+}
 
 
 def _parse_date(value: str | date | None) -> date | None:
@@ -43,6 +52,60 @@ def _parse_time(value: str | time | None) -> time | None:
     if isinstance(value, time):
         return value
     return parse_time(str(value))
+
+
+def _parse_bool(value: Any, default: bool = False) -> bool:
+    if value is None or value == "":
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "t", "yes", "y", "on"}:
+        return True
+    if normalized in {"0", "false", "f", "no", "n", "off"}:
+        return False
+    return default
+
+
+def _parse_weekdays(value: Any) -> set[int]:
+    if value is None or value == "":
+        return set()
+    if isinstance(value, str):
+        values = value.split(",")
+    elif isinstance(value, int):
+        values = [value]
+    else:
+        values = value
+
+    try:
+        weekdays = {int(str(item).strip()) for item in values if str(item).strip() != ""}
+    except (TypeError, ValueError) as error:
+        raise ValueError("weekdays must contain ISO weekday numbers 1..7") from error
+
+    invalid = sorted(day for day in weekdays if day < 1 or day > 7)
+    if invalid:
+        raise ValueError("weekdays must contain ISO weekday numbers 1..7")
+    return weekdays
+
+
+def _effective_weekdays(include_weekends: bool, weekdays: set[int]) -> list[int]:
+    if weekdays:
+        return sorted(weekdays)
+    if include_weekends:
+        return [1, 2, 3, 4, 5, 6, 7]
+    return [1, 2, 3, 4, 5]
+
+
+def _weekday_payload(target_date: date) -> dict[str, Any]:
+    weekday_iso = target_date.isoweekday()
+    return {
+        "weekday": target_date.strftime("%A"),
+        "weekday_iso": weekday_iso,
+        "weekday_cs": WEEKDAY_NAMES_CS[weekday_iso],
+    }
 
 
 def _iter_dates(
@@ -162,8 +225,9 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
     days_ahead = int(request.get("days_ahead") or DEFAULT_DAYS_AHEAD)
     date_to = explicit_date_to or (date_from + timedelta(days=days_ahead - 1))
 
-    include_weekends = bool(request.get("include_weekends", False))
-    weekdays = {int(value) for value in request.get("weekdays", [])}
+    include_weekends = _parse_bool(request.get("include_weekends"), False)
+    weekdays = _parse_weekdays(request.get("weekdays", request.get("weekday", [])))
+    effective_weekdays = _effective_weekdays(include_weekends, weekdays)
     time_from = _parse_time(request.get("time_from"))
     time_to = _parse_time(request.get("time_to"))
     doctor_id = int(request["doctor_id"]) if request.get("doctor_id") is not None else None
@@ -213,7 +277,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                     options.append(
                         {
                             "date": target_date.isoformat(),
-                            "weekday": target_date.strftime("%A"),
+                            **_weekday_payload(target_date),
                             "service": service,
                             "start_time": option["start_time"],
                             "end_time": option["end_time"],
@@ -237,6 +301,8 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                             },
                             "filters": {
                                 "weekdays": sorted(weekdays),
+                                "effective_weekdays": effective_weekdays,
+                                "include_weekends": include_weekends,
                                 "time_from": time_from.strftime("%H:%M") if time_from else None,
                                 "time_to": time_to.strftime("%H:%M") if time_to else None,
                                 "doctor": doctor_filter,
@@ -258,6 +324,8 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
         },
         "filters": {
             "weekdays": sorted(weekdays),
+            "effective_weekdays": effective_weekdays,
+            "include_weekends": include_weekends,
             "time_from": time_from.strftime("%H:%M") if time_from else None,
             "time_to": time_to.strftime("%H:%M") if time_to else None,
             "doctor": doctor_filter,
@@ -273,17 +341,22 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
 
 def compact_options(response: dict[str, Any]) -> dict[str, Any]:
     """Return the smallest shape useful for a voice-agent tool."""
+    options = [
+        {
+            "date": option["date"],
+            "weekday": option.get("weekday"),
+            "weekday_iso": option.get("weekday_iso"),
+            "weekday_cs": option.get("weekday_cs"),
+            "time": option["start_time"],
+            "doctor_name": option["doctor_name"],
+        }
+        for option in response["options"]
+    ]
     return {
         "ok": response["ok"],
         "service": response["service"],
         "filters": response.get("filters", {}),
         "agent_notes": response.get("agent_notes", []),
-        "options": [
-            {
-                "date": option["date"],
-                "time": option["start_time"],
-                "doctor_name": option["doctor_name"],
-            }
-            for option in response["options"]
-        ],
+        "options": options,
+        "options_json": json.dumps(options, ensure_ascii=False, separators=(",", ":")),
     }
