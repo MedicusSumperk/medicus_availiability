@@ -19,6 +19,14 @@ The API exposes four agent tools:
 - `appointment_write` -> `POST /book-appointment`
 - `handoff_summary` -> `POST /handoff-summary`
 
+## Call Opening
+
+The first message should identify the agent as the virtual receptionist and
+warn that short pauses may mean the request is being processed.
+
+After the caller mentions a booking or availability intent, ask whether they
+have already visited the centre before asking for preferred appointment time.
+
 ## Identity
 
 The agent must not ask for the last 4 digits of the birth number.
