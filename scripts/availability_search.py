@@ -34,6 +34,7 @@ from business_rules import (
 
 
 DEFAULT_DAYS_AHEAD = 30
+DEFAULT_ENSURE_FIRST_AVAILABLE_DAYS = 180
 DEFAULT_LIMIT = 3
 MAX_LIMIT = 10
 WEEKDAY_NAMES_CS = {
@@ -252,9 +253,14 @@ def _option_allowed_by_operational_rules(
     return True
 
 
-def _apply_spoken_time(option: dict[str, Any], service: str, rules: dict[str, Any]) -> dict[str, Any]:
+def _apply_spoken_time(
+    option: dict[str, Any],
+    service: str,
+    rules: dict[str, Any],
+    weekday_iso: int | None = None,
+) -> dict[str, Any]:
     start_time = str(option["start_time"])
-    bucket = afternoon_bucket_for_time(rules, service, start_time)
+    bucket = afternoon_bucket_for_time(rules, service, start_time, weekday_iso)
     if not bucket:
         option["spoken_time_label"] = start_time
         option["technical_start_time"] = start_time
@@ -286,7 +292,12 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
     date_from = _parse_date(request.get("date_from")) or today
     explicit_date_to = _parse_date(request.get("date_to"))
     days_ahead = int(request.get("days_ahead") or DEFAULT_DAYS_AHEAD)
-    date_to = explicit_date_to or (date_from + timedelta(days=days_ahead - 1))
+    ensure_first_available = _parse_bool(request.get("ensure_first_available"), True)
+    max_days_ahead = int(request.get("max_days_ahead") or DEFAULT_ENSURE_FIRST_AVAILABLE_DAYS)
+    effective_days_ahead = days_ahead
+    if explicit_date_to is None and ensure_first_available:
+        effective_days_ahead = max(days_ahead, max_days_ahead)
+    date_to = explicit_date_to or (date_from + timedelta(days=effective_days_ahead - 1))
 
     include_weekends = _parse_bool(request.get("include_weekends"), False)
     weekdays = _parse_weekdays(request.get("weekdays", request.get("weekday", [])))
@@ -311,6 +322,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
         )
 
     options: list[dict[str, Any]] = []
+    spoken_option_keys: set[tuple[str, str, int, str]] = set()
     scanned_days = 0
     scanned_contexts = 0
     context_candidate_limit = limit
@@ -355,11 +367,21 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                         continue
                     if not _option_matches_time(option, time_from, time_to):
                         continue
-                    option = _apply_spoken_time(option, service, rules)
+                    weekday_payload = _weekday_payload(target_date)
+                    option = _apply_spoken_time(option, service, rules, weekday_payload["weekday_iso"])
+                    spoken_key = (
+                        target_date.isoformat(),
+                        service,
+                        int(doctor["doctor_id"]),
+                        str(option.get("spoken_time_label", option["start_time"])),
+                    )
+                    if spoken_key in spoken_option_keys:
+                        continue
+                    spoken_option_keys.add(spoken_key)
                     options.append(
                         {
                             "date": target_date.isoformat(),
-                            **_weekday_payload(target_date),
+                            **weekday_payload,
                             "service": service,
                             "start_time": option["start_time"],
                             "technical_start_time": option.get("technical_start_time", option["start_time"]),
@@ -383,6 +405,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                             "date_range": {
                                 "date_from": date_from.isoformat(),
                                 "date_to": date_to.isoformat(),
+                                "searched_days_ahead": effective_days_ahead,
                             },
                             "filters": {
                                 "weekdays": sorted(weekdays),
@@ -407,6 +430,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
         "date_range": {
             "date_from": date_from.isoformat(),
             "date_to": date_to.isoformat(),
+            "searched_days_ahead": effective_days_ahead,
         },
         "filters": {
             "weekdays": sorted(weekdays),

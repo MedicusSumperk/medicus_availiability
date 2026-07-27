@@ -24,6 +24,10 @@ Key parameters:
 - `compact`: use `true` for voice
 - `emergency`: set `true` only for emergency/pohotovost requests
 
+For "nearest available" requests, do not set `date_to` to a short artificial
+window. Send `date_from` plus service/time/doctor filters and let the backend
+extend the search until it finds the nearest matching slot.
+
 Key response fields:
 
 - `options[].start_time`: exact technical slot for booking writes
@@ -33,6 +37,10 @@ Key response fields:
 
 If `spoken_time_label` differs from `start_time`, say `spoken_time_label` to the
 caller but keep the technical `start_time` for `appointment_write`.
+
+The backend may deduplicate multiple technical slots that share the same
+`spoken_time_label` for the same doctor/date/service. The returned option still
+contains the exact technical slot to use for booking.
 
 ## patient_lookup
 

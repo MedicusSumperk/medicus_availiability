@@ -116,6 +116,12 @@ def _rule_matrix_rows(rules: dict[str, Any]) -> list[tuple[str, str, Any, str]]:
                     "Only this service uses the bucket; empty would mean all services.",
                 ),
                 (
+                    f"Afternoon bucket {index + 1} weekdays",
+                    f"{prefix}.weekdays",
+                    bucket.get("weekdays", []),
+                    "Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday.",
+                ),
+                (
                     f"Afternoon bucket {index + 1} technical range",
                     f"{prefix}.time_from / {prefix}.time_to",
                     f"{bucket.get('time_from')} - {bucket.get('time_to')}",
@@ -242,6 +248,8 @@ def _change_action(config_path: str) -> str:
         return "Set false to disable this spoken-time bucket without deleting it."
     if "afternoon_arrival_buckets" in config_path and ".service" in config_path:
         return "Change the service key or leave empty/null to apply this bucket to all services."
+    if "afternoon_arrival_buckets" in config_path and ".weekdays" in config_path:
+        return "Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days."
     if "afternoon_arrival_buckets" in config_path and "time_from" in config_path:
         return "Edit the technical slot range; writes still use the exact technical start_time."
     if "afternoon_arrival_buckets" in config_path and "spoken_time_label" in config_path:
@@ -338,13 +346,13 @@ def render_business_rules(rules: dict[str, Any]) -> str:
             f"- Dermatoscope shared capacity: `{shared.get('capacity', 1)}`",
             f"- Before-time emergency gate: `{_enabled(before.get('enabled'))}` before `{before.get('before')}` using request flag `{before.get('request_flag', 'emergency')}`",
             "",
-            "| Bucket | Service | Technical time range | Spoken label | Status |",
-            "| --- | --- | --- | --- | --- |",
+            "| Bucket | Service | Weekdays | Technical time range | Spoken label | Status |",
+            "| --- | --- | --- | --- | --- | --- |",
         ]
     )
     for index, bucket in enumerate(buckets, start=1):
         lines.append(
-            f"| {index} | {bucket.get('service', 'all')} | {bucket.get('time_from')} - {bucket.get('time_to')} | {bucket.get('spoken_time_label')} | {_enabled(bucket.get('enabled', True))} |"
+            f"| {index} | {bucket.get('service', 'all')} | {_list_or_all(bucket.get('weekdays'))} | {bucket.get('time_from')} - {bucket.get('time_to')} | {bucket.get('spoken_time_label')} | {_enabled(bucket.get('enabled', True))} |"
         )
 
     lines.extend(["", "## Services", ""])

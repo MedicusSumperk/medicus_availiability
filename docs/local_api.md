@@ -557,6 +557,11 @@ Supported filters:
 - `date_from`: ISO date; defaults to today
 - `date_to`: ISO date; optional
 - `days_ahead`: used when `date_to` is omitted; default from API config
+- `ensure_first_available`: optional boolean, defaults to `true`; when `date_to`
+  is omitted, the backend may extend a short `days_ahead` window to find the
+  nearest matching slot
+- `max_days_ahead`: optional cap for the extended nearest-slot search; defaults
+  to backend production logic
 - `include_weekends`: default `false`
 - `weekdays`: explicit ISO weekday filter from the request
 - `weekday`: optional scalar alias; normalized to `weekdays: [weekday]`
@@ -576,10 +581,20 @@ Supported filters:
 
 `limit` is the response limit. When a `time_from` or `time_to` filter is present, the backend scans a larger internal candidate set before applying the time filter so afternoon/evening results are not accidentally cut off by early-day candidates.
 
+For "nearest available" voice requests, omit `date_to`. A short default
+`days_ahead` window must not cause an empty response when a later matching slot
+exists; with `ensure_first_available=true`, the backend extends the search up to
+its configured cap. If the caller explicitly asks for a concrete month or date
+range, send `date_from` and `date_to` and the API respects that range.
+
 Availability time fields:
 
 - `start_time` / `technical_start_time`: exact technical slot to send to `/book-appointment`.
 - `spoken_time_label`: time the agent should say to the caller. This can differ from `start_time` for reception-style afternoon bucket booking.
+- Options with the same `spoken_time_label` for the same date, service, and
+  doctor are deduplicated before the response limit is applied. This prevents
+  the voice agent from offering the same communicated bucket time twice while
+  still preserving one technical slot for `/book-appointment`.
 
 Production business rules are loaded from `config/business_rules.example.json`
 plus optional server-local `config/business_rules.local.json`. The

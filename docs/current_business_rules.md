@@ -2,7 +2,7 @@
 
 <!-- Generated from config/business_rules*.json. Do not edit by hand. -->
 
-Generated at: 2026-07-27T13:48:25
+Generated at: 2026-07-27T15:58:09
 Rules version: `2026-07-production-v1`
 
 ## Validation
@@ -22,6 +22,7 @@ Rules version: `2026-07-production-v1`
 | Emergency request flag | `operational_rules.before_time_requires_emergency.request_flag` | `emergency` | The availability request field that unlocks emergency-only slots. | Rename only if the API/tool request field is changed at the same time. |
 | Afternoon bucket 1 enabled | `operational_rules.afternoon_arrival_buckets[0].enabled` | `true` | If enabled, matching technical slots get a separate spoken time label. | Set false to disable this spoken-time bucket without deleting it. |
 | Afternoon bucket 1 service | `operational_rules.afternoon_arrival_buckets[0].service` | `skin` | Only this service uses the bucket; empty would mean all services. | Change the service key or leave empty/null to apply this bucket to all services. |
+| Afternoon bucket 1 weekdays | `operational_rules.afternoon_arrival_buckets[0].weekdays` | `[]` | Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday. | Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days. |
 | Afternoon bucket 1 technical range | `operational_rules.afternoon_arrival_buckets[0].time_from / operational_rules.afternoon_arrival_buckets[0].time_to` | `15:00 - 16:00` | Technical start_time values in this range are still used for write. | Edit the technical slot range; writes still use the exact technical start_time. |
 | Afternoon bucket 1 spoken label | `operational_rules.afternoon_arrival_buckets[0].spoken_time_label` | `15:00` | This is the time the agent should say to the caller. | Edit what the agent should say to the caller for matching technical slots. |
 | skin: agent may offer availability | `services.skin.agent_can_offer_availability` | `true` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
@@ -70,9 +71,9 @@ Rules version: `2026-07-production-v1`
 - Dermatoscope shared capacity: `1`
 - Before-time emergency gate: `enabled` before `08:00` using request flag `emergency`
 
-| Bucket | Service | Technical time range | Spoken label | Status |
-| --- | --- | --- | --- | --- |
-| 1 | skin | 15:00 - 16:00 | 15:00 | enabled |
+| Bucket | Service | Weekdays | Technical time range | Spoken label | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | skin | all unless excluded | 15:00 - 16:00 | 15:00 | enabled |
 
 ## Services
 

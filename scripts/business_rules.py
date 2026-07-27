@@ -92,6 +92,25 @@ def validate_business_rules(rules: dict[str, Any]) -> list[str]:
     if before_time.get("enabled") and not before_time.get("before"):
         errors.append("before_time_requires_emergency.enabled requires before")
 
+    for index, bucket in enumerate(rules.get("operational_rules", {}).get("afternoon_arrival_buckets", [])):
+        weekdays = bucket.get("weekdays", [])
+        if weekdays:
+            try:
+                normalized_weekdays = [int(value) for value in weekdays]
+            except (TypeError, ValueError):
+                errors.append(f"afternoon_arrival_buckets[{index}].weekdays must contain ISO weekday numbers")
+                continue
+            invalid_weekdays = [value for value in normalized_weekdays if value < 1 or value > 7]
+            if invalid_weekdays:
+                errors.append(
+                    f"afternoon_arrival_buckets[{index}].weekdays must contain ISO weekday numbers 1..7"
+                )
+        if bucket.get("enabled", True):
+            if not bucket.get("time_from") or not bucket.get("time_to"):
+                errors.append(f"afternoon_arrival_buckets[{index}] requires time_from and time_to")
+            if not bucket.get("spoken_time_label"):
+                errors.append(f"afternoon_arrival_buckets[{index}] requires spoken_time_label")
+
     return errors
 
 
@@ -161,11 +180,19 @@ def before_time_rule(rules: dict[str, Any]) -> dict[str, Any]:
     return rules.get("operational_rules", {}).get("before_time_requires_emergency", {})
 
 
-def afternoon_bucket_for_time(rules: dict[str, Any], service_key: str, start_time: str) -> dict[str, Any] | None:
+def afternoon_bucket_for_time(
+    rules: dict[str, Any],
+    service_key: str,
+    start_time: str,
+    weekday_iso: int | None = None,
+) -> dict[str, Any] | None:
     for bucket in rules.get("operational_rules", {}).get("afternoon_arrival_buckets", []):
         if not bucket.get("enabled", True):
             continue
         if bucket.get("service") not in (None, "", service_key):
+            continue
+        weekdays = bucket.get("weekdays", [])
+        if weekdays and weekday_iso is not None and weekday_iso not in {int(value) for value in weekdays}:
             continue
         if str(bucket.get("time_from")) <= start_time <= str(bucket.get("time_to")):
             return bucket

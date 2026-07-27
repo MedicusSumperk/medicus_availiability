@@ -11,7 +11,12 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import availability_search  # noqa: E402
 import appointment_write  # noqa: E402
-from business_rules import agent_context_overlay, load_business_rules, validate_business_rules  # noqa: E402
+from business_rules import (  # noqa: E402
+    afternoon_bucket_for_time,
+    agent_context_overlay,
+    load_business_rules,
+    validate_business_rules,
+)
 from handoff_summary import build_handoff_summary  # noqa: E402
 from render_business_rules import render_business_rules  # noqa: E402
 
@@ -69,6 +74,28 @@ class BusinessRulesTests(unittest.TestCase):
         )
 
         self.assertEqual(summary["transfer_target"], "+420123456789")
+
+    def test_afternoon_bucket_can_be_limited_by_weekday(self):
+        rules = {
+            "operational_rules": {
+                "afternoon_arrival_buckets": [
+                    {
+                        "enabled": True,
+                        "service": "skin",
+                        "weekdays": [3],
+                        "time_from": "15:00",
+                        "time_to": "16:00",
+                        "spoken_time_label": "15:00",
+                    }
+                ]
+            }
+        }
+
+        self.assertIsNone(afternoon_bucket_for_time(rules, "skin", "15:10", weekday_iso=2))
+        self.assertEqual(
+            afternoon_bucket_for_time(rules, "skin", "15:10", weekday_iso=3)["spoken_time_label"],
+            "15:00",
+        )
 
     def test_write_revalidation_prefers_technical_start_time(self):
         captured_request = {}
@@ -219,6 +246,58 @@ class AvailabilityRulesTests(unittest.TestCase):
         self.assertEqual(option["start_time"], "15:20")
         self.assertEqual(option["technical_start_time"], "15:20")
         self.assertEqual(option["spoken_time_label"], "15:00")
+
+    def test_afternoon_bucket_options_are_deduplicated_by_spoken_time(self):
+        with (
+            patch.object(availability_search, "load_doctors", return_value=self.doctors),
+            patch.object(availability_search, "compute_day_availability", side_effect=self._availability),
+            patch.object(availability_search, "load_dermatoscope_blockers", return_value=[]),
+        ):
+            response = availability_search.search_availability(
+                object(),
+                {
+                    "service": "skin",
+                    "date_from": "2026-07-27",
+                    "date_to": "2026-07-27",
+                    "time_from": "15:00",
+                    "time_to": "16:00",
+                    "doctor_id": 2,
+                    "limit": 3,
+                },
+                self.base_config,
+            )
+
+        spoken_times = [option["spoken_time_label"] for option in response["options"]]
+        self.assertEqual(spoken_times.count("15:00"), 1)
+
+    def test_first_available_extends_short_default_window(self):
+        def delayed_availability(_cursor, _doctor, target_date):
+            if target_date.isoformat() != "2026-07-31":
+                return {"has_schedule": True, "contexts": [{"idprac": 1, "slot_interval_minutes": 10, "free_slots": []}]}
+            return {
+                "has_schedule": True,
+                "contexts": [{"idprac": 1, "slot_interval_minutes": 10, "free_slots": ["09:00", "09:10"]}],
+            }
+
+        with (
+            patch.object(availability_search, "load_doctors", return_value=[self.doctors[0]]),
+            patch.object(availability_search, "compute_day_availability", side_effect=delayed_availability),
+            patch.object(availability_search, "load_dermatoscope_blockers", return_value=[]),
+        ):
+            response = availability_search.search_availability(
+                object(),
+                {
+                    "service": "skin",
+                    "date_from": "2026-07-27",
+                    "days_ahead": 2,
+                    "max_days_ahead": 7,
+                    "limit": 1,
+                },
+                self.base_config,
+            )
+
+        self.assertEqual(response["date_range"]["searched_days_ahead"], 7)
+        self.assertEqual(response["options"][0]["date"], "2026-07-31")
 
     def test_plasma_service_filters_to_allowed_doctor(self):
         with (

@@ -67,6 +67,7 @@
       {
         "enabled": true,
         "service": "skin",
+        "weekdays": [],
         "time_from": "15:00",
         "time_to": "16:00",
         "spoken_time_label": "15:00",
