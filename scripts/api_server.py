@@ -22,6 +22,7 @@ if str(CURRENT_DIR) not in sys.path:
 from availability_search import compact_options, search_availability  # noqa: E402
 from appointment_write import write_appointment  # noqa: E402
 from db import connect_to_db  # noqa: E402
+from handoff_summary import build_handoff_summary  # noqa: E402
 from patient_lookup import lookup_patient  # noqa: E402
 
 
@@ -54,6 +55,7 @@ class AvailabilityRequest(BaseModel):
     time_to: str | None = None
     doctor_id: int | None = None
     doctor_name: str | None = None
+    emergency: bool = False
     limit: int | None = None
     compact: bool = False
 
@@ -166,6 +168,17 @@ def book_appointment(request: dict[str, Any] | None = Body(default=None)) -> dic
     finally:
         if connection is not None:
             connection.close()
+
+
+@app.post("/handoff-summary", dependencies=[Depends(require_auth)])
+def handoff_summary(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+    try:
+        payload = {key: value for key, value in (request or {}).items() if value is not None}
+        return build_handoff_summary(payload, API_CONFIG)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"handoff summary failed: {error}") from error
 
 
 if __name__ == "__main__":

@@ -6,6 +6,10 @@ data/agent_context/*.md
 data/api/*.txt
 logs/
 outputs/
+archive/
+.codex_spreadsheet_work/
+current_11labs_agent.json
+docs/test_runs/
 **pycache**/
 .venv/
 .env

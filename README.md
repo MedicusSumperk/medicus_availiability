@@ -115,17 +115,30 @@ GET  /health
 POST /doctor-availability
 POST /patient-lookup       # read-only patient + future appointment lookup
 POST /book-appointment     # create/cancel/reschedule behind local write flags
+POST /handoff-summary      # read-only staff handoff summary
 ```
 
 `/doctor-availability` returns a short list of bookable options. With no body it returns the first default skin options. With filters it searches a targeted date/time window and stops after the requested limit. See `docs/local_api.md`.
 
 The availability endpoint also accepts `doctor_name` as free text. The API resolves it against Medicus users and filters by doctor only when the match is clear.
 For tool callers, common aliases such as `doctor`, `preferred_doctor`, and `doctorName` are normalized to `doctor_name`.
-`IDUZI=2` is excluded as a suspected inactive duplicate Bednar row.
+Current server config maps Bednar availability to `IDUZI=2`; `IDUZI=4` is excluded because it exists in `UZIVATEL` but has no schedule contexts in the tested window.
 
-`/patient-lookup` finds patient candidates in `KAR`, supports phone lookup through `KARKONTAKT`, supports name/date/full `RODCIS` lookup, verifies identity with the last 4 digits of `RODCIS`, and returns future plus optionally past `OBJOBJ` appointments after verification. It is read-only.
+Stable API base URL for current testing:
+
+```text
+https://medicus-api.kreli.org
+```
+
+Older `trycloudflare` URLs in historical exports are stale unless explicitly regenerated for a one-off test.
+
+`/patient-lookup` finds patient candidates in `KAR`, supports phone lookup through `KARKONTAKT`, supports name/date/full `RODCIS` lookup, verifies identity when the provided data narrows the result to one unique patient, and returns future plus optionally past `OBJOBJ` appointments after verification. It is read-only.
 
 `/book-appointment` can create, cancel, or reschedule appointments when local write flags are enabled. It revalidates create/reschedule requests against live availability before writing. For `service=skin`, it writes the main skin appointment plus the immediate dermatoscope reservation in one transaction.
+
+Business rules are loaded from `config/business_rules.example.json` plus optional server-local `config/business_rules.local.json`. Run `python scripts\render_business_rules.py` to generate the human-readable `docs/current_business_rules.md`.
+
+`/handoff-summary` prepares a compact staff-facing context for live transfer or callback. It does not transfer the call by itself.
 
 Quick trycloudflare test tunnel:
 
@@ -215,11 +228,12 @@ Use booking write tests only during controlled client-approved UI verification.
 - Phase 1 read-only availability pipeline is validated.
 - Phase 2 weekly CLI runs on the Windows server and generates usable reports.
 - Phase 3 committed `OBJOBJ` insert and `IDCINNOSTI` activity/color propagation are verified in Medicus UI.
-- Local API + trycloudflare + n8n chat agent PoC is confirmed for fast read-only availability lookup against real DB data.
+- Local API + Cloudflare Tunnel agent flow is confirmed for fast availability lookup against real DB data.
 - `/patient-lookup` is implemented and smoke-tested by full `RODCIS` for test patient `IDPAC=33411`; phone lookup uses `KARKONTAKT`, but the test patient has no contact row.
-- Dr. Bednar active `IDUZI` is confirmed as `4`; inactive duplicate `IDUZI=2` is excluded.
+- Stable base URL for current testing is `https://medicus-api.kreli.org`.
+- Bednar availability currently resolves to `IDUZI=2`; server local config excludes `IDUZI=4`.
 - ElevenLabs voice agent availability tool test is confirmed and very fast.
-- Current priority: test both read-only tools in the agent flow, then replace the temporary trycloudflare URL with a stable named Cloudflare Tunnel.
+- Current priority: continue client/live testing on the stable tunnel and keep local server config aligned with DB findings.
 
 ## Detailed Context
 

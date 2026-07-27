@@ -15,6 +15,7 @@ GET  /health
 POST /doctor-availability
 POST /patient-lookup
 POST /book-appointment
+POST /handoff-summary
 ```
 
 Currently implemented:
@@ -23,10 +24,13 @@ Currently implemented:
 - `/doctor-availability`
 - `/patient-lookup`
 - `/book-appointment`
+- `/handoff-summary`
 
 `/patient-lookup` reads patient card and future appointment data but performs no
 writes. `/book-appointment` can create, cancel, or reschedule appointments only
 when `enable_appointment_writes` is enabled in local config.
+`/handoff-summary` is read-only and prepares live-transfer or callback context
+for staff.
 
 ## Agent Tool Contract
 
@@ -394,6 +398,38 @@ If `include_past_appointments` is true, `past_appointments` contains recent past
 The response also includes `appointments_json` and `past_appointments_json` as
 stringified JSON arrays for ElevenLabs flattened dynamic variable assignments.
 
+## Handoff Summary Request
+
+`POST /handoff-summary`
+
+Purpose:
+
+- Prepare a concise staff-facing context for live transfer or callback.
+- Keep handoff summary formatting in the backend instead of duplicating it in the agent prompt.
+- Stay read-only.
+
+Supported request fields:
+
+- `mode`: `live_transfer` or `callback`.
+- `caller_phone` or `phone`.
+- `reason`.
+- `intent`.
+- `patient_verified`, `patient`, or internal `idpac`.
+- `selected_slot`.
+- `appointments`.
+- `conversation_summary` or `summary`.
+- `recommended_next_step` or `next_step`.
+
+Response fields:
+
+- `ok`
+- `mode`
+- `reason`
+- `caller_phone`
+- `summary_for_staff`
+- `recommended_next_step`
+- `transfer_target`
+
 ## Appointment Write Request
 
 `POST /book-appointment`
@@ -588,8 +624,18 @@ Supported filters:
 - Current server finding/config: Bednar availability is on `IDUZI=2`; `IDUZI=4` is excluded because it exists in `UZIVATEL` but has no schedule contexts in the tested window.
 - `limit`: defaults to API config, capped by `max_limit`
 - `compact`: return a shorter voice-agent payload
+- `emergency`: allow emergency/pohotovost availability hidden from normal search, including slots before 08:00
 
 `limit` is the response limit. When a `time_from` or `time_to` filter is present, the backend scans a larger internal candidate set before applying the time filter so afternoon/evening results are not accidentally cut off by early-day candidates.
+
+Availability time fields:
+
+- `start_time` / `technical_start_time`: exact technical slot to send to `/book-appointment`.
+- `spoken_time_label`: time the agent should say to the caller. This can differ from `start_time` for reception-style afternoon bucket booking.
+
+Production business rules are loaded from `config/business_rules.example.json`
+plus optional server-local `config/business_rules.local.json`. The
+human-readable generated view is `docs/current_business_rules.md`.
 
 Doctor-name behavior:
 

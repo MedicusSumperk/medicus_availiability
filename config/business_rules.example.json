@@ -1,0 +1,133 @@
+{
+  "version": "2026-07-production-v1",
+  "doctors": {
+    "known": [
+      {
+        "id": 1,
+        "name": "Marta Skolarova",
+        "status": "active"
+      },
+      {
+        "id": 2,
+        "name": "Rostislav Bednar",
+        "status": "active",
+        "note": "Active Bednar row used by availability/write revalidation."
+      },
+      {
+        "id": 4,
+        "name": "Rostislav Bednar",
+        "status": "excluded",
+        "note": "Duplicate row without schedule contexts in tested window."
+      },
+      {
+        "id": 8,
+        "name": "Maria Bartonova",
+        "status": "active"
+      },
+      {
+        "id": 10,
+        "name": "Petra Pospisilova",
+        "status": "excluded",
+        "note": "No schedule contexts in tested window."
+      },
+      {
+        "id": 11,
+        "name": "Zuzana Slosarova",
+        "status": "active"
+      },
+      {
+        "id": 12,
+        "name": "Filip Ferencz",
+        "status": "active"
+      },
+      {
+        "id": 13,
+        "name": "Doctor 13",
+        "status": "active",
+        "note": "Schedule interval may vary by day/context."
+      }
+    ],
+    "globally_allowed_doctor_ids": [],
+    "globally_excluded_doctor_ids": [4, 10]
+  },
+  "shared_resources": {
+    "dermatoscope": {
+      "blocking_idcinnosti": [1, 2, 5, 6],
+      "capacity": 1
+    }
+  },
+  "operational_rules": {
+    "before_time_requires_emergency": {
+      "enabled": true,
+      "before": "08:00",
+      "request_flag": "emergency",
+      "agent_note": "Before 08:00, only emergency/pohotovost slots may be offered."
+    },
+    "afternoon_arrival_buckets": [
+      {
+        "enabled": true,
+        "service": "skin",
+        "time_from": "15:00",
+        "time_to": "16:00",
+        "spoken_time_label": "15:00",
+        "note": "Reception may ask afternoon patients to arrive at one shared time while the backend writes exact technical slots."
+      }
+    ]
+  },
+  "services": {
+    "skin": {
+      "label": "Kozni vysetreni",
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": true,
+      "idcinnosti": null,
+      "duration": {
+        "mode": "schedule_interval",
+        "minutes": null
+      },
+      "followup": {
+        "create": true,
+        "kind": "dermatoscope_reservation",
+        "idcinnosti": 6,
+        "duration": {
+          "mode": "schedule_interval",
+          "minutes": null
+        },
+        "info": "AI_DERMATOSCOPE_RESERVATION"
+      },
+      "dermatoscope": {
+        "requires_shared_capacity": true
+      },
+      "allowed_doctor_ids": [],
+      "excluded_doctor_ids": [],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "main_row_plus_followup"
+      }
+    },
+    "plasma": {
+      "label": "Plazma",
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": true,
+      "idcinnosti": 3,
+      "duration": {
+        "mode": "fixed_minutes",
+        "minutes": 30
+      },
+      "info_marker": "plazma",
+      "allowed_doctor_ids": [8],
+      "excluded_doctor_ids": [2, 4],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "single_row"
+      }
+    }
+  }
+}

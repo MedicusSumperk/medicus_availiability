@@ -22,6 +22,15 @@ from agent_context import (
     parse_time,
 )
 from availability_engine import compute_day_availability, load_doctors
+from business_rules import (
+    afternoon_bucket_for_time,
+    agent_context_overlay,
+    before_time_rule,
+    filter_doctors_for_service,
+    is_service_in_season,
+    load_business_rules,
+    service_enabled_for_availability,
+)
 
 
 DEFAULT_DAYS_AHEAD = 30
@@ -137,6 +146,21 @@ def _filtered_doctors(doctors: list[dict[str, Any]], doctor_id: int | None) -> l
     return [doctor for doctor in doctors if int(doctor["doctor_id"]) == doctor_id]
 
 
+def _merge_config(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in override.items():
+        if key == "services" and isinstance(value, dict):
+            services = dict(merged.get("services", {}))
+            for service_key, service_value in value.items():
+                service = dict(services.get(service_key, {}))
+                service.update(service_value)
+                services[service_key] = service
+            merged["services"] = services
+        else:
+            merged[key] = value
+    return merged
+
+
 def _normalize_name(value: str) -> str:
     decomposed = unicodedata.normalize("NFKD", value.lower())
     ascii_text = "".join(char for char in decomposed if not unicodedata.combining(char))
@@ -206,18 +230,57 @@ def load_search_config() -> dict[str, Any]:
     """Load the same local rule config used by the agent context builder."""
     if LOCAL_CONFIG_PATH.exists():
         with LOCAL_CONFIG_PATH.open("r", encoding="utf-8-sig") as config_file:
-            return normalize_config(json.load(config_file))
-    return normalize_config(DEFAULT_CONFIG)
+            config = normalize_config(json.load(config_file))
+    else:
+        config = normalize_config(DEFAULT_CONFIG)
+
+    rules = load_business_rules()
+    return normalize_config(_merge_config(config, agent_context_overlay(rules)))
+
+
+def _option_allowed_by_operational_rules(
+    option: dict[str, Any],
+    service: str,
+    rules: dict[str, Any],
+    emergency: bool,
+) -> bool:
+    before_rule = before_time_rule(rules)
+    if before_rule.get("enabled") and not emergency:
+        before = _parse_time(before_rule.get("before"))
+        if before is not None and parse_time(option["start_time"]) < before:
+            return False
+    return True
+
+
+def _apply_spoken_time(option: dict[str, Any], service: str, rules: dict[str, Any]) -> dict[str, Any]:
+    start_time = str(option["start_time"])
+    bucket = afternoon_bucket_for_time(rules, service, start_time)
+    if not bucket:
+        option["spoken_time_label"] = start_time
+        option["technical_start_time"] = start_time
+        return option
+
+    option["spoken_time_label"] = str(bucket.get("spoken_time_label") or start_time)
+    option["technical_start_time"] = start_time
+    option["communication_note"] = bucket.get("note")
+    return option
 
 
 def search_availability(cursor, request: dict[str, Any] | None = None, base_config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Return the first matching service options for a compact tool response."""
     request = request or {}
-    config = normalize_config(base_config) if base_config is not None else load_search_config()
+    rules = load_business_rules()
+    if base_config is not None:
+        config = normalize_config(_merge_config(normalize_config(base_config), agent_context_overlay(rules)))
+    else:
+        config = load_search_config()
 
     service = str(request.get("service") or "skin").strip().lower()
-    if service not in {"skin", "plasma"}:
-        raise ValueError("service must be one of: skin, plasma")
+    services = config.get("services", DEFAULT_CONFIG["services"])
+    if service not in services:
+        raise ValueError(f"service must be one of: {', '.join(sorted(services))}")
+    if not service_enabled_for_availability(rules, service):
+        raise ValueError(f"service is not agent-facing for availability: {service}")
 
     today = date.today()
     date_from = _parse_date(request.get("date_from")) or today
@@ -230,21 +293,37 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
     effective_weekdays = _effective_weekdays(include_weekends, weekdays)
     time_from = _parse_time(request.get("time_from"))
     time_to = _parse_time(request.get("time_to"))
+    emergency_rule = before_time_rule(rules)
+    emergency_flag = str(emergency_rule.get("request_flag") or "emergency")
+    emergency = _parse_bool(request.get(emergency_flag), False)
     doctor_id = int(request["doctor_id"]) if request.get("doctor_id") is not None else None
     doctor_name = str(request.get("doctor_name") or "").strip() or None
     limit = min(max(int(request.get("limit") or DEFAULT_LIMIT), 1), int(request.get("max_limit") or MAX_LIMIT))
 
     fallback_slot_interval_minutes = int(config.get("slot_interval_minutes", 15))
     blocking_idcinnosti = [int(value) for value in config.get("dermatoscope_blocking_idcinnosti", [1, 2, 5, 6])]
-    services = config.get("services", DEFAULT_CONFIG["services"])
     all_doctors = filter_doctors(load_doctors(cursor), config)
-    doctors, doctor_filter, agent_notes = _resolve_doctor_filter(all_doctors, doctor_id, doctor_name)
+    service_doctors = filter_doctors_for_service(all_doctors, rules, service)
+    doctors, doctor_filter, agent_notes = _resolve_doctor_filter(service_doctors, doctor_id, doctor_name)
+    if emergency_rule.get("enabled") and not emergency:
+        agent_notes.append(
+            f"Slots before {emergency_rule.get('before')} are hidden unless {emergency_flag}=true."
+        )
 
     options: list[dict[str, Any]] = []
     scanned_days = 0
     scanned_contexts = 0
+    context_candidate_limit = limit
+    if time_from is not None or time_to is not None or (emergency_rule.get("enabled") and not emergency):
+        context_candidate_limit = max(
+            limit,
+            int(request.get("availability_max_limit") or request.get("max_limit") or MAX_LIMIT),
+            50,
+        )
 
     for target_date in _iter_dates(date_from, date_to, include_weekends, weekdays):
+        if not is_service_in_season(rules, service, target_date.strftime("%m-%d")):
+            continue
         scanned_days += 1
         blockers = load_dermatoscope_blockers(cursor, target_date, blocking_idcinnosti)
 
@@ -261,25 +340,30 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                         blockers,
                         services["skin"],
                         fallback_slot_interval_minutes,
-                        limit,
+                        context_candidate_limit,
                     )
                 else:
                     context_options, _rejections = build_simple_service_options(
                         context,
                         services["plasma"],
                         fallback_slot_interval_minutes,
-                        limit,
+                        context_candidate_limit,
                     )
 
                 for option in context_options:
+                    if not _option_allowed_by_operational_rules(option, service, rules, emergency):
+                        continue
                     if not _option_matches_time(option, time_from, time_to):
                         continue
+                    option = _apply_spoken_time(option, service, rules)
                     options.append(
                         {
                             "date": target_date.isoformat(),
                             **_weekday_payload(target_date),
                             "service": service,
                             "start_time": option["start_time"],
+                            "technical_start_time": option.get("technical_start_time", option["start_time"]),
+                            "spoken_time_label": option.get("spoken_time_label", option["start_time"]),
                             "end_time": option["end_time"],
                             "duration_minutes": option.get("duration_minutes"),
                             "slot_interval_minutes": option.get("slot_interval_minutes"),
@@ -289,6 +373,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                             "idcinnosti": option.get("idcinnosti"),
                             "info_marker": option.get("info_marker"),
                             "followup_dermatoscope_slot": option.get("followup_dermatoscope_slot"),
+                            "communication_note": option.get("communication_note"),
                         }
                     )
                     if len(options) >= limit:
@@ -306,6 +391,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                                 "time_from": time_from.strftime("%H:%M") if time_from else None,
                                 "time_to": time_to.strftime("%H:%M") if time_to else None,
                                 "doctor": doctor_filter,
+                                "emergency": emergency,
                             },
                             "agent_notes": agent_notes,
                             "options": options,
@@ -329,6 +415,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
             "time_from": time_from.strftime("%H:%M") if time_from else None,
             "time_to": time_to.strftime("%H:%M") if time_to else None,
             "doctor": doctor_filter,
+            "emergency": emergency,
         },
         "agent_notes": agent_notes,
         "options": options,
@@ -347,7 +434,10 @@ def compact_options(response: dict[str, Any]) -> dict[str, Any]:
             "weekday": option.get("weekday"),
             "weekday_iso": option.get("weekday_iso"),
             "weekday_cs": option.get("weekday_cs"),
-            "time": option["start_time"],
+            "time": option.get("spoken_time_label", option["start_time"]),
+            "start_time": option["start_time"],
+            "technical_start_time": option.get("technical_start_time", option["start_time"]),
+            "spoken_time_label": option.get("spoken_time_label", option["start_time"]),
             "doctor_name": option["doctor_name"],
         }
         for option in response["options"]

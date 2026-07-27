@@ -10,10 +10,10 @@ from datetime import date, datetime, time
 from typing import Any
 
 from availability_search import search_availability
+from business_rules import load_business_rules
 
 
 SUPPORTED_ACTIONS = {"create", "cancel", "reschedule"}
-SUPPORTED_SERVICES = {"skin", "plasma"}
 DEFAULT_TYPE = 1
 DEFAULT_PRISEL = "N"
 DEFAULT_CREATED_BY = 10
@@ -88,10 +88,18 @@ def _info_prefix(config: dict[str, Any]) -> str:
 
 
 def _skin_followup_idcinnosti(config: dict[str, Any]) -> int:
+    rules = load_business_rules()
+    followup = rules.get("services", {}).get("skin", {}).get("followup", {})
+    if followup.get("idcinnosti") is not None:
+        return int(followup["idcinnosti"])
     return int(config.get("skin_followup_idcinnosti") or DEFAULT_SKIN_FOLLOWUP_IDCINNOSTI)
 
 
 def _skin_followup_info(config: dict[str, Any]) -> str:
+    rules = load_business_rules()
+    followup = rules.get("services", {}).get("skin", {}).get("followup", {})
+    if _clean(followup.get("info")):
+        return _clean(followup["info"])
     return _clean(config.get("skin_followup_info")) or DEFAULT_SKIN_FOLLOWUP_INFO
 
 
@@ -222,11 +230,20 @@ def _expand_related_appointment_ids(
 
 def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, Any]:
     service = _clean(request.get("service") or "skin").lower()
-    if service not in SUPPORTED_SERVICES:
-        raise ValueError("service must be one of: skin, plasma")
+    rules = load_business_rules()
+    supported_services = {
+        service_key
+        for service_key, service_rules in rules.get("services", {}).items()
+        if service_rules.get("agent_can_book_finally", True)
+    }
+    if service not in supported_services:
+        raise ValueError(f"service must be one of: {', '.join(sorted(supported_services))}")
 
     target_date = _parse_date(request.get("date"), "date")
-    start_time = _parse_time(request.get("time") or request.get("start_time"), "time")
+    start_time = _parse_time(
+        request.get("start_time") or request.get("technical_start_time") or request.get("time"),
+        "start_time",
+    )
     if request.get("doctor_id") is None and not request.get("doctor_name"):
         raise ValueError("doctor_name or doctor_id is required for appointment writes")
 
@@ -243,6 +260,8 @@ def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, An
         availability_request["doctor_id"] = int(request["doctor_id"])
     if request.get("doctor_name"):
         availability_request["doctor_name"] = request["doctor_name"]
+    if request.get("emergency") is not None:
+        availability_request["emergency"] = request["emergency"]
 
     response = search_availability(cursor, availability_request)
     doctor_filter = response.get("filters", {}).get("doctor", {})

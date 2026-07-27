@@ -68,6 +68,8 @@ class AvailabilityFilterTests(unittest.TestCase):
         )
 
         self.assertEqual(compact["options"][0]["weekday_iso"], 1)
+        self.assertEqual(compact["options"][0]["start_time"], "08:30")
+        self.assertEqual(compact["options"][0]["spoken_time_label"], "08:30")
         self.assertEqual(compact["options"][0]["weekday_cs"], "pondělí")
         self.assertIn('"weekday_cs":"pondělí"', compact["options_json"])
 
