@@ -33,9 +33,9 @@ when `enable_appointment_writes` is enabled in local config.
 Target beta behavior:
 
 1. Use `/doctor-availability` whenever the caller asks for available appointment terms, changes doctor/date/time/service preference, or asks for a specific doctor.
-2. Use `/patient-lookup` at the start of a call when caller phone is available, or later when the caller provides identifying data.
-3. Treat `status: "not_found"` as an unregistered-or-not-yet-matched patient. The agent should ask for name and birth date, then retry lookup; registration/write is not implemented yet.
-4. Treat `status: "needs_verification"` as a registered patient candidate that still requires identity verification. Ask for the last 4 digits of birth number, then call `/patient-lookup` again with `birth_number_last4`.
+2. Use `/patient-lookup` only when identity is needed for existing appointments, changes, cancellations, or final booking.
+3. Start with caller phone when available; if it is not enough, ask for surname and date of birth, then first name if needed.
+4. Treat `verification.verified=true` as the only gate for existing appointments and write actions. The backend sets it after a unique patient match; last-4 birth-number verification is no longer required.
 5. After successful verification, use `appointments` for future bookings and `past_appointments` when `include_past_appointments` was requested.
 6. Never discuss existing appointments before verification succeeds.
 7. Use `/book-appointment` only after the caller has selected a concrete term
@@ -115,7 +115,7 @@ http://127.0.0.1:8000
 For production-like use, run the API as a background process or Windows service and expose it through Cloudflare Tunnel:
 
 ```text
-https://medicus-api.example.cz -> http://127.0.0.1:8000
+https://medicus-api.kreli.org -> http://127.0.0.1:8000
 ```
 
 No inbound firewall port is needed on the Medicus server when Cloudflare Tunnel is used.
@@ -174,18 +174,20 @@ powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -Sk
 
 ## Stable Named Cloudflare Tunnel
 
-Next beta step: replace temporary `trycloudflare` URLs with a named Cloudflare Tunnel and stable hostname, for example:
+The current stable beta hostname is:
 
 ```text
-https://medicus-api.example.cz -> http://127.0.0.1:8000
+https://medicus-api.kreli.org -> http://127.0.0.1:8000
 ```
+
+Historical `https://...trycloudflare.com` URLs in local exports are stale unless a temporary tunnel was explicitly restarted for a one-off test.
 
 One-time Cloudflare setup outline:
 
 ```powershell
 C:\tools\cloudflared\cloudflared.exe tunnel login
 C:\tools\cloudflared\cloudflared.exe tunnel create medicus-api
-C:\tools\cloudflared\cloudflared.exe tunnel route dns medicus-api medicus-api.example.cz
+C:\tools\cloudflared\cloudflared.exe tunnel route dns medicus-api medicus-api.kreli.org
 ```
 
 Create a local `cloudflared` config file on the server. Exact path can vary by installation, but a common service-friendly location is:
@@ -201,7 +203,7 @@ tunnel: medicus-api
 credentials-file: C:\Windows\System32\config\systemprofile\.cloudflared\<tunnel-id>.json
 
 ingress:
-  - hostname: medicus-api.example.cz
+  - hostname: medicus-api.kreli.org
     service: http://127.0.0.1:8000
   - service: http_status:404
 ```
@@ -228,13 +230,13 @@ Keep the local API as a separate service/process. Do not expose the API directly
 
 ## PoC Verification
 
-Status: confirmed for the current PoC phase.
+Status: confirmed for the current beta test phase.
 
 Verified flow:
 
 ```text
-n8n chat agent tool
--> trycloudflare public URL
+n8n / ElevenLabs tool
+-> stable Cloudflare Tunnel URL
 -> cloudflared on Medicus server
 -> local FastAPI service
 -> Firebird DB availability logic
@@ -246,12 +248,13 @@ Confirmed findings:
 
 - The local API starts and responds on `/health`.
 - `/doctor-availability` returns real DB-derived availability, not dummy data.
-- The endpoint remains fast enough for chat-agent tool use through trycloudflare.
+- The endpoint remains fast enough for chat/voice-agent tool use through Cloudflare Tunnel.
 - The response can be kept compact enough for a conversational agent.
 - n8n can call the endpoint as an HTTP Request tool.
 - ElevenLabs voice agent can call the availability webhook/tool successfully.
 - Voice-agent latency was observed as very fast, practically without noticeable delay.
-- The current implementation is sufficient as a PoC; the next infrastructure step is a stable named Cloudflare Tunnel.
+- Stable tunnel smoke tests pass through `https://medicus-api.kreli.org`.
+- The server-local API config currently has appointment writes and cancellations enabled for controlled client testing.
 
 Current tested request shape:
 
@@ -289,6 +292,7 @@ Operational note:
 - For the PoC, two foreground processes are acceptable: one terminal for `scripts/api_server.py` and one terminal for `cloudflared`.
 - `scripts/start_trycloudflare_api.ps1 -SkipApiStart` is useful when the API is already running manually.
 - If `cloudflared` is not in `PATH`, pass `-CloudflaredPath "C:\path\to\cloudflared.exe"`.
+- For current beta tests, prefer the stable base URL `https://medicus-api.kreli.org` over any saved temporary tunnel URL.
 
 ## Authentication
 
@@ -322,24 +326,38 @@ Appointment writes are disabled unless local config explicitly enables them:
 Purpose:
 
 - Find a patient in `KAR` from caller/tool data.
-- Validate identity using the last 4 digits of `KAR.RODCIS`.
+- Verify identity when the provided data narrows the lookup to one unique patient.
 - After verification, return future `OBJOBJ` appointments for that patient.
 - Stay read-only.
 
 Supported request fields:
 
 - `phone`, `phone_number`, or `caller_phone`: caller phone number, normalized by digits and matched through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`.
-- `idpac`: direct patient ID if already known.
-- `birth_number`, `rodne_cislo`, or `rodcis`: full birth number, matched exactly against `KAR.RODCIS`; also satisfies the last-4 verification check.
+- `idpac`: internal direct patient ID if already known from system state; never ask the caller for this value.
+- `birth_number`, `rodne_cislo`, or `rodcis`: full birth number, matched exactly against `KAR.RODCIS`; kept as a strong technical anchor if explicitly available.
 - `first_name` / `name`
 - `last_name` / `surname`
 - `birth_date`: `YYYY-MM-DD`, matched against `KAR.DATNAR`.
-- `birth_number_last4` or `rodne_cislo_last4`: verification value.
+- `birth_number_last4` or `rodne_cislo_last4`: deprecated compatibility input; accepted but no longer required or used as the verification gate.
 - `include_appointments`: defaults to `true`.
 - `appointment_days_ahead`: defaults to `365`, capped at `730`.
 - `include_past_appointments`: defaults to `false`.
 - `past_appointment_days`: defaults to `365`, capped at `1825`.
 - `limit`: max patient candidates, defaults to `5`, capped at `20`.
+
+Current behavior:
+
+- A unique patient match returns `status: "found"` and `verification.verified=true`.
+- Last-4 birth-number verification is deprecated and is no longer required before returning appointments.
+- Start with phone when available. If phone is not enough, ask for surname and date of birth, then first name if needed.
+- Fuzzy/accent-insensitive name matching is used only when the request also has a stable anchor such as phone, birth date, internal `idpac`, or full birth number.
+
+Name matching first uses the database text filters. If that returns no rows and
+the request also contains a stable identifying anchor such as `birth_date`,
+`phone`, internal `idpac`, or full birth number, the backend retries without the name
+filters and applies an accent-insensitive Python name match to the narrowed
+candidate set. This lets inputs such as `Vladimir` match `Vladimír` without
+making name-only lookups overly broad.
 
 Example first lookup from a phone number:
 
@@ -350,16 +368,13 @@ Example first lookup from a phone number:
 }
 ```
 
-If exactly one patient is found but no verification value is provided, response status is `needs_verification`; the agent should ask for the last 4 digits of the birth number before discussing existing appointments.
-
-The API uses `KAR.RODCIS` internally for verification but does not return the expected last 4 digits to the agent.
+If exactly one patient is found, the response is verified by unique match. The API does not ask the agent to collect last-4 birth-number verification.
 
 Example verified lookup:
 
 ```json
 {
   "phone": "+420 777 123 456",
-  "birth_number_last4": "5666",
   "include_appointments": true
 }
 ```
@@ -374,7 +389,7 @@ Example lookup with full birth number:
 }
 ```
 
-After verification, `appointments` contains future `OBJOBJ` rows with date, time, doctor, activity, and info fields.
+After unique-match verification, `appointments` contains future `OBJOBJ` rows with date, time, doctor, activity, and info fields.
 If `include_past_appointments` is true, `past_appointments` contains recent past rows ordered newest first.
 The response also includes `appointments_json` and `past_appointments_json` as
 stringified JSON arrays for ElevenLabs flattened dynamic variable assignments.
@@ -569,9 +584,12 @@ Supported filters:
 - `doctor_id`: optional `IDUZI`
 - `doctor_name`: optional free-text doctor name from the caller; API resolves it against `UZIVATEL`
 - Doctor-name aliases accepted by the API include `doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, and `lekar`.
-- `system_excluded_doctor_ids` in config marks database users that must never be offered by the API; currently `IDUZI=2` is excluded as an inactive duplicate Bednar row.
+- `system_excluded_doctor_ids` in config marks database users that must never be offered by the API.
+- Current server finding/config: Bednar availability is on `IDUZI=2`; `IDUZI=4` is excluded because it exists in `UZIVATEL` but has no schedule contexts in the tested window.
 - `limit`: defaults to API config, capped by `max_limit`
 - `compact`: return a shorter voice-agent payload
+
+`limit` is the response limit. When a `time_from` or `time_to` filter is present, the backend scans a larger internal candidate set before applying the time filter so afternoon/evening results are not accidentally cut off by early-day candidates.
 
 Doctor-name behavior:
 

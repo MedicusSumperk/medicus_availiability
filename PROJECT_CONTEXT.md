@@ -31,7 +31,7 @@ The project is still a PoC/mapping effort, but the write path has moved past rol
 - A first local API service is prepared for Cloudflare Tunnel / ElevenLabs tool calls. It implements targeted availability search, patient lookup, and an appointment write endpoint guarded by local write flags.
 - PoC test confirmed that n8n chat agent can call `/doctor-availability` through trycloudflare and receive fast, real DB-derived availability results.
 - ElevenLabs voice agent test also passed; the availability tool works as expected and latency is practically without noticeable delay.
-- Current priority: test the two read-only agent tools together in the voice/chat agent flow, then replace temporary trycloudflare URL with a stable named Cloudflare Tunnel before beta.
+- Current priority: continue client/live testing through the stable Cloudflare Tunnel at `https://medicus-api.kreli.org`, keeping tool URLs and server-local config aligned with the latest DB findings.
 
 ## Product Scope V1
 
@@ -283,14 +283,14 @@ Current behavior:
 
 - `/doctor-availability` is read-only and uses existing service-specific availability logic.
 - With no request body, it returns the first default skin options.
-- With request filters, it searches a targeted date/time window and stops after the configured limit.
+- With request filters, it searches a targeted date/time window and returns the configured response limit. When `time_from`/`time_to` is present, it scans a larger internal candidate set before applying the time filter so early-day options do not hide later options.
 - `doctor_name` can be passed as free text; API resolves it against `UZIVATEL` and filters only when there is one clear match.
 - The API also accepts common doctor-name aliases (`doctor`, `preferred_doctor`, `doctorName`, `doctor_text`, `physician`, `lekar`) because tool callers may name the field differently.
-- `system_excluded_doctor_ids` excludes database users that must never be offered by the agent; `IDUZI=2` is currently excluded as the suspected inactive duplicate Bednar row.
+- `system_excluded_doctor_ids` excludes database users that must never be offered by the agent. Current server config excludes `IDUZI=4`; Bednar availability currently resolves to `IDUZI=2`, which has the active schedule contexts.
 - If `doctor_name` is unknown or ambiguous, API returns general availability and adds `agent_notes` for the agent.
 - Compact availability responses include `filters`, so tool tests can verify whether a doctor filter was actually applied.
 - The API can return compact responses for voice-agent tools, e.g. only date, time, and doctor name.
-- `/patient-lookup` searches `KAR` by name/date/full `RODCIS` and searches phone through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`; it asks the agent to verify identity with the last 4 digits of `RODCIS` when needed and returns future plus optionally past `OBJOBJ` appointments after verification.
+- `/patient-lookup` searches `KAR` by phone, name, birth date, `idpac`, or full `RODCIS`, including phone through `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`; it now verifies identity by unique patient match and no longer requires last-4 birth-number verification.
 - The service loads `config/agent_context.local.json` when available, so future allowed/excluded doctor rules can be shared with the context builder.
 - `/book-appointment` can create, cancel, or reschedule `OBJOBJ` appointments when local write flags are enabled. Create/reschedule revalidates the selected slot with live availability before writing.
 - For `service=skin`, `/book-appointment` writes both the main skin row and the immediate dermatoscope reservation row in one transaction.
@@ -299,15 +299,17 @@ PoC verification:
 
 - Local `/health` endpoint responded successfully.
 - Local `/doctor-availability` returned real DB-derived options.
-- `cloudflared tunnel --url http://127.0.0.1:8000` exposed the local API through a temporary `https://...trycloudflare.com` URL.
+- Stable Cloudflare Tunnel exposes the local API at `https://medicus-api.kreli.org`.
 - n8n HTTP Request tool successfully called the public `/doctor-availability` endpoint.
 - n8n chat agent successfully used the availability lookup tool.
 - Response time was observed as fast enough for the current chat-based tool test.
 - ElevenLabs voice agent successfully used the availability tool.
 - Voice-agent response time was observed as very fast, practically without noticeable delay.
 - This validates the intended read-only availability tool-call architecture.
-- Latest API smoke test confirmed `/patient-lookup` by full `RODCIS` for test patient `IDPAC=33411`, successful last-4 verification, and future `OBJOBJ` appointment return.
+- Latest patient lookup implementation verifies a patient when the provided data narrows the result to one unique `KAR` row. Last-4 birth-number verification is deprecated and not required for appointment return.
 - Latest API smoke test confirmed `/doctor-availability` with `doctor_name: Bartonova`; API resolved `IDUZI=8` and returned real options when the search window was extended.
+- Latest Bednar API smoke test confirmed `/doctor-availability` with `doctor_name: Bednar` resolves `IDUZI=2` and returns 10-minute options; `IDUZI=4` is excluded by server-local config.
+- Latest time-filter smoke test confirmed a December afternoon Bednar request (`2026-12-01` to `2026-12-31`, `12:00` to `18:00`) returns afternoon options after fixing internal candidate limiting.
 - Test patient `IDPAC=33411` has no `KARKONTAKT` row, so phone lookup must be tested with another patient that has `KARKONTAKT.TELEFON_ADJ` / `KARKONTAKT.KONTAKT`.
 
 Tool schema lesson:
@@ -377,7 +379,7 @@ Known business-rule notes from client discussion:
 - Dermatoscope can be done by all relevant doctors except Dr. Bednar.
 - Dr. Bednar does not do dermatoscope.
 - Dr. Bednar has explicitly confirmed 10-minute schedule slots; for him, both skin examination and the follow-up dermatoscope capacity are 10 minutes.
-- Dr. Bednar's active `IDUZI` is confirmed as `4`; `IDUZI=2` is an inactive duplicate and is excluded by `system_excluded_doctor_ids`.
+- Current server finding: Bednar has duplicate `UZIVATEL` rows. `IDUZI=2` has the schedule contexts and is used for availability/write revalidation; `IDUZI=4` exists but has no schedule contexts in the tested window and is excluded by `system_excluded_doctor_ids`.
 - Need to verify whether any other doctors also have 10-minute slots.
 - Dr. Bednar does laser services but does not do plasma.
 - Dr. Bartonova does moles, fractional laser, and plasma.
