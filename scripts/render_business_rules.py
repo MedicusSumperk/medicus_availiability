@@ -218,6 +218,58 @@ def _rule_matrix_rows(rules: dict[str, Any]) -> list[tuple[str, str, Any, str]]:
     return rows
 
 
+def _change_action(config_path: str) -> str:
+    if "globally_allowed_doctor_ids" in config_path:
+        return "Add IDs to restrict all services to a fixed global allow-list; leave empty to allow all non-excluded doctors."
+    if "globally_excluded_doctor_ids" in config_path:
+        return "Add or remove IDUZI values to globally hide or restore doctors for every backend rule."
+    if "blocking_idcinnosti" in config_path:
+        return "Add IDCINNOSTI values that consume dermatoscope capacity; remove values only after DB/client confirmation."
+    if "dermatoscope.capacity" in config_path:
+        return "Change only if the clinic has more or fewer shared dermatoscope devices."
+    if "before_time_requires_emergency.enabled" in config_path:
+        return "Set false to return early slots normally; keep true for production emergency-only behavior."
+    if "before_time_requires_emergency.before" in config_path:
+        return "Edit the HH:MM cutoff; availability before that time requires the emergency flag."
+    if "before_time_requires_emergency.request_flag" in config_path:
+        return "Rename only if the API/tool request field is changed at the same time."
+    if "afternoon_arrival_buckets" in config_path and ".enabled" in config_path:
+        return "Set false to disable this spoken-time bucket without deleting it."
+    if "afternoon_arrival_buckets" in config_path and ".service" in config_path:
+        return "Change the service key or leave empty/null to apply this bucket to all services."
+    if "afternoon_arrival_buckets" in config_path and "time_from" in config_path:
+        return "Edit the technical slot range; writes still use the exact technical start_time."
+    if "afternoon_arrival_buckets" in config_path and "spoken_time_label" in config_path:
+        return "Edit what the agent should say to the caller for matching technical slots."
+    if ".agent_can_offer_availability" in config_path:
+        return "Set false to make doctor_availability reject this service."
+    if ".agent_can_book_finally" in config_path:
+        return "Set false to make appointment_write reject final booking for this service."
+    if ".idcinnosti" in config_path:
+        return "Change only after confirming the Medicus IDCINNOSTI mapping and write shape."
+    if ".duration.mode" in config_path:
+        return "Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes."
+    if ".duration.minutes" in config_path:
+        return "Set the fixed duration in minutes; ignored when mode follows schedule_interval."
+    if ".allowed_doctor_ids" in config_path:
+        return "Add IDs to restrict this service to specific doctors; leave empty for all globally allowed doctors."
+    if ".excluded_doctor_ids" in config_path:
+        return "Add IDs to block doctors only for this service."
+    if ".seasonality.enabled" in config_path:
+        return "Set true to enforce the configured month-day range."
+    if ".seasonality.start" in config_path:
+        return "Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability."
+    if ".write.strategy" in config_path:
+        return "Change only with matching appointment_write implementation and tests."
+    if ".followup.create" in config_path:
+        return "Set false to stop creating related follow-up rows for this service."
+    if ".followup.idcinnosti" in config_path:
+        return "Change the related row IDCINNOSTI only after confirming Medicus mapping."
+    if ".followup.duration.mode" in config_path:
+        return "Keep aligned with follow-up capacity rules and appointment_write behavior."
+    return "Edit this config value, regenerate docs/current_business_rules.md, and run the relevant tests."
+
+
 def render_business_rules(rules: dict[str, Any]) -> str:
     errors = validate_business_rules(rules)
     lines: list[str] = [
@@ -242,12 +294,14 @@ def render_business_rules(rules: dict[str, Any]) -> str:
             "",
             "## Rule Matrix",
             "",
-            "| Rule | Config path | Current value | Effect |",
-            "| --- | --- | --- | --- |",
+            "| Rule | Config path | Current value | Effect | How to change |",
+            "| --- | --- | --- | --- | --- |",
         ]
     )
     for description, config_path, value, effect in _rule_matrix_rows(rules):
-        lines.append(f"| {_cell(description)} | `{_cell(config_path)}` | `{_cell(value)}` | {_cell(effect)} |")
+        lines.append(
+            f"| {_cell(description)} | `{_cell(config_path)}` | `{_cell(value)}` | {_cell(effect)} | {_cell(_change_action(config_path))} |"
+        )
 
     doctors = rules.get("doctors", {})
     lines.extend(
