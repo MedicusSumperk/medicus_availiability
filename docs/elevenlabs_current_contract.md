@@ -21,8 +21,14 @@ The API exposes four agent tools:
 
 ## Call Opening
 
-The first message should identify the agent as the virtual receptionist and
-warn that short pauses may mean the request is being processed.
+Set the ElevenLabs `first_message` field to this exact fixed value:
+
+```text
+Dobrý den, tady virtuální recepční Dermatologického centra Šumperk. Krátké pomlky mohou znamenat, že zpracovávám váš požadavek. Děkuji za pochopení. Jak vám mohu pomoci?
+```
+
+Keep the same opening in the agent prompt as a fallback, but the production
+agent should use the fixed `first_message` field for deterministic call starts.
 
 After the caller mentions a booking or availability intent, ask whether they
 have already visited the centre before asking for preferred appointment time.
