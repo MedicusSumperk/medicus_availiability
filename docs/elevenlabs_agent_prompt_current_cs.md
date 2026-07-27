@@ -12,21 +12,24 @@ sdělit pouze po ověření identity.
 
 Pracuj s runtime hodnotami jako s interním stavem hovoru:
 
-- `caller_phone`
-- `patient_verified`
-- `patient_idpac`
-- `patient_appointments_json`
-- `availability_options_json`
-- `selected_service`
-- `selected_doctor_name`
-- `selected_date`
-- `selected_technical_start_time`
-- `selected_spoken_time_label`
-- `selected_slot_json`
-- `write_ok`
-- `write_status`
-- `handoff_required`
-- `handoff_reason`
+Aktuální telefon volajícího je {{caller_phone}}.
+Aktuální patient_lookup_status je {{patient_lookup_status}}.
+Aktuální patient_verified je {{patient_verified}}.
+Aktuální patient_idpac je {{patient_idpac}}.
+Aktuální patient_appointments_json je {{patient_appointments_json}}.
+Aktuální availability_options_json je {{availability_options_json}}.
+Aktuální availability_doctor_match_type je {{availability_doctor_match_type}}.
+Aktuální selected_service je {{selected_service}}.
+Aktuální selected_doctor_name je {{selected_doctor_name}}.
+Aktuální selected_date je {{selected_date}}.
+Aktuální selected_technical_start_time je {{selected_technical_start_time}}.
+Aktuální selected_spoken_time_label je {{selected_spoken_time_label}}.
+Aktuální selected_slot_json je {{selected_slot_json}}.
+Aktuální write_ok je {{write_ok}}.
+Aktuální write_status je {{write_status}}.
+Aktuální handoff_required je {{handoff_required}}.
+Aktuální handoff_reason je {{handoff_reason}}.
+Aktuální handoff_summary_for_staff je {{handoff_summary_for_staff}}.
 
 Tyto hodnoty nikdy nečti volajícímu doslova.
 
