@@ -10,6 +10,7 @@ archive/
 .codex_spreadsheet_work/
 current_11labs_agent.json
 docs/test_runs/
+SKILL.md
 **pycache**/
 .venv/
 .env

@@ -232,68 +232,6 @@ C:\tools\cloudflared\cloudflared.exe service install
 
 Keep the local API as a separate service/process. Do not expose the API directly to the public interface; keep it bound to `127.0.0.1`.
 
-## Medicus Server API Restart
-
-Current server facts:
-
-```text
-SSH host: medicus
-Repo: C:\db_bridge\medicus_availiability
-Python: C:\python\python.exe
-Local API: http://127.0.0.1:8000
-Stable public API: https://medicus-api.kreli.org
-```
-
-Do not rely on `python` being available in `PATH` on the server. Use `C:\python\python.exe`.
-
-Before switching branches or restarting for a test, preserve unexpected local server changes:
-
-```cmd
-ssh medicus "cd /d C:\db_bridge\medicus_availiability && git status --short --branch"
-ssh medicus "cd /d C:\db_bridge\medicus_availiability && git stash push -u -m server-before-branch-switch"
-```
-
-When starting the API through SSH, a plain `Start-Process` can exit with the SSH session. The reliable observed path is a one-time scheduled task that starts a local command file, followed by verification and task cleanup.
-
-Create `logs\start_api_server.cmd` on the server:
-
-```cmd
-@echo off
-cd /d C:\db_bridge\medicus_availiability
-C:\python\python.exe scripts\api_server.py >> logs\api_server.stdout.log 2>> logs\api_server.stderr.log
-```
-
-Stop the old API process on port `8000`:
-
-```cmd
-ssh medicus "powershell -NoProfile -Command ""$p=(Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue).OwningProcess; if ($p) { Stop-Process -Id $p -Force }"""
-```
-
-Start the API through a one-time scheduled task:
-
-```cmd
-ssh medicus "schtasks /Create /TN MedicusApiStartOnce /TR C:\db_bridge\medicus_availiability\logs\start_api_server.cmd /SC ONCE /ST 23:59 /F && schtasks /Run /TN MedicusApiStartOnce"
-```
-
-Verify:
-
-```cmd
-ssh medicus "netstat -ano | findstr :8000"
-curl https://medicus-api.kreli.org/health
-```
-
-Then delete the task. Deleting the task does not stop the already started API process:
-
-```cmd
-ssh medicus "schtasks /Delete /TN MedicusApiStartOnce /F"
-```
-
-If the API does not stay up, inspect:
-
-```cmd
-ssh medicus "cd /d C:\db_bridge\medicus_availiability && type logs\api_server.stderr.log"
-```
-
 ## PoC Verification
 
 Status: confirmed for the current beta test phase.
