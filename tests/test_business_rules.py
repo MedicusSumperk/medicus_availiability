@@ -23,7 +23,10 @@ class BusinessRulesTests(unittest.TestCase):
         self.assertEqual(validate_business_rules(rules), [])
         rendered = render_business_rules(rules)
         self.assertIn("Current Business Rules", rendered)
+        self.assertIn("Rule Matrix", rendered)
+        self.assertIn("Config path", rendered)
         self.assertIn("Before-time emergency gate", rendered)
+        self.assertIn("operational_rules.before_time_requires_emergency.enabled", rendered)
         self.assertIn("Rostislav Bednar", rendered)
 
     def test_rules_overlay_uses_business_doctor_exclusions(self):

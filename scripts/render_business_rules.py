@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -24,6 +25,199 @@ def _enabled(value: Any) -> str:
     return "enabled" if bool(value) else "disabled"
 
 
+def _markdown_value(value: Any) -> str:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+    return str(value)
+
+
+def _cell(value: Any) -> str:
+    return _markdown_value(value).replace("|", "\\|").replace("\n", " ")
+
+
+def _rule_matrix_rows(rules: dict[str, Any]) -> list[tuple[str, str, Any, str]]:
+    rows: list[tuple[str, str, Any, str]] = []
+    rows.extend(
+        [
+            (
+                "Globally allowed doctors",
+                "doctors.globally_allowed_doctor_ids",
+                rules.get("doctors", {}).get("globally_allowed_doctor_ids", []),
+                "Empty means all known doctors are allowed unless excluded.",
+            ),
+            (
+                "Globally excluded doctors",
+                "doctors.globally_excluded_doctor_ids",
+                rules.get("doctors", {}).get("globally_excluded_doctor_ids", []),
+                "These IDUZI values are never offered by availability.",
+            ),
+            (
+                "Shared dermatoscope blockers",
+                "shared_resources.dermatoscope.blocking_idcinnosti",
+                rules.get("shared_resources", {}).get("dermatoscope", {}).get("blocking_idcinnosti", []),
+                "Appointments with these IDCINNOSTI values block shared dermatoscope capacity.",
+            ),
+            (
+                "Shared dermatoscope capacity",
+                "shared_resources.dermatoscope.capacity",
+                rules.get("shared_resources", {}).get("dermatoscope", {}).get("capacity", 1),
+                "Current production assumption is one shared dermatoscope.",
+            ),
+        ]
+    )
+
+    before = rules.get("operational_rules", {}).get("before_time_requires_emergency", {})
+    rows.extend(
+        [
+            (
+                "Before-time emergency gate enabled",
+                "operational_rules.before_time_requires_emergency.enabled",
+                before.get("enabled"),
+                "If true, ordinary availability hides slots before the configured time.",
+            ),
+            (
+                "Before-time emergency cutoff",
+                "operational_rules.before_time_requires_emergency.before",
+                before.get("before"),
+                "Slots before this time require the emergency request flag.",
+            ),
+            (
+                "Emergency request flag",
+                "operational_rules.before_time_requires_emergency.request_flag",
+                before.get("request_flag", "emergency"),
+                "The availability request field that unlocks emergency-only slots.",
+            ),
+        ]
+    )
+
+    for index, bucket in enumerate(rules.get("operational_rules", {}).get("afternoon_arrival_buckets", [])):
+        prefix = f"operational_rules.afternoon_arrival_buckets[{index}]"
+        rows.extend(
+            [
+                (
+                    f"Afternoon bucket {index + 1} enabled",
+                    f"{prefix}.enabled",
+                    bucket.get("enabled", True),
+                    "If enabled, matching technical slots get a separate spoken time label.",
+                ),
+                (
+                    f"Afternoon bucket {index + 1} service",
+                    f"{prefix}.service",
+                    bucket.get("service"),
+                    "Only this service uses the bucket; empty would mean all services.",
+                ),
+                (
+                    f"Afternoon bucket {index + 1} technical range",
+                    f"{prefix}.time_from / {prefix}.time_to",
+                    f"{bucket.get('time_from')} - {bucket.get('time_to')}",
+                    "Technical start_time values in this range are still used for write.",
+                ),
+                (
+                    f"Afternoon bucket {index + 1} spoken label",
+                    f"{prefix}.spoken_time_label",
+                    bucket.get("spoken_time_label"),
+                    "This is the time the agent should say to the caller.",
+                ),
+            ]
+        )
+
+    for service_key, service in rules.get("services", {}).items():
+        prefix = f"services.{service_key}"
+        rows.extend(
+            [
+                (
+                    f"{service_key}: agent may offer availability",
+                    f"{prefix}.agent_can_offer_availability",
+                    service.get("agent_can_offer_availability", True),
+                    "If false, the service is not accepted by doctor_availability.",
+                ),
+                (
+                    f"{service_key}: agent may book",
+                    f"{prefix}.agent_can_book_finally",
+                    service.get("agent_can_book_finally", True),
+                    "If false, appointment_write rejects this service.",
+                ),
+                (
+                    f"{service_key}: main IDCINNOSTI",
+                    f"{prefix}.idcinnosti",
+                    service.get("idcinnosti"),
+                    "Value written into the main appointment row; null means default skin row.",
+                ),
+                (
+                    f"{service_key}: duration mode",
+                    f"{prefix}.duration.mode",
+                    service.get("duration", {}).get("mode"),
+                    "schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes.",
+                ),
+                (
+                    f"{service_key}: duration minutes",
+                    f"{prefix}.duration.minutes",
+                    service.get("duration", {}).get("minutes"),
+                    "Used only when duration mode needs a fixed minute value.",
+                ),
+                (
+                    f"{service_key}: allowed doctors",
+                    f"{prefix}.allowed_doctor_ids",
+                    service.get("allowed_doctor_ids", []),
+                    "Empty means all globally allowed doctors unless service-excluded.",
+                ),
+                (
+                    f"{service_key}: excluded doctors",
+                    f"{prefix}.excluded_doctor_ids",
+                    service.get("excluded_doctor_ids", []),
+                    "Doctor IDs excluded only for this service.",
+                ),
+                (
+                    f"{service_key}: seasonality enabled",
+                    f"{prefix}.seasonality.enabled",
+                    service.get("seasonality", {}).get("enabled"),
+                    "If true, availability outside the date range is hidden.",
+                ),
+                (
+                    f"{service_key}: seasonality range",
+                    f"{prefix}.seasonality.start / {prefix}.seasonality.end",
+                    f"{service.get('seasonality', {}).get('start')} - {service.get('seasonality', {}).get('end')}",
+                    "Month-day range when the service is bookable.",
+                ),
+                (
+                    f"{service_key}: write strategy",
+                    f"{prefix}.write.strategy",
+                    service.get("write", {}).get("strategy"),
+                    "Controls whether write creates one row or related rows.",
+                ),
+            ]
+        )
+        followup = service.get("followup", {})
+        if followup:
+            rows.extend(
+                [
+                    (
+                        f"{service_key}: follow-up enabled",
+                        f"{prefix}.followup.create",
+                        followup.get("create", False),
+                        "If true, write creates a related follow-up row.",
+                    ),
+                    (
+                        f"{service_key}: follow-up IDCINNOSTI",
+                        f"{prefix}.followup.idcinnosti",
+                        followup.get("idcinnosti"),
+                        "IDCINNOSTI written into the related follow-up row.",
+                    ),
+                    (
+                        f"{service_key}: follow-up duration mode",
+                        f"{prefix}.followup.duration.mode",
+                        followup.get("duration", {}).get("mode"),
+                        "How the follow-up duration is computed.",
+                    ),
+                ]
+            )
+    return rows
+
+
 def render_business_rules(rules: dict[str, Any]) -> str:
     errors = validate_business_rules(rules)
     lines: list[str] = [
@@ -42,6 +236,18 @@ def render_business_rules(rules: dict[str, Any]) -> str:
         lines.extend([f"- ERROR: {error}" for error in errors])
     else:
         lines.append("- OK: config is structurally valid.")
+
+    lines.extend(
+        [
+            "",
+            "## Rule Matrix",
+            "",
+            "| Rule | Config path | Current value | Effect |",
+            "| --- | --- | --- | --- |",
+        ]
+    )
+    for description, config_path, value, effect in _rule_matrix_rows(rules):
+        lines.append(f"| {_cell(description)} | `{_cell(config_path)}` | `{_cell(value)}` | {_cell(effect)} |")
 
     doctors = rules.get("doctors", {})
     lines.extend(
