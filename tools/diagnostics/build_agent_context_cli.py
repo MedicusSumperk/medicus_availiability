@@ -9,8 +9,10 @@ from pathlib import Path
 from typing import Any
 
 CURRENT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = CURRENT_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 sys.path.insert(0, str(CURRENT_DIR))
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from agent_context import LOCAL_CONFIG_PATH, DEFAULT_CONFIG, build_agent_context, normalize_config
 from db import connect_to_db

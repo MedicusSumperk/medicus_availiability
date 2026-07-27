@@ -6,16 +6,21 @@ booking options for the current V1 scope: skin examination and plasma.
 
 from __future__ import annotations
 
+import sys
 from datetime import date, datetime, time, timedelta
 from math import ceil
 from pathlib import Path
 from typing import Any
 
-from availability_engine import compute_day_availability, format_time, load_doctors
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_CONFIG_PATH = PROJECT_ROOT / "config" / "agent_context.local.example.json"
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+from availability_engine import compute_day_availability, format_time, load_doctors  # noqa: E402
+
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / "tools" / "diagnostics" / "config_examples" / "agent_context.local.example.json"
 LOCAL_CONFIG_PATH = PROJECT_ROOT / "config" / "agent_context.local.json"
 
 

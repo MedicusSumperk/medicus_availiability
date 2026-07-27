@@ -54,24 +54,25 @@ Core API files:
 
 ```text
 scripts/api_server.py
+scripts/agent_context.py
 scripts/availability_search.py
+scripts/appointment_write.py
 scripts/patient_lookup.py
-scripts/start_trycloudflare_api.ps1
+scripts/handoff_summary.py
+scripts/business_rules.py
 scripts/start_named_cloudflare_tunnel.ps1
 config/api.local.example.json
 config/api.local.json              # local only, ignored
 docs/local_api.md
-data/api/trycloudflare_url.txt     # generated, ignored
 ```
 
 Shared availability/rule files used by the API:
 
 ```text
-scripts/agent_context.py
 scripts/availability_engine.py
 scripts/db.py
-config/agent_context.local.example.json
-config/agent_context.local.json    # local only, ignored
+config/business_rules.example.json
+config/business_rules.local.json   # local only, ignored
 config/db_config.local.json        # local only, ignored
 ```
 
@@ -79,9 +80,11 @@ Relevant docs:
 
 ```text
 PROJECT_CONTEXT.md
-docs/agent_context.md
-docs/schedule_interval_findings.md
-docs/activity_type_mapping.md
+docs/repo_inventory.md
+docs/current_business_rules.md
+docs/business_rules_change_guide.md
+research/db-mapping/
+tools/diagnostics/
 ```
 
 ## Setup
@@ -124,58 +127,6 @@ https://medicus-api.kreli.org -> http://127.0.0.1:8000
 
 No inbound firewall port is needed on the Medicus server when Cloudflare Tunnel is used.
 
-## Quick Trycloudflare Test
-
-For PoC testing without creating a named Cloudflare tunnel, download `cloudflared.exe` and run:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1
-```
-
-The helper tries to find `cloudflared.exe` in:
-
-```text
-<repo>\cloudflared.exe
-<repo>\tools\cloudflared.exe
-C:\tools\cloudflared\cloudflared.exe
-C:\cloudflared\cloudflared.exe
-PATH
-```
-
-If needed, pass the path explicitly:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -CloudflaredPath "C:\tools\cloudflared\cloudflared.exe"
-```
-
-The script:
-
-- starts the local API on `http://127.0.0.1:8000`
-- starts `cloudflared tunnel --url http://127.0.0.1:8000`
-- watches the `cloudflared` output for `https://...trycloudflare.com`
-- prints the generated base URL and endpoint URLs
-- writes the base URL to `data/api/trycloudflare_url.txt`
-
-Example output:
-
-```text
-trycloudflare base URL:
-https://example-random-name.trycloudflare.com
-
-Webhook endpoints:
-https://example-random-name.trycloudflare.com/doctor-availability
-https://example-random-name.trycloudflare.com/patient-lookup
-https://example-random-name.trycloudflare.com/book-appointment
-```
-
-If the API is already running, use:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts\start_trycloudflare_api.ps1 -SkipApiStart
-```
-
-`trycloudflare` URLs are temporary and can change after restart. For production, use a named Cloudflare Tunnel and stable hostname.
-
 ## Stable Named Cloudflare Tunnel
 
 The current stable beta hostname is:
@@ -183,8 +134,6 @@ The current stable beta hostname is:
 ```text
 https://medicus-api.kreli.org -> http://127.0.0.1:8000
 ```
-
-Historical `https://...trycloudflare.com` URLs in local exports are stale unless a temporary tunnel was explicitly restarted for a one-off test.
 
 One-time Cloudflare setup outline:
 
@@ -293,8 +242,7 @@ Agent/tool-schema note:
 
 Operational note:
 
-- For the PoC, two foreground processes are acceptable: one terminal for `scripts/api_server.py` and one terminal for `cloudflared`.
-- `scripts/start_trycloudflare_api.ps1 -SkipApiStart` is useful when the API is already running manually.
+- For local diagnostics, two foreground processes are acceptable: one terminal for `scripts/api_server.py` and one terminal for `cloudflared`.
 - If `cloudflared` is not in `PATH`, pass `-CloudflaredPath "C:\path\to\cloudflared.exe"`.
 - For current beta tests, prefer the stable base URL `https://medicus-api.kreli.org` over any saved temporary tunnel URL.
 

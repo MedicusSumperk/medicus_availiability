@@ -7,7 +7,9 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
 CURRENT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(CURRENT_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from db import connect_to_db
 

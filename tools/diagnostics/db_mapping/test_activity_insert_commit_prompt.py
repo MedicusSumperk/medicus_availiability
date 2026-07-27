@@ -15,8 +15,8 @@ from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
-SCRIPTS_DIR = Path(__file__).resolve().parents[1]
-PROJECT_ROOT = SCRIPTS_DIR.parent
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
 CONFIG_PATH = PROJECT_ROOT / "config" / "activity_insert_test.local.json"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))

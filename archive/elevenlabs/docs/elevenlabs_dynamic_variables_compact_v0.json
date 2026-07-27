@@ -4,6 +4,13 @@
   "medicus_api_host": "DOPLNIT-AKTUALNI-URL.trycloudflare.com",
   "clinic_name": "Dermatologické středisko Šumperk",
   "caller_phone": null,
+  "medicus_state": {
+    "current_step": "greeting",
+    "intent": null,
+    "patient_card_status": "unknown",
+    "patient_verified": false,
+    "handoff_required": false
+  },
   "caller_state": {
     "lookup_status": "unknown",
     "idpac": null,

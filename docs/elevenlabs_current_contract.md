@@ -70,8 +70,13 @@ The tool returns `summary_for_staff`; use it as the compact handoff context.
 
 ## Source Of Truth
 
+- Current prompt baseline: `docs/elevenlabs_agent_prompt_current_cs.md`.
+- Current tool descriptions and parameters: `docs/elevenlabs_current_tools.md`.
+- Current dynamic variables seed: `docs/elevenlabs_dynamic_variables_current.json`.
 - Machine rules: `config/business_rules.example.json` and server-local
   `config/business_rules.local.json`.
 - Human-readable generated rules: `docs/current_business_rules.md`.
 - Change workflow for developers/fresh agents: `docs/business_rules_change_guide.md`.
 - API behavior: `docs/local_api.md`.
+
+Archived `archive/elevenlabs/` files are historical reference only.

@@ -7,10 +7,12 @@ data/api/*.txt
 logs/
 outputs/
 archive/
+docs/test_runs/
 .codex_spreadsheet_work/
 current_11labs_agent.json
-docs/test_runs/
 SKILL.md
-**pycache**/
+__pycache__/
+**/__pycache__/
+*.py[cod]
 .venv/
 .env

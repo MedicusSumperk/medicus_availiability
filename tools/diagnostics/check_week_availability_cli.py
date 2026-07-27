@@ -10,14 +10,15 @@ from pathlib import Path
 from typing import Any
 
 CURRENT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(CURRENT_DIR))
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SCRIPTS_DIR = PROJECT_ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from availability_engine import compute_week_availability
 from db import connect_to_db
 
 
 DATE_FORMAT = "%Y-%m-%d"
-PROJECT_ROOT = CURRENT_DIR.parent
 OUTPUT_DIR = PROJECT_ROOT / "data" / "availability"
 
 

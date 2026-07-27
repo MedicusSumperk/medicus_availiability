@@ -11,7 +11,7 @@ The context is intentionally not a production booking API yet. It is a pre-call 
 Create local config:
 
 ```cmd
-copy config\agent_context.local.example.json config\agent_context.local.json
+copy tools\diagnostics\config_examples\agent_context.local.example.json config\agent_context.local.json
 ```
 
 Run:
@@ -68,6 +68,8 @@ Bookability rules:
 
 This handles doctors with non-15-minute schedules. Confirmed diagnostic finding: Rostislav Bednar is `IDUZI=2` in inspected output and has 10-minute schedule intervals. The same inspected range also showed 10-minute intervals for multiple other doctors, so 10 vs 15 minutes must remain schedule-driven rather than doctor-hardcoded.
 
+Current server-local config after the 2026-07-23 client/live test keeps Bednar bookability on `IDUZI=2` and excludes the duplicate `IDUZI=4` through `system_excluded_doctor_ids`. The server also leaves `followup_dermatoscope_minutes` as `null`, so Bednar skin and follow-up durations use his 10-minute schedule interval.
+
 ### Plasma
 
 Booking shape:
@@ -113,7 +115,7 @@ For diagnostics, set `include_unscheduled_doctors` to `true` to include doctors 
 Run this read-only script to verify doctor slot intervals:
 
 ```powershell
-C:\python\python.exe scripts\tests\inspect_schedule_intervals.py
+C:\python\python.exe tools\diagnostics\db_mapping\inspect_schedule_intervals.py
 ```
 
 Latest inspected output showed:

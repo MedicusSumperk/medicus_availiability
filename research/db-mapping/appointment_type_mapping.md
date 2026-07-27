@@ -15,7 +15,7 @@ This is the current highest-priority verification item because booking must writ
 Run from the repository root on the Windows server:
 
 ```powershell
-C:\python\python.exe scripts\tests\inspect_appointment_types.py
+C:\python\python.exe tools\diagnostics\db_mapping\inspect_appointment_types.py
 ```
 
 Enter a target date that the client can also inspect in the Medicus UI.

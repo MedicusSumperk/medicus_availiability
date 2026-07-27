@@ -1,0 +1,20 @@
+{
+  "caller_phone": "",
+  "patient_lookup_status": "",
+  "patient_verified": false,
+  "patient_idpac": null,
+  "patient_appointments_json": "[]",
+  "selected_service": "",
+  "selected_doctor_name": "",
+  "selected_date": "",
+  "selected_technical_start_time": "",
+  "selected_spoken_time_label": "",
+  "selected_slot_json": "{}",
+  "availability_options_json": "[]",
+  "availability_doctor_match_type": "",
+  "write_ok": false,
+  "write_status": "",
+  "handoff_required": false,
+  "handoff_reason": "",
+  "handoff_summary_for_staff": ""
+}
