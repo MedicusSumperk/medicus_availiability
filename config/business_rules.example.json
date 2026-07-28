@@ -67,11 +67,38 @@
       {
         "enabled": true,
         "service": "skin",
-        "weekdays": [],
+        "weekdays": [1, 2, 3, 4, 5],
+        "time_from": "11:00",
+        "time_to": "12:00",
+        "spoken_time_label": "11:00",
+        "note": "Draft client rule: late-morning skin patients may be communicated as one shared arrival bucket while the backend writes exact technical slots."
+      },
+      {
+        "enabled": true,
+        "service": "skin",
+        "weekdays": [1],
         "time_from": "15:00",
         "time_to": "16:00",
         "spoken_time_label": "15:00",
-        "note": "Reception may ask afternoon patients to arrive at one shared time while the backend writes exact technical slots."
+        "note": "Monday afternoon skin bucket: communicate 15:00 while writing exact technical slots."
+      },
+      {
+        "enabled": true,
+        "service": "skin",
+        "weekdays": [2, 3, 4],
+        "time_from": "16:00",
+        "time_to": "17:00",
+        "spoken_time_label": "16:00",
+        "note": "Tuesday-Wednesday-Thursday afternoon skin bucket: communicate 16:00 while writing exact technical slots."
+      },
+      {
+        "enabled": true,
+        "service": "skin",
+        "weekdays": [5],
+        "time_from": "14:00",
+        "time_to": "15:00",
+        "spoken_time_label": "14:00",
+        "note": "Friday afternoon skin bucket: communicate 14:00 while writing exact technical slots."
       }
     ]
   },

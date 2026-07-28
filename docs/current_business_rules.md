@@ -2,7 +2,7 @@
 
 <!-- Generated from config/business_rules*.json. Do not edit by hand. -->
 
-Generated at: 2026-07-27T15:58:09
+Generated at: 2026-07-28T13:05:40
 Rules version: `2026-07-production-v1`
 
 ## Validation
@@ -22,9 +22,24 @@ Rules version: `2026-07-production-v1`
 | Emergency request flag | `operational_rules.before_time_requires_emergency.request_flag` | `emergency` | The availability request field that unlocks emergency-only slots. | Rename only if the API/tool request field is changed at the same time. |
 | Afternoon bucket 1 enabled | `operational_rules.afternoon_arrival_buckets[0].enabled` | `true` | If enabled, matching technical slots get a separate spoken time label. | Set false to disable this spoken-time bucket without deleting it. |
 | Afternoon bucket 1 service | `operational_rules.afternoon_arrival_buckets[0].service` | `skin` | Only this service uses the bucket; empty would mean all services. | Change the service key or leave empty/null to apply this bucket to all services. |
-| Afternoon bucket 1 weekdays | `operational_rules.afternoon_arrival_buckets[0].weekdays` | `[]` | Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday. | Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days. |
-| Afternoon bucket 1 technical range | `operational_rules.afternoon_arrival_buckets[0].time_from / operational_rules.afternoon_arrival_buckets[0].time_to` | `15:00 - 16:00` | Technical start_time values in this range are still used for write. | Edit the technical slot range; writes still use the exact technical start_time. |
-| Afternoon bucket 1 spoken label | `operational_rules.afternoon_arrival_buckets[0].spoken_time_label` | `15:00` | This is the time the agent should say to the caller. | Edit what the agent should say to the caller for matching technical slots. |
+| Afternoon bucket 1 weekdays | `operational_rules.afternoon_arrival_buckets[0].weekdays` | `[1,2,3,4,5]` | Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday. | Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days. |
+| Afternoon bucket 1 technical range | `operational_rules.afternoon_arrival_buckets[0].time_from / operational_rules.afternoon_arrival_buckets[0].time_to` | `11:00 - 12:00` | Technical start_time values in this range are still used for write. | Edit the technical slot range; writes still use the exact technical start_time. |
+| Afternoon bucket 1 spoken label | `operational_rules.afternoon_arrival_buckets[0].spoken_time_label` | `11:00` | This is the time the agent should say to the caller. | Edit what the agent should say to the caller for matching technical slots. |
+| Afternoon bucket 2 enabled | `operational_rules.afternoon_arrival_buckets[1].enabled` | `true` | If enabled, matching technical slots get a separate spoken time label. | Set false to disable this spoken-time bucket without deleting it. |
+| Afternoon bucket 2 service | `operational_rules.afternoon_arrival_buckets[1].service` | `skin` | Only this service uses the bucket; empty would mean all services. | Change the service key or leave empty/null to apply this bucket to all services. |
+| Afternoon bucket 2 weekdays | `operational_rules.afternoon_arrival_buckets[1].weekdays` | `[1]` | Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday. | Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days. |
+| Afternoon bucket 2 technical range | `operational_rules.afternoon_arrival_buckets[1].time_from / operational_rules.afternoon_arrival_buckets[1].time_to` | `15:00 - 16:00` | Technical start_time values in this range are still used for write. | Edit the technical slot range; writes still use the exact technical start_time. |
+| Afternoon bucket 2 spoken label | `operational_rules.afternoon_arrival_buckets[1].spoken_time_label` | `15:00` | This is the time the agent should say to the caller. | Edit what the agent should say to the caller for matching technical slots. |
+| Afternoon bucket 3 enabled | `operational_rules.afternoon_arrival_buckets[2].enabled` | `true` | If enabled, matching technical slots get a separate spoken time label. | Set false to disable this spoken-time bucket without deleting it. |
+| Afternoon bucket 3 service | `operational_rules.afternoon_arrival_buckets[2].service` | `skin` | Only this service uses the bucket; empty would mean all services. | Change the service key or leave empty/null to apply this bucket to all services. |
+| Afternoon bucket 3 weekdays | `operational_rules.afternoon_arrival_buckets[2].weekdays` | `[2,3,4]` | Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday. | Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days. |
+| Afternoon bucket 3 technical range | `operational_rules.afternoon_arrival_buckets[2].time_from / operational_rules.afternoon_arrival_buckets[2].time_to` | `16:00 - 17:00` | Technical start_time values in this range are still used for write. | Edit the technical slot range; writes still use the exact technical start_time. |
+| Afternoon bucket 3 spoken label | `operational_rules.afternoon_arrival_buckets[2].spoken_time_label` | `16:00` | This is the time the agent should say to the caller. | Edit what the agent should say to the caller for matching technical slots. |
+| Afternoon bucket 4 enabled | `operational_rules.afternoon_arrival_buckets[3].enabled` | `true` | If enabled, matching technical slots get a separate spoken time label. | Set false to disable this spoken-time bucket without deleting it. |
+| Afternoon bucket 4 service | `operational_rules.afternoon_arrival_buckets[3].service` | `skin` | Only this service uses the bucket; empty would mean all services. | Change the service key or leave empty/null to apply this bucket to all services. |
+| Afternoon bucket 4 weekdays | `operational_rules.afternoon_arrival_buckets[3].weekdays` | `[5]` | Empty means every weekday; otherwise ISO weekdays 1=Monday through 7=Sunday. | Use ISO weekdays, e.g. [1,2,3] for Monday-Wednesday; leave empty for all days. |
+| Afternoon bucket 4 technical range | `operational_rules.afternoon_arrival_buckets[3].time_from / operational_rules.afternoon_arrival_buckets[3].time_to` | `14:00 - 15:00` | Technical start_time values in this range are still used for write. | Edit the technical slot range; writes still use the exact technical start_time. |
+| Afternoon bucket 4 spoken label | `operational_rules.afternoon_arrival_buckets[3].spoken_time_label` | `14:00` | This is the time the agent should say to the caller. | Edit what the agent should say to the caller for matching technical slots. |
 | skin: agent may offer availability | `services.skin.agent_can_offer_availability` | `true` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
 | skin: agent may book | `services.skin.agent_can_book_finally` | `true` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
 | skin: main IDCINNOSTI | `services.skin.idcinnosti` | `null` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
@@ -73,7 +88,10 @@ Rules version: `2026-07-production-v1`
 
 | Bucket | Service | Weekdays | Technical time range | Spoken label | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | skin | all unless excluded | 15:00 - 16:00 | 15:00 | enabled |
+| 1 | skin | 1, 2, 3, 4, 5 | 11:00 - 12:00 | 11:00 | enabled |
+| 2 | skin | 1 | 15:00 - 16:00 | 15:00 | enabled |
+| 3 | skin | 2, 3, 4 | 16:00 - 17:00 | 16:00 | enabled |
+| 4 | skin | 5 | 14:00 - 15:00 | 14:00 | enabled |
 
 ## Services
 
