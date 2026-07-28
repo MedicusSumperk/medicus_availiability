@@ -170,6 +170,63 @@ def service_enabled_for_availability(rules: dict[str, Any], service_key: str) ->
     return bool(service.get("agent_can_offer_availability", True))
 
 
+def service_enabled_for_booking(rules: dict[str, Any], service_key: str) -> bool:
+    service = rules.get("services", {}).get(service_key, {})
+    return bool(service.get("agent_can_book_finally", True))
+
+
+def service_followup_enabled(rules: dict[str, Any], service_key: str) -> bool:
+    followup = rules.get("services", {}).get(service_key, {}).get("followup", {})
+    return bool(followup.get("create", False))
+
+
+def agent_capabilities(rules: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return agent-facing service capabilities derived from business rules."""
+    rules = rules if rules is not None else load_business_rules()
+    bookable_services: list[dict[str, Any]] = []
+    handoff_services: list[dict[str, Any]] = []
+
+    for service_key, service in rules.get("services", {}).items():
+        service_payload = {
+            "key": service_key,
+            "label": service.get("label", service_key),
+            "agent_can_offer_availability": service_enabled_for_availability(rules, service_key),
+            "agent_can_book_finally": service_enabled_for_booking(rules, service_key),
+            "followup_enabled": service_followup_enabled(rules, service_key),
+            "handoff_reason": "outside_first_production_scope",
+        }
+        if service_payload["agent_can_offer_availability"] and service_payload["agent_can_book_finally"]:
+            bookable_services.append(service_payload)
+        else:
+            handoff_services.append(service_payload)
+
+    return {
+        "ok": True,
+        "rules_version": rules.get("version", "unknown"),
+        "bookable_services": bookable_services,
+        "handoff_services": handoff_services,
+        "voice_answer_cs": _capabilities_voice_answer_cs(bookable_services, handoff_services),
+    }
+
+
+def _capabilities_voice_answer_cs(
+    bookable_services: list[dict[str, Any]],
+    handoff_services: list[dict[str, Any]],
+) -> str:
+    bookable_labels = [str(service["label"]) for service in bookable_services]
+    handoff_labels = [str(service["label"]) for service in handoff_services]
+    parts: list[str] = []
+    if bookable_labels:
+        parts.append("Přímo vám mohu pomoci s objednáním na " + ", ".join(bookable_labels) + ".")
+    if handoff_labels:
+        parts.append(
+            "U dalších služeb, například "
+            + ", ".join(handoff_labels[:4])
+            + ", požadavek předám personálu."
+        )
+    return " ".join(parts).strip()
+
+
 def is_service_in_season(rules: dict[str, Any], service_key: str, month_day: str) -> bool:
     seasonality = rules.get("services", {}).get(service_key, {}).get("seasonality", {})
     if not seasonality.get("enabled"):

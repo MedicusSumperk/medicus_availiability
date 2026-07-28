@@ -6,6 +6,20 @@ Use stable base URL:
 https://medicus-api.kreli.org
 ```
 
+## agent_capabilities
+
+Endpoint: `POST /agent-capabilities`
+
+Use when the caller asks what the agent can help with, what services are
+available, or mentions a service that may be outside first production scope.
+Do not guess service scope from memory.
+
+Key response fields:
+
+- `bookable_services`: services the agent may offer and book directly
+- `handoff_services`: known services that must go to staff handoff
+- `voice_answer_cs`: concise Czech answer suitable for the caller
+
 ## doctor_availability
 
 Endpoint: `POST /doctor-availability`

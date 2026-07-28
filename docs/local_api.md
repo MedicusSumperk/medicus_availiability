@@ -25,6 +25,7 @@ Currently implemented:
 - `/patient-lookup`
 - `/book-appointment`
 - `/handoff-summary`
+- `/agent-capabilities`
 
 `/patient-lookup` reads patient card and future appointment data but performs no
 writes. `/book-appointment` can create, cancel, or reschedule appointments only
@@ -741,3 +742,42 @@ Cloudflare public HTTPS URL
 ```
 
 The API should bind to `127.0.0.1`, not a public interface, when used behind Cloudflare Tunnel.
+
+## Agent Capabilities
+
+```http
+POST /agent-capabilities
+```
+
+Read-only endpoint derived from `config/business_rules*.json`. Use it to tell
+the voice agent which services it can book directly and which known services
+must go to staff handoff.
+
+Example response:
+
+```json
+{
+  "ok": true,
+  "rules_version": "2026-07-production-v1",
+  "bookable_services": [
+    {
+      "key": "skin",
+      "label": "Kozni vysetreni",
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": true,
+      "followup_enabled": true
+    }
+  ],
+  "handoff_services": [
+    {
+      "key": "plasma",
+      "label": "Plazma",
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "followup_enabled": false,
+      "handoff_reason": "outside_first_production_scope"
+    }
+  ],
+  "voice_answer_cs": "Přímo vám mohu pomoci s objednáním na Kozni vysetreni. U dalších služeb, například Plazma, požadavek předám personálu."
+}
+```

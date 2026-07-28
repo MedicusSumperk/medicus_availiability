@@ -13,8 +13,10 @@ import availability_search  # noqa: E402
 import appointment_write  # noqa: E402
 from business_rules import (  # noqa: E402
     afternoon_bucket_for_time,
+    agent_capabilities,
     agent_context_overlay,
     load_business_rules,
+    service_followup_enabled,
     validate_business_rules,
 )
 from handoff_summary import build_handoff_summary  # noqa: E402
@@ -74,6 +76,35 @@ class BusinessRulesTests(unittest.TestCase):
         )
 
         self.assertEqual(summary["transfer_target"], "+420123456789")
+
+    def test_agent_capabilities_split_bookable_and_handoff_services(self):
+        capabilities = agent_capabilities(
+            {
+                "version": "test",
+                "services": {
+                    "skin": {
+                        "label": "Kozni vysetreni",
+                        "agent_can_offer_availability": True,
+                        "agent_can_book_finally": True,
+                        "followup": {"create": True},
+                    },
+                    "plasma": {
+                        "label": "Plazma",
+                        "agent_can_offer_availability": False,
+                        "agent_can_book_finally": False,
+                    },
+                },
+            }
+        )
+
+        self.assertEqual([service["key"] for service in capabilities["bookable_services"]], ["skin"])
+        self.assertEqual([service["key"] for service in capabilities["handoff_services"]], ["plasma"])
+        self.assertTrue(capabilities["bookable_services"][0]["followup_enabled"])
+        self.assertIn("Kozni vysetreni", capabilities["voice_answer_cs"])
+
+    def test_service_followup_enabled_helper(self):
+        self.assertTrue(service_followup_enabled({"services": {"skin": {"followup": {"create": True}}}}, "skin"))
+        self.assertFalse(service_followup_enabled({"services": {"skin": {"followup": {"create": False}}}}, "skin"))
 
     def test_afternoon_bucket_can_be_limited_by_weekday(self):
         rules = {

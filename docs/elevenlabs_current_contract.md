@@ -12,8 +12,9 @@ Use the stable API base:
 https://medicus-api.kreli.org
 ```
 
-The API exposes four agent tools:
+The API exposes five agent tools:
 
+- `agent_capabilities` -> `POST /agent-capabilities`
 - `doctor_availability` -> `POST /doctor-availability`
 - `patient_lookup` -> `POST /patient-lookup`
 - `appointment_write` -> `POST /book-appointment`
@@ -58,6 +59,10 @@ Suggested flow:
 
 The agent should not hold doctor/procedure business rules in the prompt. The
 backend applies the current rules from `config/business_rules*.json`.
+
+When the caller asks what the agent can help with, or asks for a service that
+may be outside the active scope, call `agent_capabilities` and answer from its
+`voice_answer_cs`, `bookable_services`, and `handoff_services` fields.
 
 Availability options may contain two different time fields:
 

@@ -10,7 +10,7 @@ from datetime import date, datetime, time
 from typing import Any
 
 from availability_search import search_availability
-from business_rules import load_business_rules
+from business_rules import load_business_rules, service_enabled_for_booking, service_followup_enabled
 
 
 SUPPORTED_ACTIONS = {"create", "cancel", "reschedule"}
@@ -105,8 +105,7 @@ def _skin_followup_info(config: dict[str, Any]) -> str:
 
 def _service_followup_enabled(service: str) -> bool:
     rules = load_business_rules()
-    followup = rules.get("services", {}).get(service, {}).get("followup", {})
-    return bool(followup.get("create", False))
+    return service_followup_enabled(rules, service)
 
 
 def _service_info(service: str, option: dict[str, Any], request: dict[str, Any], config: dict[str, Any]) -> str:
@@ -240,7 +239,7 @@ def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, An
     supported_services = {
         service_key
         for service_key, service_rules in rules.get("services", {}).items()
-        if service_rules.get("agent_can_book_finally", True)
+        if service_enabled_for_booking(rules, service_key)
     }
     if service not in supported_services:
         raise ValueError(f"service must be one of: {', '.join(sorted(supported_services))}")

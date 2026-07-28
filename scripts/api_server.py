@@ -21,6 +21,7 @@ if str(CURRENT_DIR) not in sys.path:
 
 from availability_search import compact_options, search_availability  # noqa: E402
 from appointment_write import write_appointment  # noqa: E402
+from business_rules import agent_capabilities  # noqa: E402
 from db import connect_to_db  # noqa: E402
 from handoff_summary import build_handoff_summary  # noqa: E402
 from patient_lookup import lookup_patient  # noqa: E402
@@ -100,6 +101,21 @@ def normalize_availability_payload(request: dict[str, Any] | AvailabilityRequest
 @app.get("/health")
 def health() -> dict[str, Any]:
     return {"ok": True, "service": "medicus-local-api"}
+
+
+@app.get("/agent-capabilities", dependencies=[Depends(require_auth)])
+def agent_capabilities_get() -> dict[str, Any]:
+    try:
+        return agent_capabilities()
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    except Exception as error:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail=f"agent capabilities failed: {error}") from error
+
+
+@app.post("/agent-capabilities", dependencies=[Depends(require_auth)])
+def agent_capabilities_post(_request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+    return agent_capabilities_get()
 
 
 @app.post("/doctor-availability", dependencies=[Depends(require_auth)])
