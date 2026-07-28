@@ -16,5 +16,6 @@
   "write_status": "",
   "handoff_required": false,
   "handoff_reason": "",
-  "handoff_summary_for_staff": ""
+  "handoff_summary_for_staff": "",
+  "agent_capabilities_answer_cs": ""
 }
