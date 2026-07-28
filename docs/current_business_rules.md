@@ -2,7 +2,7 @@
 
 <!-- Generated from config/business_rules*.json. Do not edit by hand. -->
 
-Generated at: 2026-07-28T13:05:40
+Generated at: 2026-07-28T13:25:20
 Rules version: `2026-07-production-v1`
 
 ## Validation
@@ -53,8 +53,8 @@ Rules version: `2026-07-production-v1`
 | skin: follow-up enabled | `services.skin.followup.create` | `true` | If true, write creates a related follow-up row. | Set false to stop creating related follow-up rows for this service. |
 | skin: follow-up IDCINNOSTI | `services.skin.followup.idcinnosti` | `6` | IDCINNOSTI written into the related follow-up row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
 | skin: follow-up duration mode | `services.skin.followup.duration.mode` | `schedule_interval` | How the follow-up duration is computed. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
-| plasma: agent may offer availability | `services.plasma.agent_can_offer_availability` | `true` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
-| plasma: agent may book | `services.plasma.agent_can_book_finally` | `true` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| plasma: agent may offer availability | `services.plasma.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| plasma: agent may book | `services.plasma.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
 | plasma: main IDCINNOSTI | `services.plasma.idcinnosti` | `3` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
 | plasma: duration mode | `services.plasma.duration.mode` | `fixed_minutes` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
 | plasma: duration minutes | `services.plasma.duration.minutes` | `30` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
@@ -63,6 +63,56 @@ Rules version: `2026-07-production-v1`
 | plasma: seasonality enabled | `services.plasma.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
 | plasma: seasonality range | `services.plasma.seasonality.start / services.plasma.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
 | plasma: write strategy | `services.plasma.write.strategy` | `single_row` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| dermatoscope_first: agent may offer availability | `services.dermatoscope_first.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| dermatoscope_first: agent may book | `services.dermatoscope_first.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| dermatoscope_first: main IDCINNOSTI | `services.dermatoscope_first.idcinnosti` | `1` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
+| dermatoscope_first: duration mode | `services.dermatoscope_first.duration.mode` | `schedule_interval` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
+| dermatoscope_first: duration minutes | `services.dermatoscope_first.duration.minutes` | `null` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
+| dermatoscope_first: allowed doctors | `services.dermatoscope_first.allowed_doctor_ids` | `[]` | Empty means all globally allowed doctors unless service-excluded. | Add IDs to restrict this service to specific doctors; leave empty for all globally allowed doctors. |
+| dermatoscope_first: excluded doctors | `services.dermatoscope_first.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
+| dermatoscope_first: seasonality enabled | `services.dermatoscope_first.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
+| dermatoscope_first: seasonality range | `services.dermatoscope_first.seasonality.start / services.dermatoscope_first.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
+| dermatoscope_first: write strategy | `services.dermatoscope_first.write.strategy` | `disabled_not_in_first_scope` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| dermatoscope_followup: agent may offer availability | `services.dermatoscope_followup.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| dermatoscope_followup: agent may book | `services.dermatoscope_followup.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| dermatoscope_followup: main IDCINNOSTI | `services.dermatoscope_followup.idcinnosti` | `2` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
+| dermatoscope_followup: duration mode | `services.dermatoscope_followup.duration.mode` | `schedule_interval` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
+| dermatoscope_followup: duration minutes | `services.dermatoscope_followup.duration.minutes` | `null` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
+| dermatoscope_followup: allowed doctors | `services.dermatoscope_followup.allowed_doctor_ids` | `[]` | Empty means all globally allowed doctors unless service-excluded. | Add IDs to restrict this service to specific doctors; leave empty for all globally allowed doctors. |
+| dermatoscope_followup: excluded doctors | `services.dermatoscope_followup.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
+| dermatoscope_followup: seasonality enabled | `services.dermatoscope_followup.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
+| dermatoscope_followup: seasonality range | `services.dermatoscope_followup.seasonality.start / services.dermatoscope_followup.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
+| dermatoscope_followup: write strategy | `services.dermatoscope_followup.write.strategy` | `disabled_not_in_first_scope` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| laser: agent may offer availability | `services.laser.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| laser: agent may book | `services.laser.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| laser: main IDCINNOSTI | `services.laser.idcinnosti` | `3` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
+| laser: duration mode | `services.laser.duration.mode` | `fixed_minutes` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
+| laser: duration minutes | `services.laser.duration.minutes` | `null` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
+| laser: allowed doctors | `services.laser.allowed_doctor_ids` | `[]` | Empty means all globally allowed doctors unless service-excluded. | Add IDs to restrict this service to specific doctors; leave empty for all globally allowed doctors. |
+| laser: excluded doctors | `services.laser.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
+| laser: seasonality enabled | `services.laser.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
+| laser: seasonality range | `services.laser.seasonality.start / services.laser.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
+| laser: write strategy | `services.laser.write.strategy` | `disabled_not_in_first_scope` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| regular_check: agent may offer availability | `services.regular_check.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| regular_check: agent may book | `services.regular_check.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| regular_check: main IDCINNOSTI | `services.regular_check.idcinnosti` | `5` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
+| regular_check: duration mode | `services.regular_check.duration.mode` | `schedule_interval` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
+| regular_check: duration minutes | `services.regular_check.duration.minutes` | `null` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
+| regular_check: allowed doctors | `services.regular_check.allowed_doctor_ids` | `[]` | Empty means all globally allowed doctors unless service-excluded. | Add IDs to restrict this service to specific doctors; leave empty for all globally allowed doctors. |
+| regular_check: excluded doctors | `services.regular_check.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
+| regular_check: seasonality enabled | `services.regular_check.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
+| regular_check: seasonality range | `services.regular_check.seasonality.start / services.regular_check.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
+| regular_check: write strategy | `services.regular_check.write.strategy` | `disabled_not_in_first_scope` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| dermatoscope_reservation: agent may offer availability | `services.dermatoscope_reservation.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| dermatoscope_reservation: agent may book | `services.dermatoscope_reservation.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| dermatoscope_reservation: main IDCINNOSTI | `services.dermatoscope_reservation.idcinnosti` | `6` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
+| dermatoscope_reservation: duration mode | `services.dermatoscope_reservation.duration.mode` | `schedule_interval` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
+| dermatoscope_reservation: duration minutes | `services.dermatoscope_reservation.duration.minutes` | `null` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
+| dermatoscope_reservation: allowed doctors | `services.dermatoscope_reservation.allowed_doctor_ids` | `[]` | Empty means all globally allowed doctors unless service-excluded. | Add IDs to restrict this service to specific doctors; leave empty for all globally allowed doctors. |
+| dermatoscope_reservation: excluded doctors | `services.dermatoscope_reservation.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
+| dermatoscope_reservation: seasonality enabled | `services.dermatoscope_reservation.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
+| dermatoscope_reservation: seasonality range | `services.dermatoscope_reservation.seasonality.start / services.dermatoscope_reservation.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
+| dermatoscope_reservation: write strategy | `services.dermatoscope_reservation.write.strategy` | `disabled_not_in_first_scope` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
 
 ## Doctors
 
@@ -71,14 +121,15 @@ Rules version: `2026-07-production-v1`
 
 | IDUZI | Name | Status | Note |
 | --- | --- | --- | --- |
-| 1 | Marta Skolarova | active |  |
+| 1 | Tereza Perez | active | Observed in DB schedule reports; not part of first production booking scope. |
 | 2 | Rostislav Bednar | active | Active Bednar row used by availability/write revalidation. |
 | 4 | Rostislav Bednar | excluded | Duplicate row without schedule contexts in tested window. |
 | 8 | Maria Bartonova | active |  |
 | 10 | Petra Pospisilova | excluded | No schedule contexts in tested window. |
-| 11 | Zuzana Slosarova | active |  |
-| 12 | Filip Ferencz | active |  |
-| 13 | Doctor 13 | active | Schedule interval may vary by day/context. |
+| 11 | Dusana Selecka | active |  |
+| 12 | Marta Skolarova | active |  |
+| 13 | Zuzana Slosarova | active | Schedule interval may vary by day/context. |
+| 15 | Filip Ferencz | active |  |
 
 ## Operational Rules
 
@@ -113,11 +164,71 @@ Rules version: `2026-07-production-v1`
 ### plasma
 
 - Label: Plazma
-- Agent may offer availability: `True`
-- Agent may book finally: `True`
+- Agent may offer availability: `False`
+- Agent may book finally: `False`
 - Main IDCINNOSTI: `3`
 - Duration: `fixed_minutes` / `30` minutes
 - Allowed doctor IDs: `8`
 - Excluded doctor IDs: `2, 4`
 - Seasonality: `disabled` `01-01` to `12-31`
 - Write strategy: `single_row`
+
+### dermatoscope_first
+
+- Label: Dermatoskopie prvni
+- Agent may offer availability: `False`
+- Agent may book finally: `False`
+- Main IDCINNOSTI: `1`
+- Duration: `schedule_interval`
+- Allowed doctor IDs: `all unless excluded`
+- Excluded doctor IDs: `all unless excluded`
+- Seasonality: `disabled` `01-01` to `12-31`
+- Write strategy: `disabled_not_in_first_scope`
+
+### dermatoscope_followup
+
+- Label: Dermatoskopie kontrola
+- Agent may offer availability: `False`
+- Agent may book finally: `False`
+- Main IDCINNOSTI: `2`
+- Duration: `schedule_interval`
+- Allowed doctor IDs: `all unless excluded`
+- Excluded doctor IDs: `all unless excluded`
+- Seasonality: `disabled` `01-01` to `12-31`
+- Write strategy: `disabled_not_in_first_scope`
+
+### laser
+
+- Label: Laserove vykony
+- Agent may offer availability: `False`
+- Agent may book finally: `False`
+- Main IDCINNOSTI: `3`
+- Duration: `fixed_minutes`
+- Allowed doctor IDs: `all unless excluded`
+- Excluded doctor IDs: `all unless excluded`
+- Seasonality: `disabled` `01-01` to `12-31`
+- Write strategy: `disabled_not_in_first_scope`
+
+### regular_check
+
+- Label: Kontrola
+- Agent may offer availability: `False`
+- Agent may book finally: `False`
+- Main IDCINNOSTI: `5`
+- Duration: `schedule_interval`
+- Allowed doctor IDs: `all unless excluded`
+- Excluded doctor IDs: `all unless excluded`
+- Seasonality: `disabled` `01-01` to `12-31`
+- Write strategy: `disabled_not_in_first_scope`
+
+### dermatoscope_reservation
+
+- Label: Rezervace dermatoskopu
+- Agent may offer availability: `False`
+- Agent may book finally: `False`
+- Main IDCINNOSTI: `6`
+- Duration: `schedule_interval`
+- Allowed doctor IDs: `all unless excluded`
+- Excluded doctor IDs: `all unless excluded`
+- Seasonality: `disabled` `01-01` to `12-31`
+- Write strategy: `disabled_not_in_first_scope`

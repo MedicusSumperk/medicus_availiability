@@ -407,7 +407,9 @@ Common required fields:
 
 Create/reschedule fields:
 
-- `service`: `skin` or `plasma`
+- `service`: `skin` for the first production voice-agent scope. Other known
+  services may exist in `config/business_rules*.json` but are disabled for
+  agent-facing availability/booking until explicitly enabled.
 - `date`: appointment date, `YYYY-MM-DD`
 - `time` or `start_time`: selected start time, `HH:MM`
 - `doctor_name`: natural-language doctor name, or `doctor_id` when the caller is
@@ -456,7 +458,11 @@ Successful skin response returns two IDs:
 }
 ```
 
-Example create plasma appointment:
+Plasma and other non-skin services are outside the first production
+voice-agent scope. They remain documented in business rules as disabled services
+and should be handled by staff handoff until enabled.
+
+Historical plasma write shape, not active first-scope behavior:
 
 ```json
 {
@@ -507,8 +513,8 @@ Important write behavior:
   - main skin appointment with `IDCINNOSTI=NULL`
   - follow-up dermatoscope reservation with configured `skin_followup_idcinnosti`
     defaulting to `6`
-- Plasma writes create one row with `IDCINNOSTI=3` and configured plasma marker
-  in `INFO`.
+- Plasma writes, if later enabled, create one row with `IDCINNOSTI=3` and
+  configured plasma marker in `INFO`.
 - Cancel currently uses `DELETE FROM OBJOBJ` for the selected row(s) when
   `enable_appointment_cancellations=true`.
 - If the selected slot is no longer bookable, response status is
@@ -553,7 +559,8 @@ Weekdays use ISO numbering:
 
 Supported filters:
 
-- `service`: `skin` or `plasma`; defaults to `skin`
+- `service`: `skin`; defaults to `skin`. Disabled services return an
+  agent-facing availability error.
 - `date_from`: ISO date; defaults to today
 - `date_to`: ISO date; optional
 - `days_ahead`: used when `date_to` is omitted; default from API config

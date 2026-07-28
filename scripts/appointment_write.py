@@ -103,6 +103,12 @@ def _skin_followup_info(config: dict[str, Any]) -> str:
     return _clean(config.get("skin_followup_info")) or DEFAULT_SKIN_FOLLOWUP_INFO
 
 
+def _service_followup_enabled(service: str) -> bool:
+    rules = load_business_rules()
+    followup = rules.get("services", {}).get(service, {}).get("followup", {})
+    return bool(followup.get("create", False))
+
+
 def _service_info(service: str, option: dict[str, Any], request: dict[str, Any], config: dict[str, Any]) -> str:
     explicit_info = _clean(request.get("info"))
     if explicit_info:
@@ -423,7 +429,7 @@ def _create_appointments(cursor, request: dict[str, Any], config: dict[str, Any]
         )
     )
 
-    if service == "skin":
+    if service == "skin" and _service_followup_enabled(service):
         followup = option.get("followup_dermatoscope_slot") or {}
         if not followup:
             raise ValueError("skin availability option did not include followup_dermatoscope_slot")

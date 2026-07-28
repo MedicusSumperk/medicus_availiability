@@ -15,7 +15,8 @@ date, day, or time preference. Do not guess availability from memory.
 
 Key parameters:
 
-- `service`: `skin` or `plasma`
+- `service`: use `skin` for the first production voice-agent scope. Other known
+  services are tracked in backend config but disabled for agent-facing booking.
 - `doctor_name`: optional free-text doctor preference
 - `date_from`, `date_to`: optional `YYYY-MM-DD` search window
 - `time_from`, `time_to`: optional `HH:MM` search window
@@ -88,6 +89,9 @@ Key parameters:
 
 For create/reschedule, send the technical slot from `doctor_availability`, not
 the spoken label.
+
+First production scope permits final booking only for `skin`. Other services
+should use `handoff_summary`.
 
 ## handoff_summary
 

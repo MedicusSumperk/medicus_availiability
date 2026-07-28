@@ -135,6 +135,7 @@ def agent_context_overlay(rules: dict[str, Any]) -> dict[str, Any]:
             "info_marker": service.get("info_marker"),
             "use_schedule_interval": duration.get("mode") == "schedule_interval",
             "appointment_duration_minutes": duration.get("minutes"),
+            "create_followup_dermatoscope": followup.get("create", False),
             "followup_dermatoscope_minutes": followup.get("duration", {}).get("minutes"),
             "allowed_doctor_ids": service.get("allowed_doctor_ids", []),
             "excluded_doctor_ids": service.get("excluded_doctor_ids", []),

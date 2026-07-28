@@ -1,7 +1,8 @@
 """Build compact pre-call booking context for the AI receptionist.
 
 This module is read-only. It turns raw Medicus availability into service-specific
-booking options for the current V1 scope: skin examination and plasma.
+booking options. First production voice-agent scope exposes skin examination;
+other known services stay config-disabled until explicitly enabled.
 """
 
 from __future__ import annotations
@@ -234,6 +235,7 @@ def build_skin_options(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build bookable skin options for one doctor/day/context."""
     slot_interval_minutes = context_slot_interval(context, fallback_slot_interval_minutes)
+    create_followup = bool(service_config.get("create_followup_dermatoscope", True))
     if bool(service_config.get("use_schedule_interval", True)):
         duration_minutes = slot_interval_minutes
         followup_minutes = slot_interval_minutes
@@ -250,33 +252,33 @@ def build_skin_options(
             rejected.append({"start_time": format_time(start_time), "reason": "skin_slot_not_free_for_duration"})
             continue
 
-        follow_start = add_minutes(start_time, duration_minutes)
-        follow_end = add_minutes(follow_start, followup_minutes)
-        if not has_required_consecutive_slots(free_slots, follow_start, followup_minutes, slot_interval_minutes):
-            rejected.append({"start_time": format_time(start_time), "reason": "missing_followup_dermatoscope_slot"})
-            continue
+        option = {
+            "start_time": format_time(start_time),
+            "end_time": format_time(add_minutes(start_time, duration_minutes)),
+            "duration_minutes": duration_minutes,
+            "slot_interval_minutes": slot_interval_minutes,
+            "idprac": context["idprac"],
+            "idcinnosti": service_config.get("idcinnosti"),
+        }
+        if create_followup:
+            follow_start = add_minutes(start_time, duration_minutes)
+            follow_end = add_minutes(follow_start, followup_minutes)
+            if not has_required_consecutive_slots(free_slots, follow_start, followup_minutes, slot_interval_minutes):
+                rejected.append({"start_time": format_time(start_time), "reason": "missing_followup_dermatoscope_slot"})
+                continue
 
-        blocker = dermatoscope_conflict(blockers, follow_start, follow_end)
-        if blocker:
-            rejected.append({"start_time": format_time(start_time), **blocker})
-            continue
+            blocker = dermatoscope_conflict(blockers, follow_start, follow_end)
+            if blocker:
+                rejected.append({"start_time": format_time(start_time), **blocker})
+                continue
 
-        options.append(
-            {
-                "start_time": format_time(start_time),
-                "end_time": format_time(add_minutes(start_time, duration_minutes)),
-                "duration_minutes": duration_minutes,
-                "slot_interval_minutes": slot_interval_minutes,
-                "idprac": context["idprac"],
-                "idcinnosti": service_config.get("idcinnosti"),
-                "followup_dermatoscope_slot": {
-                    "start_time": format_time(follow_start),
-                    "end_time": format_time(follow_end),
-                    "duration_minutes": followup_minutes,
-                    "written_in_v1": True,
-                },
+            option["followup_dermatoscope_slot"] = {
+                "start_time": format_time(follow_start),
+                "end_time": format_time(follow_end),
+                "duration_minutes": followup_minutes,
+                "written_in_v1": True,
             }
-        )
+        options.append(option)
         if len(options) >= limit:
             break
 

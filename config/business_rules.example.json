@@ -4,8 +4,9 @@
     "known": [
       {
         "id": 1,
-        "name": "Marta Skolarova",
-        "status": "active"
+        "name": "Tereza Perez",
+        "status": "active",
+        "note": "Observed in DB schedule reports; not part of first production booking scope."
       },
       {
         "id": 2,
@@ -32,19 +33,24 @@
       },
       {
         "id": 11,
-        "name": "Zuzana Slosarova",
+        "name": "Dusana Selecka",
         "status": "active"
       },
       {
         "id": 12,
-        "name": "Filip Ferencz",
+        "name": "Marta Skolarova",
         "status": "active"
       },
       {
         "id": 13,
-        "name": "Doctor 13",
+        "name": "Zuzana Slosarova",
         "status": "active",
         "note": "Schedule interval may vary by day/context."
+      },
+      {
+        "id": 15,
+        "name": "Filip Ferencz",
+        "status": "active"
       }
     ],
     "globally_allowed_doctor_ids": [],
@@ -138,8 +144,8 @@
     },
     "plasma": {
       "label": "Plazma",
-      "agent_can_offer_availability": true,
-      "agent_can_book_finally": true,
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
       "idcinnosti": 3,
       "duration": {
         "mode": "fixed_minutes",
@@ -155,6 +161,106 @@
       },
       "write": {
         "strategy": "single_row"
+      }
+    },
+    "dermatoscope_first": {
+      "label": "Dermatoskopie prvni",
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "idcinnosti": 1,
+      "duration": {
+        "mode": "schedule_interval",
+        "minutes": null
+      },
+      "allowed_doctor_ids": [],
+      "excluded_doctor_ids": [],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "disabled_not_in_first_scope"
+      }
+    },
+    "dermatoscope_followup": {
+      "label": "Dermatoskopie kontrola",
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "idcinnosti": 2,
+      "duration": {
+        "mode": "schedule_interval",
+        "minutes": null
+      },
+      "allowed_doctor_ids": [],
+      "excluded_doctor_ids": [],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "disabled_not_in_first_scope"
+      }
+    },
+    "laser": {
+      "label": "Laserove vykony",
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "idcinnosti": 3,
+      "duration": {
+        "mode": "fixed_minutes",
+        "minutes": null
+      },
+      "allowed_doctor_ids": [],
+      "excluded_doctor_ids": [],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "disabled_not_in_first_scope"
+      }
+    },
+    "regular_check": {
+      "label": "Kontrola",
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "idcinnosti": 5,
+      "duration": {
+        "mode": "schedule_interval",
+        "minutes": null
+      },
+      "allowed_doctor_ids": [],
+      "excluded_doctor_ids": [],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "disabled_not_in_first_scope"
+      }
+    },
+    "dermatoscope_reservation": {
+      "label": "Rezervace dermatoskopu",
+      "agent_can_offer_availability": false,
+      "agent_can_book_finally": false,
+      "idcinnosti": 6,
+      "duration": {
+        "mode": "schedule_interval",
+        "minutes": null
+      },
+      "allowed_doctor_ids": [],
+      "excluded_doctor_ids": [],
+      "seasonality": {
+        "enabled": false,
+        "start": "01-01",
+        "end": "12-31"
+      },
+      "write": {
+        "strategy": "disabled_not_in_first_scope"
       }
     }
   }

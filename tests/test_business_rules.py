@@ -134,6 +134,51 @@ class BusinessRulesTests(unittest.TestCase):
         self.assertEqual(captured_request["time_from"], "15:20")
         self.assertEqual(captured_request["time_to"], "15:20")
 
+    def test_skin_followup_disabled_creates_single_row(self):
+        inserted = []
+
+        def fake_insert(_cursor, **kwargs):
+            row = {"idobj": len(inserted) + 1, **kwargs}
+            inserted.append(row)
+            return row
+
+        with (
+            patch.object(
+                appointment_write,
+                "load_business_rules",
+                return_value={"services": {"skin": {"followup": {"create": False}}}},
+            ),
+            patch.object(
+                appointment_write,
+                "_find_exact_bookable_option",
+                return_value={
+                    "service": "skin",
+                    "date": "2026-07-27",
+                    "start_time": "15:20",
+                    "end_time": "15:30",
+                    "doctor_id": 2,
+                    "idprac": 1,
+                    "idcinnosti": None,
+                },
+            ),
+            patch.object(appointment_write, "_insert_appointment", side_effect=fake_insert),
+        ):
+            response = appointment_write._create_appointments(
+                object(),
+                {
+                    "service": "skin",
+                    "idpac": 123,
+                    "patient_verified": True,
+                    "date": "2026-07-27",
+                    "start_time": "15:20",
+                    "doctor_id": 2,
+                },
+                {"appointment_created_by": 10},
+            )
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(len(inserted), 1)
+
 
 class AvailabilityRulesTests(unittest.TestCase):
     def setUp(self):
@@ -299,24 +344,45 @@ class AvailabilityRulesTests(unittest.TestCase):
         self.assertEqual(response["date_range"]["searched_days_ahead"], 7)
         self.assertEqual(response["options"][0]["date"], "2026-07-31")
 
-    def test_plasma_service_filters_to_allowed_doctor(self):
+    def test_plasma_service_is_not_in_first_production_availability_scope(self):
         with (
             patch.object(availability_search, "load_doctors", return_value=self.doctors),
             patch.object(availability_search, "compute_day_availability", side_effect=self._availability),
             patch.object(availability_search, "load_dermatoscope_blockers", return_value=[]),
         ):
-            response = availability_search.search_availability(
-                object(),
-                {
-                    "service": "plasma",
-                    "date_from": "2026-07-27",
-                    "date_to": "2026-07-27",
-                    "limit": 1,
-                },
-                self.base_config,
-            )
+            with self.assertRaisesRegex(ValueError, "not agent-facing"):
+                availability_search.search_availability(
+                    object(),
+                    {
+                        "service": "plasma",
+                        "date_from": "2026-07-27",
+                        "date_to": "2026-07-27",
+                        "limit": 1,
+                    },
+                    self.base_config,
+                )
 
-        self.assertEqual(response["options"][0]["doctor_id"], 8)
+    def test_skin_options_do_not_require_followup_when_disabled(self):
+        options, rejections = availability_search.build_skin_options(
+            {
+                "idprac": 1,
+                "slot_interval_minutes": 10,
+                "free_slots": ["09:00"],
+            },
+            [],
+            {
+                "label": "Skin",
+                "use_schedule_interval": True,
+                "idcinnosti": None,
+                "create_followup_dermatoscope": False,
+            },
+            10,
+            3,
+        )
+
+        self.assertEqual(len(options), 1)
+        self.assertNotIn("followup_dermatoscope_slot", options[0])
+        self.assertEqual(rejections, [])
 
 
 if __name__ == "__main__":
