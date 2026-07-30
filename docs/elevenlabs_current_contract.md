@@ -50,10 +50,11 @@ Identity is verified only when `patient_lookup` returns:
 
 Suggested flow:
 
-1. Use caller phone from metadata when identity is needed.
-2. If not found, ask for surname and date of birth.
-3. If multiple matches remain, ask for the missing next detail, typically first name.
-4. Never ask the caller for `idpac`; it is internal only.
+1. For existing appointments, cancellation, or reschedule, caller phone from metadata can be used as the first lookup hint.
+2. For final booking of a new appointment, caller phone alone is not enough. Ask for the surname and date of birth of the patient being booked.
+3. For final booking, call `patient_lookup` with confirmed `surname`/`last_name` and `birth_date`; include caller phone only when it clearly belongs to the same patient.
+4. If multiple matches remain, ask for the missing next detail, typically first name.
+5. Never ask the caller for `idpac`; it is internal only.
 
 ## Availability And Booking
 

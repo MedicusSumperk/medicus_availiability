@@ -66,7 +66,7 @@ reschedule, or final booking.
 
 Key parameters:
 
-- `phone`: caller phone from metadata or confirmed digits
+- `phone`: caller phone from metadata or confirmed digits; useful as a lookup hint, but not sufficient by itself for final new booking
 - `surname`: confirmed surname
 - `birth_date`: confirmed date of birth
 - `first_name`: confirmed first name when needed to narrow multiple matches
@@ -80,6 +80,8 @@ Verification succeeds only when response contains:
 ```json
 {"verification": {"verified": true}}
 ```
+
+For final creation of a new appointment, verify the patient being booked with at least confirmed surname and date of birth. Do not rely on caller-phone-only verification before `appointment_write`.
 
 Never ask the caller for `idpac`; it is internal only.
 
