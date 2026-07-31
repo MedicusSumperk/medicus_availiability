@@ -54,6 +54,8 @@ Key response fields:
 
 If `spoken_time_label` differs from `start_time`, say `spoken_time_label` to the
 caller but keep the technical `start_time` for `appointment_write`.
+For `dermatoscope_first`, tell the caller both times naturally: the scan arrival
+time from `scan_start_time`, and the doctor appointment time from `start_time`.
 
 The backend may deduplicate multiple technical slots that share the same
 `spoken_time_label` for the same doctor/date/service. The returned option still
