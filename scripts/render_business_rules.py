@@ -226,6 +226,33 @@ def _rule_matrix_rows(rules: dict[str, Any]) -> list[tuple[str, str, Any, str]]:
                     ),
                 ]
             )
+        dermatoscope = service.get("dermatoscope", {})
+        if dermatoscope:
+            rows.append(
+                (
+                    f"{service_key}: requires scan capacity",
+                    f"{prefix}.dermatoscope.requires_shared_capacity",
+                    dermatoscope.get("requires_shared_capacity", False),
+                    "If true, availability checks the shared scan room before offering this service.",
+                )
+            )
+            if "scan_before_minutes" in dermatoscope:
+                rows.extend(
+                    [
+                    (
+                        f"{service_key}: scan before minutes",
+                        f"{prefix}.dermatoscope.scan_before_minutes",
+                        dermatoscope.get("scan_before_minutes"),
+                        "Minutes before the doctor appointment when the patient should arrive for scan.",
+                    ),
+                    (
+                        f"{service_key}: scan duration minutes",
+                        f"{prefix}.dermatoscope.scan_duration_minutes",
+                        dermatoscope.get("scan_duration_minutes"),
+                        "Shared scan room duration used for conflict checks.",
+                    ),
+                ]
+            )
     return rows
 
 
@@ -389,8 +416,15 @@ def render_business_rules(rules: dict[str, Any]) -> str:
                     ),
                 ]
             )
-        if service.get("dermatoscope", {}).get("requires_shared_capacity"):
-            lines.append("- Requires shared dermatoscope capacity: `true`")
+        dermatoscope = service.get("dermatoscope", {})
+        if dermatoscope:
+            lines.append(
+                f"- Requires shared scan capacity: `{bool(dermatoscope.get('requires_shared_capacity'))}`"
+            )
+            if dermatoscope.get("scan_before_minutes"):
+                lines.append(
+                    f"- Scan timing: `{dermatoscope.get('scan_duration_minutes')}` minutes, starts `{dermatoscope.get('scan_before_minutes')}` minutes before doctor time"
+                )
         lines.append("")
 
     return "\n".join(lines).rstrip() + "\n"

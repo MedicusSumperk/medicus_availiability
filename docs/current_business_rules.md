@@ -2,7 +2,7 @@
 
 <!-- Generated from config/business_rules*.json. Do not edit by hand. -->
 
-Generated at: 2026-07-28T13:25:20
+Generated at: 2026-07-31T14:24:48
 Rules version: `2026-07-production-v1`
 
 ## Validation
@@ -15,7 +15,7 @@ Rules version: `2026-07-production-v1`
 | --- | --- | --- | --- | --- |
 | Globally allowed doctors | `doctors.globally_allowed_doctor_ids` | `[]` | Empty means all known doctors are allowed unless excluded. | Add IDs to restrict all services to a fixed global allow-list; leave empty to allow all non-excluded doctors. |
 | Globally excluded doctors | `doctors.globally_excluded_doctor_ids` | `[4,10]` | These IDUZI values are never offered by availability. | Add or remove IDUZI values to globally hide or restore doctors for every backend rule. |
-| Shared dermatoscope blockers | `shared_resources.dermatoscope.blocking_idcinnosti` | `[1,2,5,6]` | Appointments with these IDCINNOSTI values block shared dermatoscope capacity. | Add IDCINNOSTI values that consume dermatoscope capacity; remove values only after DB/client confirmation. |
+| Shared dermatoscope blockers | `shared_resources.dermatoscope.blocking_idcinnosti` | `[1,6]` | Appointments with these IDCINNOSTI values block shared dermatoscope capacity. | Add IDCINNOSTI values that consume dermatoscope capacity; remove values only after DB/client confirmation. |
 | Shared dermatoscope capacity | `shared_resources.dermatoscope.capacity` | `1` | Current production assumption is one shared dermatoscope. | Change only if the clinic has more or fewer shared dermatoscope devices. |
 | Before-time emergency gate enabled | `operational_rules.before_time_requires_emergency.enabled` | `true` | If true, ordinary availability hides slots before the configured time. | Set false to return early slots normally; keep true for production emergency-only behavior. |
 | Before-time emergency cutoff | `operational_rules.before_time_requires_emergency.before` | `08:00` | Slots before this time require the emergency request flag. | Edit the HH:MM cutoff; availability before that time requires the emergency flag. |
@@ -49,10 +49,11 @@ Rules version: `2026-07-production-v1`
 | skin: excluded doctors | `services.skin.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
 | skin: seasonality enabled | `services.skin.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
 | skin: seasonality range | `services.skin.seasonality.start / services.skin.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
-| skin: write strategy | `services.skin.write.strategy` | `main_row_plus_followup` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
-| skin: follow-up enabled | `services.skin.followup.create` | `true` | If true, write creates a related follow-up row. | Set false to stop creating related follow-up rows for this service. |
+| skin: write strategy | `services.skin.write.strategy` | `single_row` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| skin: follow-up enabled | `services.skin.followup.create` | `false` | If true, write creates a related follow-up row. | Set false to stop creating related follow-up rows for this service. |
 | skin: follow-up IDCINNOSTI | `services.skin.followup.idcinnosti` | `6` | IDCINNOSTI written into the related follow-up row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
 | skin: follow-up duration mode | `services.skin.followup.duration.mode` | `schedule_interval` | How the follow-up duration is computed. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
+| skin: requires scan capacity | `services.skin.dermatoscope.requires_shared_capacity` | `false` | If true, availability checks the shared scan room before offering this service. | Edit this config value, regenerate docs/current_business_rules.md, and run the relevant tests. |
 | plasma: agent may offer availability | `services.plasma.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
 | plasma: agent may book | `services.plasma.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
 | plasma: main IDCINNOSTI | `services.plasma.idcinnosti` | `3` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
@@ -63,8 +64,8 @@ Rules version: `2026-07-production-v1`
 | plasma: seasonality enabled | `services.plasma.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
 | plasma: seasonality range | `services.plasma.seasonality.start / services.plasma.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
 | plasma: write strategy | `services.plasma.write.strategy` | `single_row` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
-| dermatoscope_first: agent may offer availability | `services.dermatoscope_first.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
-| dermatoscope_first: agent may book | `services.dermatoscope_first.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
+| dermatoscope_first: agent may offer availability | `services.dermatoscope_first.agent_can_offer_availability` | `true` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
+| dermatoscope_first: agent may book | `services.dermatoscope_first.agent_can_book_finally` | `true` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
 | dermatoscope_first: main IDCINNOSTI | `services.dermatoscope_first.idcinnosti` | `1` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
 | dermatoscope_first: duration mode | `services.dermatoscope_first.duration.mode` | `schedule_interval` | schedule_interval follows the concrete Medicus schedule interval; fixed_minutes uses minutes. | Use schedule_interval to follow Medicus schedule blocks; use fixed_minutes with duration.minutes. |
 | dermatoscope_first: duration minutes | `services.dermatoscope_first.duration.minutes` | `null` | Used only when duration mode needs a fixed minute value. | Set the fixed duration in minutes; ignored when mode follows schedule_interval. |
@@ -72,7 +73,10 @@ Rules version: `2026-07-production-v1`
 | dermatoscope_first: excluded doctors | `services.dermatoscope_first.excluded_doctor_ids` | `[]` | Doctor IDs excluded only for this service. | Add IDs to block doctors only for this service. |
 | dermatoscope_first: seasonality enabled | `services.dermatoscope_first.seasonality.enabled` | `false` | If true, availability outside the date range is hidden. | Set true to enforce the configured month-day range. |
 | dermatoscope_first: seasonality range | `services.dermatoscope_first.seasonality.start / services.dermatoscope_first.seasonality.end` | `01-01 - 12-31` | Month-day range when the service is bookable. | Edit the MM-DD range and add/adjust tests for in-season and out-of-season availability. |
-| dermatoscope_first: write strategy | `services.dermatoscope_first.write.strategy` | `disabled_not_in_first_scope` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| dermatoscope_first: write strategy | `services.dermatoscope_first.write.strategy` | `single_row` | Controls whether write creates one row or related rows. | Change only with matching appointment_write implementation and tests. |
+| dermatoscope_first: requires scan capacity | `services.dermatoscope_first.dermatoscope.requires_shared_capacity` | `true` | If true, availability checks the shared scan room before offering this service. | Edit this config value, regenerate docs/current_business_rules.md, and run the relevant tests. |
+| dermatoscope_first: scan before minutes | `services.dermatoscope_first.dermatoscope.scan_before_minutes` | `15` | Minutes before the doctor appointment when the patient should arrive for scan. | Edit this config value, regenerate docs/current_business_rules.md, and run the relevant tests. |
+| dermatoscope_first: scan duration minutes | `services.dermatoscope_first.dermatoscope.scan_duration_minutes` | `15` | Shared scan room duration used for conflict checks. | Edit this config value, regenerate docs/current_business_rules.md, and run the relevant tests. |
 | dermatoscope_followup: agent may offer availability | `services.dermatoscope_followup.agent_can_offer_availability` | `false` | If false, the service is not accepted by doctor_availability. | Set false to make doctor_availability reject this service. |
 | dermatoscope_followup: agent may book | `services.dermatoscope_followup.agent_can_book_finally` | `false` | If false, appointment_write rejects this service. | Set false to make appointment_write reject final booking for this service. |
 | dermatoscope_followup: main IDCINNOSTI | `services.dermatoscope_followup.idcinnosti` | `2` | Value written into the main appointment row; null means default skin row. | Change only after confirming the Medicus IDCINNOSTI mapping and write shape. |
@@ -133,7 +137,7 @@ Rules version: `2026-07-production-v1`
 
 ## Operational Rules
 
-- Dermatoscope blocking IDCINNOSTI: `1, 2, 5, 6`
+- Dermatoscope blocking IDCINNOSTI: `1, 6`
 - Dermatoscope shared capacity: `1`
 - Before-time emergency gate: `enabled` before `08:00` using request flag `emergency`
 
@@ -156,10 +160,8 @@ Rules version: `2026-07-production-v1`
 - Allowed doctor IDs: `all unless excluded`
 - Excluded doctor IDs: `all unless excluded`
 - Seasonality: `disabled` `01-01` to `12-31`
-- Write strategy: `main_row_plus_followup`
-- Follow-up: `dermatoscope_reservation` with IDCINNOSTI `6`
-- Follow-up duration: `schedule_interval`
-- Requires shared dermatoscope capacity: `true`
+- Write strategy: `single_row`
+- Requires shared scan capacity: `False`
 
 ### plasma
 
@@ -176,14 +178,16 @@ Rules version: `2026-07-production-v1`
 ### dermatoscope_first
 
 - Label: Dermatoskopie prvni
-- Agent may offer availability: `False`
-- Agent may book finally: `False`
+- Agent may offer availability: `True`
+- Agent may book finally: `True`
 - Main IDCINNOSTI: `1`
 - Duration: `schedule_interval`
 - Allowed doctor IDs: `all unless excluded`
 - Excluded doctor IDs: `all unless excluded`
 - Seasonality: `disabled` `01-01` to `12-31`
-- Write strategy: `disabled_not_in_first_scope`
+- Write strategy: `single_row`
+- Requires shared scan capacity: `True`
+- Scan timing: `15` minutes, starts `15` minutes before doctor time
 
 ### dermatoscope_followup
 
@@ -211,7 +215,7 @@ Rules version: `2026-07-production-v1`
 
 ### regular_check
 
-- Label: Kontrola
+- Label: Kontrola po scanu
 - Agent may offer availability: `False`
 - Agent may book finally: `False`
 - Main IDCINNOSTI: `5`

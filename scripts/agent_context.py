@@ -1,8 +1,9 @@
 """Build compact pre-call booking context for the AI receptionist.
 
 This module is read-only. It turns raw Medicus availability into service-specific
-booking options. First production voice-agent scope exposes skin examination;
-other known services stay config-disabled until explicitly enabled.
+booking options. The voice-agent scope exposes ordinary skin examination and
+paid dermatoscopy; other known services stay config-disabled until explicitly
+enabled.
 """
 
 from __future__ import annotations
@@ -46,8 +47,22 @@ DEFAULT_CONFIG: dict[str, Any] = {
             "idcinnosti": 3,
             "info_marker": "plazma",
         },
+        "dermatoscope_first": {
+            "label": "Dermatoskopie prvni",
+            "use_schedule_interval": True,
+            "appointment_duration_minutes": None,
+            "idcinnosti": 1,
+            "dermatoscope": {
+                "requires_shared_capacity": True,
+                "scan_before_minutes": 15,
+                "scan_duration_minutes": 15,
+                "scan_blocker_inferred_idcinnosti": [1],
+                "scan_blocker_actual_idcinnosti": [6],
+                "communication_note": "Pacient ma prijit o 15 minut drive na sken.",
+            },
+        },
     },
-    "dermatoscope_blocking_idcinnosti": [1, 2, 5, 6],
+    "dermatoscope_blocking_idcinnosti": [1, 6],
     "allowed_doctor_ids": [],
     "system_excluded_doctor_ids": [2],
     "excluded_doctor_ids": [],
@@ -226,6 +241,43 @@ def dermatoscope_conflict(
     return None
 
 
+def inferred_scan_conflict(
+    blockers: list[dict[str, Any]],
+    scan_start: time,
+    scan_end: time,
+    scan_before_minutes: int,
+    inferred_idcinnosti: set[int],
+    actual_idcinnosti: set[int],
+) -> dict[str, Any] | None:
+    """Return first existing appointment that conflicts with the shared scan room."""
+    for blocker in blockers:
+        blocker_start = blocker["start_time"]
+        blocker_end = blocker["end_time"]
+        if not isinstance(blocker_start, time) or not isinstance(blocker_end, time):
+            continue
+
+        blocker_idcinnosti = int(blocker["idcinnosti"])
+        if blocker_idcinnosti in inferred_idcinnosti:
+            blocker_scan_start = add_minutes(blocker_start, -scan_before_minutes)
+            blocker_scan_end = blocker_start
+        elif blocker_idcinnosti in actual_idcinnosti:
+            blocker_scan_start = blocker_start
+            blocker_scan_end = blocker_end
+        else:
+            continue
+
+        if time_interval_overlaps(scan_start, scan_end, blocker_scan_start, blocker_scan_end):
+            return {
+                "reason": "shared_scan_room_conflict",
+                "conflicting_idobj": blocker["idobj"],
+                "conflicting_doctor_id": blocker["doctor_id"],
+                "conflicting_scan_start_time": format_time(blocker_scan_start),
+                "conflicting_scan_end_time": format_time(blocker_scan_end),
+                "conflicting_idcinnosti": blocker_idcinnosti,
+            }
+    return None
+
+
 def build_skin_options(
     context: dict[str, Any],
     blockers: list[dict[str, Any]],
@@ -279,6 +331,78 @@ def build_skin_options(
                 "written_in_v1": True,
             }
         options.append(option)
+        if len(options) >= limit:
+            break
+
+    return options, rejected[:limit]
+
+
+def build_dermatoscope_options(
+    context: dict[str, Any],
+    blockers: list[dict[str, Any]],
+    service_config: dict[str, Any],
+    fallback_slot_interval_minutes: int,
+    limit: int,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Build paid dermatoscopy options with an inferred scan slot before doctor time."""
+    slot_interval_minutes = context_slot_interval(context, fallback_slot_interval_minutes)
+    if bool(service_config.get("use_schedule_interval", True)):
+        duration_minutes = slot_interval_minutes
+    else:
+        duration_minutes = configured_minutes(service_config, "appointment_duration_minutes", slot_interval_minutes)
+
+    dermatoscope_config = service_config.get("dermatoscope", {})
+    scan_before_minutes = int(dermatoscope_config.get("scan_before_minutes") or 15)
+    scan_duration_minutes = int(dermatoscope_config.get("scan_duration_minutes") or scan_before_minutes)
+    inferred_idcinnosti = {
+        int(value) for value in dermatoscope_config.get("scan_blocker_inferred_idcinnosti", [1])
+    }
+    actual_idcinnosti = {int(value) for value in dermatoscope_config.get("scan_blocker_actual_idcinnosti", [6])}
+    free_slots = {parse_time(slot) for slot in context.get("free_slots", [])}
+
+    options: list[dict[str, Any]] = []
+    rejected: list[dict[str, Any]] = []
+
+    for start_time in sorted(free_slots):
+        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes):
+            rejected.append({"start_time": format_time(start_time), "reason": "doctor_slot_not_free_for_duration"})
+            continue
+
+        scan_end = start_time
+        scan_start = add_minutes(scan_end, -scan_duration_minutes)
+        if scan_duration_minutes > scan_before_minutes:
+            scan_start = add_minutes(start_time, -scan_before_minutes)
+            scan_end = add_minutes(scan_start, scan_duration_minutes)
+
+        blocker = inferred_scan_conflict(
+            blockers,
+            scan_start,
+            scan_end,
+            scan_before_minutes,
+            inferred_idcinnosti,
+            actual_idcinnosti,
+        )
+        if blocker:
+            rejected.append({"start_time": format_time(start_time), **blocker})
+            continue
+
+        options.append(
+            {
+                "start_time": format_time(start_time),
+                "end_time": format_time(add_minutes(start_time, duration_minutes)),
+                "duration_minutes": duration_minutes,
+                "slot_interval_minutes": slot_interval_minutes,
+                "idprac": context["idprac"],
+                "idcinnosti": service_config.get("idcinnosti"),
+                "scan_slot": {
+                    "start_time": format_time(scan_start),
+                    "end_time": format_time(scan_end),
+                    "duration_minutes": scan_duration_minutes,
+                    "inferred_from_main_db": True,
+                },
+                "communication_note": dermatoscope_config.get("communication_note"),
+            }
+        )
         if len(options) >= limit:
             break
 
@@ -355,10 +479,12 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
                 "services": {
                     "skin": [],
                     "plasma": [],
+                    "dermatoscope_first": [],
                 },
                 "limited_rejections": {
                     "skin": [],
                     "plasma": [],
+                    "dermatoscope_first": [],
                 },
             }
 
@@ -380,16 +506,29 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
                     fallback_slot_interval_minutes,
                     limit,
                 )
+                dermatoscope_options, dermatoscope_rejections = build_dermatoscope_options(
+                    context,
+                    blockers,
+                    services["dermatoscope_first"],
+                    fallback_slot_interval_minutes,
+                    limit,
+                )
 
                 doctor_entry["services"]["skin"].extend(skin_options)
                 doctor_entry["services"]["plasma"].extend(plasma_options)
+                doctor_entry["services"]["dermatoscope_first"].extend(dermatoscope_options)
                 doctor_entry["limited_rejections"]["skin"].extend(skin_rejections)
                 doctor_entry["limited_rejections"]["plasma"].extend(plasma_rejections)
+                doctor_entry["limited_rejections"]["dermatoscope_first"].extend(dermatoscope_rejections)
 
             doctor_entry["services"]["skin"] = doctor_entry["services"]["skin"][:limit]
             doctor_entry["services"]["plasma"] = doctor_entry["services"]["plasma"][:limit]
+            doctor_entry["services"]["dermatoscope_first"] = doctor_entry["services"]["dermatoscope_first"][:limit]
             doctor_entry["limited_rejections"]["skin"] = doctor_entry["limited_rejections"]["skin"][:limit]
             doctor_entry["limited_rejections"]["plasma"] = doctor_entry["limited_rejections"]["plasma"][:limit]
+            doctor_entry["limited_rejections"]["dermatoscope_first"] = doctor_entry["limited_rejections"][
+                "dermatoscope_first"
+            ][:limit]
 
             day_entry["doctors"].append(doctor_entry)
 
@@ -404,7 +543,8 @@ def build_agent_context(cursor, config: dict[str, Any]) -> dict[str, Any]:
         },
         "rules_version": "v1-precall-context",
         "rules": {
-            "skin": "Book main row as TYP=1 and IDCINNOSTI=NULL, and write an immediate dermatoscope reservation row; duration and follow-up use the schedule INTERVAL for that doctor/context; require immediate free follow-up dermatoscope slot and no shared dermatoscope conflict.",
+            "skin": "Book ordinary skin examination as a single main row with IDCINNOSTI=NULL; no scan and no dermatoscope follow-up reservation.",
+            "dermatoscope_first": "Book paid dermatoscopy as a main doctor row with IDCINNOSTI=1; patient arrives 15 minutes earlier for inferred scan-room time, and scan-room capacity is shared.",
             "plasma": "Book as TYP=1 and IDCINNOSTI=3 with plasma marker in INFO; requires consecutive free slots for configured duration using the schedule INTERVAL.",
             "dermatoscope_blockers": blocking_idcinnosti,
         },

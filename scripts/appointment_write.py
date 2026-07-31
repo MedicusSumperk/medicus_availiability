@@ -117,7 +117,9 @@ def _service_info(service: str, option: dict[str, Any], request: dict[str, Any],
     if service == "plasma":
         marker = _clean(option.get("info_marker")) or _clean(config.get("plasma_info_marker")) or "plazma"
         return f"{prefix} {marker}".strip()
-    return f"{prefix} skin".strip()
+    if service == "dermatoscope_first":
+        return f"{prefix} dermatoscope_first".strip()
+    return f"{prefix} {service}".strip()
 
 
 def _require_patient_verified(request: dict[str, Any]) -> None:
@@ -192,7 +194,7 @@ def _expand_related_appointment_ids(
     rows: list[dict[str, Any]],
     config: dict[str, Any],
 ) -> list[int]:
-    """Include the immediate skin follow-up reservation when cancelling/moving."""
+    """Include legacy immediate skin follow-up rows when cancelling/moving."""
     include_related = _bool(config.get("include_related_appointments_by_default", True))
     if not include_related:
         return appointment_ids

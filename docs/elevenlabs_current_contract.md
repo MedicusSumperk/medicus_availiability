@@ -25,7 +25,7 @@ The API exposes five agent tools:
 Set the ElevenLabs `first_message` field to this exact fixed value:
 
 ```text
-Dobrý den, tady virtuální recepční Dermatologického centra Šumperk. Krátké pomlky mohou znamenat, že zpracovávám váš požadavek. Děkuji za pochopení. Jak vám mohu pomoci?
+Dobrý den, tady virtuální recepční Dermatologického centra Šumperk. Jak vám mohu pomoci?
 ```
 
 Keep the same opening in the agent prompt as a fallback, but the production
@@ -64,6 +64,14 @@ backend applies the current rules from `config/business_rules*.json`.
 When the caller asks what the agent can help with, or asks for a service that
 may be outside the active scope, call `agent_capabilities` and answer from its
 `voice_answer_cs`, `bookable_services`, and `handoff_services` fields.
+
+Current direct booking scope:
+
+- `skin`: ordinary insurance-covered skin examination, no scan.
+- `dermatoscope_first`: paid dermatoscopy; the patient should arrive 15 minutes before doctor time for scan.
+
+Staff handoff scope includes post-scan check, laser, plasma/PRP, procedures,
+medical questions, and anything not returned in `bookable_services`.
 
 Availability options may contain two different time fields:
 

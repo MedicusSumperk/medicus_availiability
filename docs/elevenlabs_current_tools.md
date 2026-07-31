@@ -29,8 +29,9 @@ date, day, or time preference. Do not guess availability from memory.
 
 Key parameters:
 
-- `service`: use `skin` for the first production voice-agent scope. Other known
-  services are tracked in backend config but disabled for agent-facing booking.
+- `service`: use `skin` for ordinary skin examination, `dermatoscope_first` for
+  paid dermatoscopy with scan 15 minutes before doctor time. Other known
+  services should use handoff unless returned in `bookable_services`.
 - `doctor_name`: optional free-text doctor preference
 - `date_from`, `date_to`: optional `YYYY-MM-DD` search window
 - `time_from`, `time_to`: optional `HH:MM` search window
@@ -48,6 +49,7 @@ Key response fields:
 - `options[].start_time`: exact technical slot for booking writes
 - `options[].technical_start_time`: same exact technical slot when present
 - `options[].spoken_time_label`: time to say to the caller
+- `options[].scan_start_time`: for dermatoscopy, when the patient should arrive for scan
 - `options[].weekday_cs`: day name to say to the caller
 
 If `spoken_time_label` differs from `start_time`, say `spoken_time_label` to the
@@ -106,8 +108,9 @@ Key parameters:
 For create/reschedule, send the technical slot from `doctor_availability`, not
 the spoken label.
 
-First production scope permits final booking only for `skin`. Other services
-should use `handoff_summary`.
+First production scope permits final booking for `skin` and
+`dermatoscope_first`. Post-scan check, laser, plasma/PRP and procedures should
+use `handoff_summary`.
 
 ## handoff_summary
 

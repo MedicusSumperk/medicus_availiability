@@ -44,6 +44,8 @@ class BusinessRulesTests(unittest.TestCase):
 
         self.assertIn(4, overlay["system_excluded_doctor_ids"])
         self.assertIn("skin", overlay["services"])
+        self.assertFalse(overlay["services"]["skin"]["create_followup_dermatoscope"])
+        self.assertIn("dermatoscope_first", overlay["services"])
         self.assertEqual(overlay["services"]["plasma"]["appointment_duration_minutes"], 30)
 
     def test_render_output_can_be_written_for_review(self):
@@ -86,7 +88,12 @@ class BusinessRulesTests(unittest.TestCase):
                         "label": "Kozni vysetreni",
                         "agent_can_offer_availability": True,
                         "agent_can_book_finally": True,
-                        "followup": {"create": True},
+                        "followup": {"create": False},
+                    },
+                    "dermatoscope_first": {
+                        "label": "Dermatoskopie prvni",
+                        "agent_can_offer_availability": True,
+                        "agent_can_book_finally": True,
                     },
                     "plasma": {
                         "label": "Plazma",
@@ -97,9 +104,9 @@ class BusinessRulesTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual([service["key"] for service in capabilities["bookable_services"]], ["skin"])
+        self.assertEqual([service["key"] for service in capabilities["bookable_services"]], ["skin", "dermatoscope_first"])
         self.assertEqual([service["key"] for service in capabilities["handoff_services"]], ["plasma"])
-        self.assertTrue(capabilities["bookable_services"][0]["followup_enabled"])
+        self.assertFalse(capabilities["bookable_services"][0]["followup_enabled"])
         self.assertIn("Kozni vysetreni", capabilities["voice_answer_cs"])
 
     def test_service_followup_enabled_helper(self):
@@ -210,6 +217,53 @@ class BusinessRulesTests(unittest.TestCase):
         self.assertTrue(response["ok"])
         self.assertEqual(len(inserted), 1)
 
+    def test_dermatoscope_write_creates_single_main_row(self):
+        inserted = []
+
+        def fake_insert(_cursor, **kwargs):
+            row = {"idobj": len(inserted) + 1, **kwargs}
+            inserted.append(row)
+            return row
+
+        with (
+            patch.object(
+                appointment_write,
+                "load_business_rules",
+                return_value={"services": {"dermatoscope_first": {"followup": {"create": False}}}},
+            ),
+            patch.object(
+                appointment_write,
+                "_find_exact_bookable_option",
+                return_value={
+                    "service": "dermatoscope_first",
+                    "date": "2026-07-27",
+                    "start_time": "15:20",
+                    "end_time": "15:30",
+                    "doctor_id": 2,
+                    "idprac": 1,
+                    "idcinnosti": 1,
+                },
+            ),
+            patch.object(appointment_write, "_insert_appointment", side_effect=fake_insert),
+        ):
+            response = appointment_write._create_appointments(
+                object(),
+                {
+                    "service": "dermatoscope_first",
+                    "idpac": 123,
+                    "patient_verified": True,
+                    "date": "2026-07-27",
+                    "start_time": "15:20",
+                    "doctor_id": 2,
+                },
+                {"appointment_created_by": 10},
+            )
+
+        self.assertTrue(response["ok"])
+        self.assertEqual(len(inserted), 1)
+        self.assertEqual(inserted[0]["idcinnosti"], 1)
+        self.assertEqual(inserted[0]["info"], "AI_RECEPTION dermatoscope_first")
+
 
 class AvailabilityRulesTests(unittest.TestCase):
     def setUp(self):
@@ -218,6 +272,18 @@ class AvailabilityRulesTests(unittest.TestCase):
             "services": {
                 "skin": {"label": "Skin", "use_schedule_interval": True, "idcinnosti": None},
                 "plasma": {"label": "Plasma", "appointment_duration_minutes": 30, "idcinnosti": 3},
+                "dermatoscope_first": {
+                    "label": "Dermatoscope",
+                    "use_schedule_interval": True,
+                    "idcinnosti": 1,
+                    "dermatoscope": {
+                        "requires_shared_capacity": True,
+                        "scan_before_minutes": 15,
+                        "scan_duration_minutes": 15,
+                        "scan_blocker_inferred_idcinnosti": [1],
+                        "scan_blocker_actual_idcinnosti": [6],
+                    },
+                },
             },
             "dermatoscope_blocking_idcinnosti": [],
             "allowed_doctor_ids": [],
@@ -414,6 +480,62 @@ class AvailabilityRulesTests(unittest.TestCase):
         self.assertEqual(len(options), 1)
         self.assertNotIn("followup_dermatoscope_slot", options[0])
         self.assertEqual(rejections, [])
+
+    def test_dermatoscope_option_has_inferred_scan_slot(self):
+        with (
+            patch.object(availability_search, "load_doctors", return_value=[self.doctors[0]]),
+            patch.object(availability_search, "compute_day_availability", side_effect=self._availability),
+            patch.object(availability_search, "load_dermatoscope_blockers", return_value=[]),
+        ):
+            response = availability_search.search_availability(
+                object(),
+                {
+                    "service": "dermatoscope_first",
+                    "date_from": "2026-07-27",
+                    "date_to": "2026-07-27",
+                    "time_from": "15:20",
+                    "time_to": "15:20",
+                    "limit": 1,
+                },
+                self.base_config,
+            )
+
+        option = response["options"][0]
+        self.assertEqual(option["start_time"], "15:20")
+        self.assertEqual(option["idcinnosti"], 1)
+        self.assertEqual(option["scan_slot"]["start_time"], "15:05")
+        self.assertEqual(option["scan_slot"]["end_time"], "15:20")
+
+    def test_dermatoscope_scan_room_conflict_blocks_option(self):
+        blocker = {
+            "idobj": 99,
+            "doctor_id": 8,
+            "idprac": 1,
+            "start_time": availability_search.parse_time("15:30"),
+            "end_time": availability_search.parse_time("15:40"),
+            "idcinnosti": 1,
+            "info": "",
+        }
+
+        with (
+            patch.object(availability_search, "load_doctors", return_value=[self.doctors[0]]),
+            patch.object(availability_search, "compute_day_availability", side_effect=self._availability),
+            patch.object(availability_search, "load_dermatoscope_blockers", return_value=[blocker]),
+        ):
+            response = availability_search.search_availability(
+                object(),
+                {
+                    "service": "dermatoscope_first",
+                    "date_from": "2026-07-27",
+                    "date_to": "2026-07-27",
+                    "time_from": "15:20",
+                    "time_to": "15:20",
+                    "limit": 1,
+                },
+                self.base_config,
+            )
+
+        self.assertEqual(response["options"], [])
 
 
 if __name__ == "__main__":

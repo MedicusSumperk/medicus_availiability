@@ -42,12 +42,17 @@ C:\python\python.exe scripts\render_business_rules.py
 
 - Globally excluded `IDUZI`: `4`, `10`
 - Bednar uses active `IDUZI=2`; duplicate `IDUZI=4` is excluded
-- Skin uses concrete schedule interval and creates a follow-up dermatoscope row
-- Plasma uses fixed 30-minute duration and is limited to `IDUZI=8`
+- Skin is an ordinary insurance-covered examination without scan or follow-up
+- Dermatoscopy is a separate paid service with a 15-minute inferred scan slot
+  before the doctor appointment
+- Post-scan checks remain staff handoff until the 6-month scan validation is
+  confirmed
 - Slots before `08:00` are hidden unless availability request has
   `emergency=true`
 - Afternoon skin slots from `15:00` to `16:00` may expose a shared
   `spoken_time_label=15:00` while writes still use exact technical `start_time`
+- A separate LASER Medicus instance exists at
+  `C:\Medicus 3 Laser\data\MEDICUS.FDB`; v1 runtime does not depend on it
 
 ## Repository Organization
 

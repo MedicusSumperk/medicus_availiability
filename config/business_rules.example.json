@@ -58,7 +58,7 @@
   },
   "shared_resources": {
     "dermatoscope": {
-      "blocking_idcinnosti": [1, 2, 5, 6],
+      "blocking_idcinnosti": [1, 6],
       "capacity": 1
     }
   },
@@ -119,7 +119,7 @@
         "minutes": null
       },
       "followup": {
-        "create": true,
+        "create": false,
         "kind": "dermatoscope_reservation",
         "idcinnosti": 6,
         "duration": {
@@ -129,7 +129,7 @@
         "info": "AI_DERMATOSCOPE_RESERVATION"
       },
       "dermatoscope": {
-        "requires_shared_capacity": true
+        "requires_shared_capacity": false
       },
       "allowed_doctor_ids": [],
       "excluded_doctor_ids": [],
@@ -139,7 +139,7 @@
         "end": "12-31"
       },
       "write": {
-        "strategy": "main_row_plus_followup"
+        "strategy": "single_row"
       }
     },
     "plasma": {
@@ -165,12 +165,20 @@
     },
     "dermatoscope_first": {
       "label": "Dermatoskopie prvni",
-      "agent_can_offer_availability": false,
-      "agent_can_book_finally": false,
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": true,
       "idcinnosti": 1,
       "duration": {
         "mode": "schedule_interval",
         "minutes": null
+      },
+      "dermatoscope": {
+        "requires_shared_capacity": true,
+        "scan_before_minutes": 15,
+        "scan_duration_minutes": 15,
+        "scan_blocker_inferred_idcinnosti": [1],
+        "scan_blocker_actual_idcinnosti": [6],
+        "communication_note": "Pacient ma prijit o 15 minut drive na sken."
       },
       "allowed_doctor_ids": [],
       "excluded_doctor_ids": [],
@@ -180,7 +188,7 @@
         "end": "12-31"
       },
       "write": {
-        "strategy": "disabled_not_in_first_scope"
+        "strategy": "single_row"
       }
     },
     "dermatoscope_followup": {
@@ -224,7 +232,7 @@
       }
     },
     "regular_check": {
-      "label": "Kontrola",
+      "label": "Kontrola po scanu",
       "agent_can_offer_availability": false,
       "agent_can_book_finally": false,
       "idcinnosti": 5,

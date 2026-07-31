@@ -14,6 +14,7 @@ from typing import Any
 from agent_context import (
     DEFAULT_CONFIG,
     LOCAL_CONFIG_PATH,
+    build_dermatoscope_options,
     build_simple_service_options,
     build_skin_options,
     filter_doctors,
@@ -354,10 +355,18 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                         fallback_slot_interval_minutes,
                         context_candidate_limit,
                     )
+                elif service == "dermatoscope_first":
+                    context_options, _rejections = build_dermatoscope_options(
+                        context,
+                        blockers,
+                        services["dermatoscope_first"],
+                        fallback_slot_interval_minutes,
+                        context_candidate_limit,
+                    )
                 else:
                     context_options, _rejections = build_simple_service_options(
                         context,
-                        services["plasma"],
+                        services[service],
                         fallback_slot_interval_minutes,
                         context_candidate_limit,
                     )
@@ -395,6 +404,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                             "idcinnosti": option.get("idcinnosti"),
                             "info_marker": option.get("info_marker"),
                             "followup_dermatoscope_slot": option.get("followup_dermatoscope_slot"),
+                            "scan_slot": option.get("scan_slot"),
                             "communication_note": option.get("communication_note"),
                         }
                     )
@@ -462,6 +472,9 @@ def compact_options(response: dict[str, Any]) -> dict[str, Any]:
             "start_time": option["start_time"],
             "technical_start_time": option.get("technical_start_time", option["start_time"]),
             "spoken_time_label": option.get("spoken_time_label", option["start_time"]),
+            "scan_start_time": (option.get("scan_slot") or {}).get("start_time"),
+            "scan_end_time": (option.get("scan_slot") or {}).get("end_time"),
+            "communication_note": option.get("communication_note"),
             "doctor_name": option["doctor_name"],
         }
         for option in response["options"]

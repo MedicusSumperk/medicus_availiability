@@ -388,8 +388,10 @@ Purpose:
 - Create, cancel, or reschedule appointment rows in `OBJOBJ`.
 - Revalidate create/reschedule requests against live `/doctor-availability`
   logic before writing.
-- For `service=skin`, create both the main skin appointment and the immediate
-  follow-up dermatoscope reservation in one transaction.
+- For `service=skin`, create one ordinary skin appointment row.
+- For `service=dermatoscope_first`, create one paid dermatoscopy doctor row;
+  the scan-room slot 15 minutes before doctor time is inferred by availability
+  in v1 and is not written to the LASER Medicus database yet.
 - Keep cancellation/reschedule transactional: if any step fails, the API rolls
   back the whole request.
 
@@ -408,9 +410,10 @@ Common required fields:
 
 Create/reschedule fields:
 
-- `service`: `skin` for the first production voice-agent scope. Other known
-  services may exist in `config/business_rules*.json` but are disabled for
-  agent-facing availability/booking until explicitly enabled.
+- `service`: `skin` for ordinary skin examination or `dermatoscope_first` for
+  paid dermatoscopy with scan 15 minutes before doctor time. Other known
+  services may exist in `config/business_rules*.json` but should use handoff
+  until explicitly enabled.
 - `date`: appointment date, `YYYY-MM-DD`
 - `time` or `start_time`: selected start time, `HH:MM`
 - `doctor_name`: natural-language doctor name, or `doctor_id` when the caller is
@@ -421,8 +424,9 @@ Create/reschedule fields:
 Cancel/reschedule fields:
 
 - `appointment_id` or `appointment_ids`: existing `OBJOBJ.IDOBJ` row(s)
-- `include_related`: defaults to `true`; when cancelling/moving a skin main row,
-  API tries to include the immediate dermatoscope reservation row as well
+- `include_related`: defaults to `true`; kept for legacy rows that were created
+  with a related dermatoscope reservation before the current single-row skin
+  rule
 
 Example create skin appointment:
 
@@ -438,32 +442,41 @@ Example create skin appointment:
 }
 ```
 
-Successful skin response returns two IDs:
+Successful skin response returns one ID:
 
 ```json
 {
   "ok": true,
   "status": "created",
   "service": "skin",
-  "appointment_ids": [140001, 140002],
+  "appointment_ids": [140001],
   "appointments": [
     {
       "idobj": 140001,
       "idcinnosti": null
-    },
-    {
-      "idobj": 140002,
-      "idcinnosti": 6
     }
   ]
 }
 ```
 
-Plasma and other non-skin services are outside the first production
-voice-agent scope. They remain documented in business rules as disabled services
-and should be handled by staff handoff until enabled.
+Example create dermatoscopy appointment:
 
-Historical plasma write shape, not active first-scope behavior:
+```json
+{
+  "action": "create",
+  "idpac": 33411,
+  "patient_verified": true,
+  "service": "dermatoscope_first",
+  "doctor_name": "Bartonova",
+  "date": "2026-08-08",
+  "time": "14:00"
+}
+```
+
+Post-scan check, plasma, laser and procedures are outside direct voice-agent
+booking scope and should be handled by staff handoff until enabled.
+
+Historical plasma write shape, not active behavior:
 
 ```json
 {
@@ -510,10 +523,10 @@ Important write behavior:
 - Writes are disabled by default in `config/api.local.example.json`.
 - Create and reschedule re-run live availability for the exact date/time/service
   before insert.
-- Skin writes create two rows in one transaction:
-  - main skin appointment with `IDCINNOSTI=NULL`
-  - follow-up dermatoscope reservation with configured `skin_followup_idcinnosti`
-    defaulting to `6`
+- Skin writes create one main appointment with `IDCINNOSTI=NULL`.
+- Dermatoscopy writes create one main appointment with configured
+  `dermatoscope_first.idcinnosti`; availability infers the scan-room window
+  before the doctor time.
 - Plasma writes, if later enabled, create one row with `IDCINNOSTI=3` and
   configured plasma marker in `INFO`.
 - Cancel currently uses `DELETE FROM OBJOBJ` for the selected row(s) when
@@ -765,7 +778,14 @@ Example response:
       "label": "Kozni vysetreni",
       "agent_can_offer_availability": true,
       "agent_can_book_finally": true,
-      "followup_enabled": true
+      "followup_enabled": false
+    },
+    {
+      "key": "dermatoscope_first",
+      "label": "Dermatoskopie prvni",
+      "agent_can_offer_availability": true,
+      "agent_can_book_finally": true,
+      "followup_enabled": false
     }
   ],
   "handoff_services": [
@@ -778,6 +798,6 @@ Example response:
       "handoff_reason": "outside_first_production_scope"
     }
   ],
-  "voice_answer_cs": "Přímo vám mohu pomoci s objednáním na Kozni vysetreni. U dalších služeb, například Plazma, požadavek předám personálu."
+  "voice_answer_cs": "Přímo vám mohu pomoci s objednáním na Kozni vysetreni, Dermatoskopie prvni. U dalších služeb, například Plazma, požadavek předám personálu."
 }
 ```

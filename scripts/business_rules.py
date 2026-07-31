@@ -140,6 +140,8 @@ def agent_context_overlay(rules: dict[str, Any]) -> dict[str, Any]:
             "allowed_doctor_ids": service.get("allowed_doctor_ids", []),
             "excluded_doctor_ids": service.get("excluded_doctor_ids", []),
         }
+        if service.get("dermatoscope"):
+            overlay["services"][service_key]["dermatoscope"] = service.get("dermatoscope", {})
     return overlay
 
 
