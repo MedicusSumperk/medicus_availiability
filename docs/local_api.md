@@ -754,6 +754,32 @@ Cloudflare public HTTPS URL
   -> Firebird DB / existing availability modules
 ```
 
+## Operator Telemetry
+
+Tool endpointy `/doctor-availability`, `/patient-lookup`, `/book-appointment` a
+`/handoff-summary` mohou best-effort posílat provozní události do centrálního
+Operator ingest API. Telemetrie se aktivuje pouze při nastavení URL, tokenu a
+tenant key; bez této konfigurace se současné chování API nemění.
+
+Environment proměnné mají přednost před `config/api.local.json`:
+
+```text
+OPERATOR_INGEST_URL=https://operator-api.example.com
+OPERATOR_INGEST_TOKEN=strong-internal-token
+OPERATOR_TENANT_KEY=laser_medicus
+```
+
+Každý ElevenLabs webhook tool musí poslat:
+
+```http
+X-Conversation-Id: {{system__conversation_id}}
+```
+
+Volitelná hlavička `X-Trace-Id` se propíše do tool eventu. Emitter běží na
+pozadí s krátkým timeoutem; nedostupnost Operatoru nikdy nezmění odpověď toolu,
+commit ani rollback. Request/response payload se před odesláním filtruje a
+hodnoty jako bearer token, rodné číslo a `idpac` se neodesílají.
+
 The API should bind to `127.0.0.1`, not a public interface, when used behind Cloudflare Tunnel.
 
 ## Agent Capabilities

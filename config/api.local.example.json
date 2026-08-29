@@ -12,5 +12,9 @@
   "include_related_appointments_by_default": true,
   "skin_followup_idcinnosti": 6,
   "skin_followup_info": "AI_DERMATOSCOPE_RESERVATION",
-  "plasma_info_marker": "plazma"
+  "plasma_info_marker": "plazma",
+  "operator_ingest_url": "",
+  "operator_ingest_token": "",
+  "operator_tenant_key": "laser_medicus",
+  "operator_timeout_seconds": 1.5
 }

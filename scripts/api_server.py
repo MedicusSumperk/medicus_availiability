@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ from appointment_write import write_appointment  # noqa: E402
 from business_rules import agent_capabilities  # noqa: E402
 from db import connect_to_db  # noqa: E402
 from handoff_summary import build_handoff_summary  # noqa: E402
+from operator_telemetry import emit_tool_event  # noqa: E402
 from patient_lookup import lookup_patient  # noqa: E402
 
 
@@ -119,8 +121,14 @@ def agent_capabilities_post(_request: dict[str, Any] | None = Body(default=None)
 
 
 @app.post("/doctor-availability", dependencies=[Depends(require_auth)])
-def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+def doctor_availability(
+    request: dict[str, Any] | None = Body(default=None),
+    x_conversation_id: str | None = Header(default=None, alias="X-Conversation-Id"),
+    x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+) -> dict[str, Any]:
     connection = None
+    started = time.perf_counter()
+    payload: dict[str, Any] = {}
     try:
         payload = normalize_availability_payload(request)
         payload.setdefault("days_ahead", API_CONFIG.get("default_days_ahead", 30))
@@ -130,12 +138,28 @@ def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> 
         connection = connect_to_db()
         cursor = connection.cursor()
         response = search_availability(cursor, payload)
-        if payload.get("compact"):
-            return compact_options(response)
-        return response
+        result = compact_options(response) if payload.get("compact") else response
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="doctor_availability",
+            endpoint="/doctor-availability", started_monotonic=started, request_payload=payload,
+            response_payload=result, http_status=200, business_ok=result.get("ok"), trace_id=x_trace_id,
+        )
+        return result
     except ValueError as error:
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="doctor_availability",
+            endpoint="/doctor-availability", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": str(error)}, http_status=400, business_ok=False,
+            error_code="validation_error", trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="doctor_availability",
+            endpoint="/doctor-availability", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": "internal error"}, http_status=500, business_ok=False,
+            error_code=type(error).__name__, trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=500, detail=f"doctor availability failed: {error}") from error
     finally:
         if connection is not None:
@@ -143,16 +167,40 @@ def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> 
 
 
 @app.post("/patient-lookup", dependencies=[Depends(require_auth)])
-def patient_lookup(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+def patient_lookup(
+    request: dict[str, Any] | None = Body(default=None),
+    x_conversation_id: str | None = Header(default=None, alias="X-Conversation-Id"),
+    x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+) -> dict[str, Any]:
     connection = None
+    started = time.perf_counter()
+    payload: dict[str, Any] = {}
     try:
         payload = {key: value for key, value in (request or {}).items() if value is not None}
         connection = connect_to_db()
         cursor = connection.cursor()
-        return lookup_patient(cursor, payload)
+        result = lookup_patient(cursor, payload)
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="patient_lookup",
+            endpoint="/patient-lookup", started_monotonic=started, request_payload=payload,
+            response_payload=result, http_status=200, business_ok=result.get("ok", True), trace_id=x_trace_id,
+        )
+        return result
     except ValueError as error:
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="patient_lookup",
+            endpoint="/patient-lookup", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": str(error)}, http_status=400, business_ok=False,
+            error_code="validation_error", trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="patient_lookup",
+            endpoint="/patient-lookup", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": "internal error"}, http_status=500, business_ok=False,
+            error_code=type(error).__name__, trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=500, detail=f"patient lookup failed: {error}") from error
     finally:
         if connection is not None:
@@ -160,8 +208,14 @@ def patient_lookup(request: dict[str, Any] | None = Body(default=None)) -> dict[
 
 
 @app.post("/book-appointment", dependencies=[Depends(require_auth)])
-def book_appointment(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+def book_appointment(
+    request: dict[str, Any] | None = Body(default=None),
+    x_conversation_id: str | None = Header(default=None, alias="X-Conversation-Id"),
+    x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+) -> dict[str, Any]:
     connection = None
+    started = time.perf_counter()
+    payload: dict[str, Any] = {}
     try:
         payload = {key: value for key, value in (request or {}).items() if value is not None}
         payload.setdefault("action", "create")
@@ -172,14 +226,32 @@ def book_appointment(request: dict[str, Any] | None = Body(default=None)) -> dic
             connection.commit()
         else:
             connection.rollback()
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="book_appointment",
+            endpoint="/book-appointment", started_monotonic=started, request_payload=payload,
+            response_payload=response, http_status=200, business_ok=response.get("ok"),
+            error_code=None if response.get("ok") else response.get("status"), trace_id=x_trace_id,
+        )
         return response
     except ValueError as error:
         if connection is not None:
             connection.rollback()
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="book_appointment",
+            endpoint="/book-appointment", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": str(error)}, http_status=400, business_ok=False,
+            error_code="validation_error", trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001
         if connection is not None:
             connection.rollback()
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="book_appointment",
+            endpoint="/book-appointment", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": "internal error"}, http_status=500, business_ok=False,
+            error_code=type(error).__name__, trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=500, detail=f"appointment write failed: {error}") from error
     finally:
         if connection is not None:
@@ -187,13 +259,37 @@ def book_appointment(request: dict[str, Any] | None = Body(default=None)) -> dic
 
 
 @app.post("/handoff-summary", dependencies=[Depends(require_auth)])
-def handoff_summary(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+def handoff_summary(
+    request: dict[str, Any] | None = Body(default=None),
+    x_conversation_id: str | None = Header(default=None, alias="X-Conversation-Id"),
+    x_trace_id: str | None = Header(default=None, alias="X-Trace-Id"),
+) -> dict[str, Any]:
+    started = time.perf_counter()
+    payload: dict[str, Any] = {}
     try:
         payload = {key: value for key, value in (request or {}).items() if value is not None}
-        return build_handoff_summary(payload, API_CONFIG)
+        result = build_handoff_summary(payload, API_CONFIG)
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="handoff_summary",
+            endpoint="/handoff-summary", started_monotonic=started, request_payload=payload,
+            response_payload=result, http_status=200, business_ok=result.get("ok"), trace_id=x_trace_id,
+        )
+        return result
     except ValueError as error:
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="handoff_summary",
+            endpoint="/handoff-summary", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": str(error)}, http_status=400, business_ok=False,
+            error_code="validation_error", trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001
+        emit_tool_event(
+            API_CONFIG, conversation_id=x_conversation_id, tool_name="handoff_summary",
+            endpoint="/handoff-summary", started_monotonic=started, request_payload=payload,
+            response_payload={"detail": "internal error"}, http_status=500, business_ok=False,
+            error_code=type(error).__name__, trace_id=x_trace_id,
+        )
         raise HTTPException(status_code=500, detail=f"handoff summary failed: {error}") from error
 
 
