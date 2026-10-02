@@ -1,0 +1,52 @@
+{
+  "captured_at_utc": "2026-10-02T11:00:06.744692+00:00",
+  "read_only_transactions": true,
+  "production_config_changed": false,
+  "checks": [
+    {
+      "service": "skin",
+      "date": "2026-10-07",
+      "option_count": 2,
+      "raw_conflicts_checked": true
+    },
+    {
+      "service": "skin",
+      "date": "2026-10-03",
+      "option_count": 0,
+      "raw_conflicts_checked": true
+    },
+    {
+      "service": "skin",
+      "date": "2026-10-28",
+      "option_count": 0,
+      "raw_conflicts_checked": true
+    }
+  ],
+  "production_dermatoscope_availability_enabled": false,
+  "diagnostic_combined_capacity": {
+    "date": "2026-10-07",
+    "option_count": 0,
+    "all_conflicting_incident_options_excluded": true,
+    "incident": [
+      {
+        "exam_start": "15:00",
+        "main_conflicts": 0,
+        "scan_conflicts": 1,
+        "offered": false
+      },
+      {
+        "exam_start": "15:10",
+        "main_conflicts": 0,
+        "scan_conflicts": 1,
+        "offered": false
+      },
+      {
+        "exam_start": "15:50",
+        "main_conflicts": 1,
+        "scan_conflicts": 1,
+        "offered": false
+      }
+    ]
+  },
+  "diagnostic_future_options_checked": []
+}

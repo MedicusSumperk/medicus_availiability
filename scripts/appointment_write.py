@@ -258,8 +258,7 @@ def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, An
         "service": service,
         "date_from": target_date.isoformat(),
         "date_to": target_date.isoformat(),
-        "time_from": _format_time(start_time),
-        "time_to": _format_time(start_time),
+        "technical_start_time": _format_time(start_time),
         "limit": int(request.get("availability_limit") or 10),
         "max_limit": int(request.get("availability_max_limit") or 50),
     }

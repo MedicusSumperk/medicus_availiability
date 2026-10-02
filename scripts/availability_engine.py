@@ -104,9 +104,18 @@ def find_schedule_contexts(cursor, doctor_id: int, target_date: date) -> list[di
           AND DENTYD = ?
           AND PLATIOD <= ?
           AND (PLATIDO >= ? OR PLATIDO IS NULL)
-        ORDER BY IDPRAC, TYPTYD
+          AND NOT EXISTS (
+              SELECT 1 FROM OBSODLIS X
+              WHERE X.IDPRAC = OBSPRAC.IDPRAC AND X.DATUM = ? AND X.OBJED = 'A'
+          )
+        UNION
+        SELECT DISTINCT IDPRAC, 4 AS TYPTYD
+        FROM OBSODLIS
+        WHERE IDUZI = ? AND DATUM = ? AND OBJED = 'A'
+        ORDER BY 1, 2
         """,
-        (doctor_id, day_of_week, target_date, target_date),
+        (doctor_id, day_of_week, target_date, target_date, target_date,
+         doctor_id, target_date),
     )
 
     return [
@@ -138,32 +147,50 @@ def load_appointments(cursor, idprac: int, doctor_id: int, target_date: date):
     cursor.execute(
         """
         SELECT CAS, CASDO
-        FROM OBJOBJ
-        WHERE IDPRAC = ?
-          AND IDUZI = ?
-          AND DATUM = ?
+        FROM OBJOBJ_SEL(NULL, NULL, ?, ?, ?, ?)
         ORDER BY CAS
         """,
-        (idprac, doctor_id, target_date),
+        (idprac, doctor_id, target_date, target_date),
     )
     return cursor.fetchall()
 
 
+def schedule_slot_ends(schedule_blocks) -> dict[time, time]:
+    """Preserve each calendar cell end, including mixed-duration days."""
+    slot_ends: dict[time, time] = {}
+    for cas, doba, interval in schedule_blocks:
+        block_start = datetime.combine(date(2000, 1, 1), to_time(cas))
+        block_end = block_start + timedelta(minutes=int(doba))
+        if int(interval) <= 0:
+            raise ValueError("Schedule interval must be positive")
+        for slot in generate_slots(to_time(cas), int(doba), int(interval)):
+            slot_end = datetime.combine(block_start.date(), slot) + timedelta(minutes=int(interval))
+            if slot_end > block_end or slot_end.date() != block_start.date():
+                continue
+            slot_ends[slot] = max(slot_ends.get(slot, slot_end.time()), slot_end.time())
+
+    return slot_ends
+
+
 def compute_slots(schedule_blocks, appointments) -> tuple[list[time], list[time], list[time]]:
     """Compute theoretical, occupied, and free slot starts."""
-    theoretical_slots: list[time] = []
-    for cas, doba, interval in schedule_blocks:
-        theoretical_slots.extend(generate_slots(to_time(cas), int(doba), int(interval)))
+    # Unknown/corrupt blocking entries cannot be interpreted as free capacity.
+    busy_intervals = []
+    for app_start, app_end in appointments:
+        start, end = to_time(app_start), to_time(app_end)
+        if end <= start:
+            raise ValueError("Invalid appointment interval; availability cannot be verified")
+        busy_intervals.append((start, end))
+    slot_ends = schedule_slot_ends(schedule_blocks)
+    theoretical_slots = sorted(slot_ends)
 
     occupied_slots: list[time] = []
     free_slots: list[time] = []
 
     for slot in theoretical_slots:
         is_occupied = False
-        for app_start, app_end in appointments:
-            start_time = to_time(app_start)
-            end_time = to_time(app_end)
-            if slot >= start_time and slot < end_time:
+        for start_time, end_time in busy_intervals:
+            if slot < end_time and slot_ends[slot] > start_time:
                 is_occupied = True
                 break
 
@@ -206,6 +233,8 @@ def compute_day_availability(cursor, doctor: dict[str, Any], target_date: date) 
                 "dentyd": dentyd,
                 "slot_interval_minutes": interval_values[0] if interval_values else None,
                 "slot_interval_minutes_values": interval_values,
+                "slot_durations": {format_time(start): int((datetime.combine(target_date, end) - datetime.combine(target_date, start)).total_seconds() // 60)
+                                   for start, end in schedule_slot_ends(schedule_blocks).items()},
                 "schedule_block_count": len(schedule_blocks),
                 "appointment_count": len(appointments),
                 "total_slots": len(theoretical_slots),

@@ -108,7 +108,7 @@ def health() -> dict[str, Any]:
 @app.get("/agent-capabilities", dependencies=[Depends(require_auth)])
 def agent_capabilities_get() -> dict[str, Any]:
     try:
-        return agent_capabilities()
+        return agent_capabilities(writes_enabled=API_CONFIG.get('enable_appointment_writes') is True)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001

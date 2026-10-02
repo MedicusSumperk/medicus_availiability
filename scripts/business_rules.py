@@ -182,22 +182,25 @@ def service_followup_enabled(rules: dict[str, Any], service_key: str) -> bool:
     return bool(followup.get("create", False))
 
 
-def agent_capabilities(rules: dict[str, Any] | None = None) -> dict[str, Any]:
+def agent_capabilities(rules: dict[str, Any] | None = None, *, staff_review: bool = False, writes_enabled: bool = True) -> dict[str, Any]:
     """Return agent-facing service capabilities derived from business rules."""
     rules = rules if rules is not None else load_business_rules()
     bookable_services: list[dict[str, Any]] = []
     handoff_services: list[dict[str, Any]] = []
+    review_services: list[dict[str, Any]] = []
 
     for service_key, service in rules.get("services", {}).items():
         service_payload = {
             "key": service_key,
             "label": service.get("label", service_key),
             "agent_can_offer_availability": service_enabled_for_availability(rules, service_key),
-            "agent_can_book_finally": service_enabled_for_booking(rules, service_key),
+            "agent_can_book_finally": writes_enabled and not staff_review and service_enabled_for_booking(rules, service_key),
             "followup_enabled": service_followup_enabled(rules, service_key),
-            "handoff_reason": "outside_first_production_scope",
+            "handoff_reason": "writes_disabled" if not writes_enabled else "outside_first_production_scope",
         }
-        if service_payload["agent_can_offer_availability"] and service_payload["agent_can_book_finally"]:
+        if staff_review and service_payload['agent_can_offer_availability']:
+            review_services.append(service_payload)
+        elif service_payload["agent_can_offer_availability"] and service_payload["agent_can_book_finally"]:
             bookable_services.append(service_payload)
         else:
             handoff_services.append(service_payload)
@@ -206,8 +209,13 @@ def agent_capabilities(rules: dict[str, Any] | None = None) -> dict[str, Any]:
         "ok": True,
         "rules_version": rules.get("version", "unknown"),
         "bookable_services": bookable_services,
+        "review_services": review_services,
+        "booking_mode": 'staff_review' if staff_review else ('direct' if writes_enabled else 'staff_handoff'),
         "handoff_services": handoff_services,
-        "voice_answer_cs": _capabilities_voice_answer_cs(bookable_services, handoff_services),
+        "voice_answer_cs": (
+            'Mohu ověřit termíny a předat žádost personálu ke schválení. Dokončené objednání potvrdí personál.'
+            if review_services else ('Objednání nyní musí dokončit personál. Mohu mu předat váš požadavek.'
+            if not writes_enabled else _capabilities_voice_answer_cs(bookable_services, handoff_services))),
     }
 
 

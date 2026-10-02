@@ -179,12 +179,11 @@ def load_dermatoscope_blockers(cursor, target_date: date, blocking_idcinnosti: l
     cursor.execute(
         f"""
         SELECT IDOBJ, IDUZI, IDPRAC, CAS, CASDO, IDCINNOSTI, INFO
-        FROM OBJOBJ
-        WHERE DATUM = ?
-          AND IDCINNOSTI IN ({placeholders})
+        FROM OBJOBJ_SEL(NULL, NULL, NULL, NULL, ?, ?)
+        WHERE IDCINNOSTI IN ({placeholders})
         ORDER BY CAS, CASDO, IDUZI, IDOBJ
         """,
-        (target_date, *blocking_idcinnosti),
+        (target_date, target_date, *blocking_idcinnosti),
     )
 
     blockers: list[dict[str, Any]] = []
@@ -208,8 +207,24 @@ def has_required_consecutive_slots(
     start_time: time,
     duration_minutes: int,
     slot_interval_minutes: int,
+    slot_durations: dict[str, int] | None = None,
 ) -> bool:
     """Return whether start_time has enough consecutive free slots."""
+    if slot_durations is not None:
+        current = start_time
+        covered_minutes = 0
+        while covered_minutes < duration_minutes:
+            if current not in free_slots:
+                return False
+            minutes = int(slot_durations.get(format_time(current), 0))
+            if minutes <= 0:
+                return False
+            next_time = add_minutes(current, minutes)
+            if next_time <= current:
+                return False
+            covered_minutes += minutes
+            current = next_time
+        return True
     required_slots = ceil(duration_minutes / slot_interval_minutes)
     for slot_index in range(required_slots):
         required_time = add_minutes(start_time, slot_index * slot_interval_minutes)
@@ -300,7 +315,9 @@ def build_skin_options(
     rejected: list[dict[str, Any]] = []
 
     for start_time in sorted(free_slots):
-        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes):
+        slot_interval_minutes = int(context.get("slot_durations", {}).get(format_time(start_time), context_slot_interval(context, fallback_slot_interval_minutes)))
+        duration_minutes = slot_interval_minutes if service_config.get("use_schedule_interval", True) else configured_minutes(service_config, "appointment_duration_minutes", slot_interval_minutes)
+        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes, context.get("slot_durations")):
             rejected.append({"start_time": format_time(start_time), "reason": "skin_slot_not_free_for_duration"})
             continue
 
@@ -314,8 +331,10 @@ def build_skin_options(
         }
         if create_followup:
             follow_start = add_minutes(start_time, duration_minutes)
+            if service_config.get("use_schedule_interval", True):
+                followup_minutes = int(context.get("slot_durations", {}).get(format_time(follow_start), slot_interval_minutes))
             follow_end = add_minutes(follow_start, followup_minutes)
-            if not has_required_consecutive_slots(free_slots, follow_start, followup_minutes, slot_interval_minutes):
+            if not has_required_consecutive_slots(free_slots, follow_start, followup_minutes, slot_interval_minutes, context.get("slot_durations")):
                 rejected.append({"start_time": format_time(start_time), "reason": "missing_followup_dermatoscope_slot"})
                 continue
 
@@ -364,7 +383,9 @@ def build_dermatoscope_options(
     rejected: list[dict[str, Any]] = []
 
     for start_time in sorted(free_slots):
-        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes):
+        slot_interval_minutes = int(context.get("slot_durations", {}).get(format_time(start_time), context_slot_interval(context, fallback_slot_interval_minutes)))
+        duration_minutes = slot_interval_minutes if service_config.get("use_schedule_interval", True) else configured_minutes(service_config, "appointment_duration_minutes", slot_interval_minutes)
+        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes, context.get("slot_durations")):
             rejected.append({"start_time": format_time(start_time), "reason": "doctor_slot_not_free_for_duration"})
             continue
 
@@ -424,7 +445,9 @@ def build_simple_service_options(
     rejected: list[dict[str, Any]] = []
 
     for start_time in sorted(free_slots):
-        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes):
+        slot_interval_minutes = int(context.get("slot_durations", {}).get(format_time(start_time), context_slot_interval(context, fallback_slot_interval_minutes)))
+        duration_minutes = configured_minutes(service_config, "appointment_duration_minutes", slot_interval_minutes)
+        if not has_required_consecutive_slots(free_slots, start_time, duration_minutes, slot_interval_minutes, context.get("slot_durations")):
             rejected.append({"start_time": format_time(start_time), "reason": "not_enough_consecutive_free_slots"})
             continue
 
