@@ -9,6 +9,7 @@ import json
 import hmac
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ from handoff_summary import build_handoff_summary  # noqa: E402
 from handoff_config import durable_handoff_enabled, handoff_store
 from patient_lookup import lookup_patient  # noqa: E402
 from call_context import call_anchor, InvalidConversation
+from operator_telemetry import emit_tool_event
 
 
 API_CONFIG_PATH = PROJECT_ROOT / "config" / "api.local.json"
@@ -131,8 +133,16 @@ def agent_capabilities_post(_request: dict[str, Any] | None = Body(default=None)
 
 @app.post("/doctor-availability", dependencies=[Depends(require_auth)])
 def doctor_availability(request: dict[str, Any] | None = Body(default=None),
-                        anchor: datetime = Depends(require_auth)) -> dict[str, Any]:
+                        anchor: datetime = Depends(require_auth),
+                        x_conversation_id: str | None = Header(default=None, alias='X-Conversation-Id')) -> dict[str, Any]:
     connection = None
+    started = time.perf_counter()
+    def record(response, status, ok, code=None):
+        # Do not copy arbitrary caller-controlled request text into diagnostics.
+        emit_tool_event(API_CONFIG, conversation_id=x_conversation_id,
+                        tool_name='doctor_availability', endpoint='/doctor-availability',
+                        started_monotonic=started, request_payload={}, response_payload=response,
+                        http_status=status, business_ok=ok, error_code=code)
     try:
         payload = normalize_availability_payload(request)
         payload.setdefault("days_ahead", API_CONFIG.get("default_days_ahead", 30))
@@ -142,13 +152,15 @@ def doctor_availability(request: dict[str, Any] | None = Body(default=None),
         connection = connect_to_db()
         cursor = connection.cursor()
         response = search_availability(cursor, payload, call_started_at=anchor)
-        if payload.get("compact"):
-            return compact_options(response)
-        return response
+        result = compact_options(response) if payload.get('compact') else response
+        record(result, 200, result.get('ok'))
+        return result
     except ValueError as error:
+        record({'ok':False,'error_code':'validation_error'},400,False,'validation_error')
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"doctor availability failed: {error}") from error
+        record({'ok':False,'error_code':'availability_failed'},500,False,'availability_failed')
+        raise HTTPException(status_code=500, detail='Doctor availability could not be verified') from error
     finally:
         if connection is not None:
             connection.close()
