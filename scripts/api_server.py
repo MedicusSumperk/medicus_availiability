@@ -6,6 +6,7 @@ Run behind Cloudflare Tunnel. The service itself should bind to localhost.
 from __future__ import annotations
 
 import json
+import hmac
 import os
 import sys
 from pathlib import Path
@@ -24,6 +25,7 @@ from appointment_write import write_appointment  # noqa: E402
 from business_rules import agent_capabilities  # noqa: E402
 from db import connect_to_db  # noqa: E402
 from handoff_summary import build_handoff_summary  # noqa: E402
+from handoff_config import durable_handoff_enabled, handoff_store
 from patient_lookup import lookup_patient  # noqa: E402
 
 
@@ -67,9 +69,9 @@ class PlaceholderRequest(BaseModel):
 
 def require_auth(authorization: str | None = Header(default=None)) -> None:
     if not API_TOKEN or API_TOKEN == "CHANGE_ME":
-        return
+        raise HTTPException(status_code=503, detail="API authentication is not configured")
     expected = f"Bearer {API_TOKEN}"
-    if authorization != expected:
+    if not authorization or not hmac.compare_digest(authorization.encode('utf-8'), expected.encode('utf-8')):
         raise HTTPException(status_code=401, detail="invalid Authorization bearer token")
 
 
@@ -187,14 +189,25 @@ def book_appointment(request: dict[str, Any] | None = Body(default=None)) -> dic
 
 
 @app.post("/handoff-summary", dependencies=[Depends(require_auth)])
-def handoff_summary(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+def handoff_summary(
+    request: dict[str, Any] | None = Body(default=None),
+    x_conversation_id: str | None = Header(default=None, alias="X-Conversation-Id"),
+) -> dict[str, Any]:
     try:
         payload = {key: value for key, value in (request or {}).items() if value is not None}
-        return build_handoff_summary(payload, API_CONFIG)
+        result = build_handoff_summary(payload, API_CONFIG)
+        if durable_handoff_enabled(API_CONFIG):
+            saved = handoff_store(API_CONFIG).store_handoff(
+                API_CONFIG['operator_tenant_key'], x_conversation_id,
+                payload.get('request_id'), result)
+            result.update(saved)
+        else:
+            result.update(stored=False, delivery_status='not_queued')
+        return result
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"handoff summary failed: {error}") from error
+        raise HTTPException(status_code=500, detail="Handoff could not be stored; attempt live transfer") from error
 
 
 if __name__ == "__main__":
