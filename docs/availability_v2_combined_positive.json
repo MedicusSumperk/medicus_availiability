@@ -1,0 +1,51 @@
+{
+  "captured_at_utc": "2026-10-02T13:58:49.271998+00:00",
+  "activated_modules_match": true,
+  "github_commit": "41ee4e1eebdd0e6833bd8d26ef18ca24362d16f7",
+  "read_only_transactions": true,
+  "configuration_persisted": false,
+  "diagnostic_availability_override_only": true,
+  "windows": [
+    {
+      "from": "2026-10-05",
+      "to": "2026-10-09",
+      "scanned": {
+        "days": 3,
+        "contexts": 8
+      },
+      "options_checked": [
+        {
+          "date": "2026-10-05",
+          "doctor_id": 8,
+          "exam_start": "10:40",
+          "exam_end": "10:50",
+          "scan_start": "10:25",
+          "scan_end": "10:40",
+          "raw_calendar_conflicts": 0
+        },
+        {
+          "date": "2026-10-05",
+          "doctor_id": 8,
+          "exam_start": "10:50",
+          "exam_end": "11:00",
+          "scan_start": "10:35",
+          "scan_end": "10:50",
+          "raw_calendar_conflicts": 0
+        },
+        {
+          "date": "2026-10-07",
+          "doctor_id": 12,
+          "exam_start": "13:20",
+          "exam_end": "13:30",
+          "scan_start": "13:05",
+          "scan_end": "13:20",
+          "raw_calendar_conflicts": 0
+        }
+      ],
+      "scan_gate_counts": {
+        "checked": 6,
+        "available": 3
+      }
+    }
+  ]
+}

@@ -9,6 +9,7 @@ import json
 import hmac
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,7 @@ from db import connect_to_db  # noqa: E402
 from handoff_summary import build_handoff_summary  # noqa: E402
 from handoff_config import durable_handoff_enabled, handoff_store
 from patient_lookup import lookup_patient  # noqa: E402
+from call_context import call_anchor, InvalidConversation
 
 
 API_CONFIG_PATH = PROJECT_ROOT / "config" / "api.local.json"
@@ -67,12 +69,19 @@ class PlaceholderRequest(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
-def require_auth(authorization: str | None = Header(default=None)) -> None:
+def require_auth(authorization: str | None = Header(default=None),
+                 x_conversation_id: str | None = Header(default=None, alias='X-Conversation-Id')) -> datetime:
     if not API_TOKEN or API_TOKEN == "CHANGE_ME":
         raise HTTPException(status_code=503, detail="API authentication is not configured")
     expected = f"Bearer {API_TOKEN}"
     if not authorization or not hmac.compare_digest(authorization.encode('utf-8'), expected.encode('utf-8')):
         raise HTTPException(status_code=401, detail="invalid Authorization bearer token")
+    try:
+        return call_anchor(API_CONFIG, x_conversation_id)
+    except InvalidConversation as error:
+        raise HTTPException(status_code=400, detail='Invalid conversation reference') from error
+    except Exception as error:
+        raise HTTPException(status_code=503, detail='Call context is unavailable') from error
 
 
 app = FastAPI(title="Medicus Local API", version="0.1.0")
@@ -121,7 +130,8 @@ def agent_capabilities_post(_request: dict[str, Any] | None = Body(default=None)
 
 
 @app.post("/doctor-availability", dependencies=[Depends(require_auth)])
-def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> dict[str, Any]:
+def doctor_availability(request: dict[str, Any] | None = Body(default=None),
+                        anchor: datetime = Depends(require_auth)) -> dict[str, Any]:
     connection = None
     try:
         payload = normalize_availability_payload(request)
@@ -131,7 +141,7 @@ def doctor_availability(request: dict[str, Any] | None = Body(default=None)) -> 
 
         connection = connect_to_db()
         cursor = connection.cursor()
-        response = search_availability(cursor, payload)
+        response = search_availability(cursor, payload, call_started_at=anchor)
         if payload.get("compact"):
             return compact_options(response)
         return response

@@ -24,6 +24,7 @@ class HandoffApiTests(unittest.TestCase):
         self.body = {'request_id': 'request', 'mode': 'callback', 'summary': 'Staff request'}
 
     def test_store_and_retry_without_database_connection(self):
+        api.handoff_store(self.config)  # Deployment provisions the protected store.
         with patch.object(api, 'connect_to_db') as connect:
             first = self.client.post('/handoff-summary', headers=self.headers, json=self.body)
             retry = self.client.post('/handoff-summary', headers=self.headers, json=self.body)
@@ -35,6 +36,7 @@ class HandoffApiTests(unittest.TestCase):
     def test_missing_identity_and_changed_request_are_rejected(self):
         response = self.client.post('/handoff-summary', headers={'Authorization': 'Bearer test-token'}, json=self.body)
         self.assertEqual(response.status_code, 400)
+        api.handoff_store(self.config)
         self.client.post('/handoff-summary', headers=self.headers, json=self.body)
         response = self.client.post('/handoff-summary', headers=self.headers, json={**self.body, 'summary': 'Other request'})
         self.assertEqual(response.status_code, 400)
@@ -54,6 +56,7 @@ class HandoffApiTests(unittest.TestCase):
         self.assertFalse(Path(self.config['approval_store_path']).exists())
 
     def test_disk_failure_does_not_claim_success_or_disclose_path(self):
+        api.handoff_store(self.config)
         with patch.object(api, 'handoff_store', side_effect=OSError('private path')):
             response = self.client.post('/handoff-summary', headers=self.headers, json=self.body)
         self.assertEqual(response.status_code, 500)
