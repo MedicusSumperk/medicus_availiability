@@ -1,0 +1,32 @@
+{
+  "checked_at_utc": "2026-10-05T21:50:20.640834+00:00",
+  "source": "Bounded live read-only MAIN query, rollback; date 2026-10-09 and starts 11:15/11:30",
+  "doctor_id": 15,
+  "rows": [
+    {"appointment_id": 141243, "start": "11:15", "end": "11:15", "activity": 5, "created": "2026-07-10 08:40:58.219000", "changed": "2026-07-27 09:29:06.132000", "has_ai_reception_marker": false, "is_authorized_test_card": false},
+    {"appointment_id": 144588, "start": "11:15", "end": "11:30", "activity": null, "created": "2026-10-01 13:28:20.162000", "changed": "2026-10-01 13:28:20.162000", "has_ai_reception_marker": true, "is_authorized_test_card": false},
+    {"appointment_id": 142198, "start": "11:30", "end": "11:45", "activity": null, "created": "2026-08-06 14:16:57.971000", "changed": "2026-08-06 14:16:57.971000", "has_ai_reception_marker": false, "is_authorized_test_card": false}
+  ],
+  "gui_projection_evidence": "zero_duration_gui_20261005.json",
+  "conclusion": "The three rows predate today's tests. The October 1 marked row overlaps the original zero-duration row when projected into the 11:15-11:30 GUI cell.",
+  "limits": [
+    "Creation/change timestamps are raw database values without an asserted timezone.",
+    "AI_RECEPTION marker alone does not identify the originating call or prove the exact historical cause.",
+    "No booking was changed or removed; staff must assess the existing overlap."
+  ],
+  "regression": "tests/test_zero_duration_bookings.py::test_oct9_overlap_does_not_hide_original_zero_duration_occupancy",
+  "historical_reproduction": {
+    "source_commit": "3fcb626",
+    "method": "Execute historical compute_slots locally with sanitized schedule and appointment intervals; no database writes",
+    "historical_free": ["11:15"],
+    "current_free": [],
+    "historical_preinsert_guard": "CAS < new_end AND CASDO > new_start excludes the zero-length 11:15 row for a new 11:15-11:30 booking",
+    "limitation": "Reproduces the code defect, not the exact deployed process or originating call on October 1"
+  },
+  "write_path_regression": {
+    "test": "tests/test_zero_duration_bookings.py::test_zero_duration_arriving_after_offer_blocks_staff_validation_and_writer",
+    "result": "A valid offer passes staff validation while free. Adding only the zero-duration occupied row makes staff validation raise ProposalConflict and the create writer return slot_not_bookable; insert is never called.",
+    "scope": "Real search, slot computation, staff validation and create writer; synthetic DB-loader outputs and patient fingerprint. No live Firebird write or transaction test.",
+    "targeted_suite": "39 passed: test_zero_duration_bookings.py and test_approval_execution.py"
+  }
+}

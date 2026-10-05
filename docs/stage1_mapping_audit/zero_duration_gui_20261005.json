@@ -1,0 +1,14 @@
+{
+  "date": "2026-10-05",
+  "database": "MAIN",
+  "appointment_id": 141243,
+  "doctor_id": 15,
+  "workplace": 1,
+  "appointment_date": "2026-10-09",
+  "raw_OBJOBJ": {"start":"11:15:00","end":"11:15:00","type":1,"activity":5},
+  "OBJOBJ_SEL": {"start":"11:15:00","end":"11:15:00"},
+  "gui": {"calendar_cell":"11:15-11:30","appointment_dialog_start":"11:15","appointment_dialog_end":"11:30","duration_minutes":15,"category":"Sken znamének 2 a vyšší","closed_with":"Storno","saved":false},
+  "interpretation": "MAIN zero-duration booking at a known schedule-cell start must occupy that cell. Use its actual schedule end, not a fixed global duration.",
+  "limits": ["One actual GUI example; 10-minute and mixed-duration variants are synthetic regressions", "No inference for zero times outside a known cell, reversed/null times, or LASER zero-duration rows", "No clinical/category meaning inferred from the label", "No Firebird DDL or DML performed"],
+  "candidate_live_read": "Original broad search now completes with options; affected doctor/day returns no options. Candidate ran in an isolated Python process; production not yet updated."
+}

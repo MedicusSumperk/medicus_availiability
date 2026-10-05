@@ -1,0 +1,20 @@
+{
+  "date": "2026-10-05",
+  "origin": "User workstation",
+  "endpoint": "https://medicus-api.kreli.org/doctor-availability",
+  "request": {"service":"dermatoscope_first","date_from":"2026-10-02","limit":3,"compact":true},
+  "checks": [
+    {"client":"PowerShell Invoke-WebRequest, default client headers", "endpoint":"/health", "http":200, "ok":true},
+    {"client":"Python urllib, default client headers", "checked_at_utc":"2026-10-05T21:51:36.406661+00:00", "endpoint":"/doctor-availability", "authenticated":true, "http":403, "non_json":true},
+    {"client":"PowerShell Invoke-WebRequest, default client headers", "endpoint":"/doctor-availability", "authenticated":true, "http":200, "ok":true,
+      "options":[
+        {"date":"2026-10-15","start_time":"11:00","scan_start_time":"10:45"},
+        {"date":"2026-11-11","start_time":"08:30","scan_start_time":"08:15"},
+        {"date":"2026-11-11","start_time":"09:00","scan_start_time":"08:45"}
+      ]}
+  ],
+  "conclusion": "Authenticated public availability succeeds from the workstation with PowerShell. Python urllib is rejected from both workstation and server. The previous 403 is not evidence of general public API downtime.",
+  "limits": ["Exact Cloudflare rule or rejection cause has not been inspected.", "Different HTTP clients differ in more than their User-Agent; causation is not established.", "This is not an ElevenLabs voice/tool acceptance test."],
+  "security_configuration_changed": false,
+  "appointment_writes": false
+}

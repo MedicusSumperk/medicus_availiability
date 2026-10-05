@@ -1,0 +1,2116 @@
+{
+  "captured_at_utc": "2026-10-01T22:00:02.518102+00:00",
+  "git_head": "c767598749d8b02aa8912eff1ed2990151ce040f",
+  "api_flags": {
+    "enable_appointment_writes": false,
+    "enable_appointment_cancellations": false,
+    "appointment_created_by": 10,
+    "include_related_appointments_by_default": true
+  },
+  "effective_rules": {
+    "version": "2026-07-production-v1",
+    "doctors": {
+      "known": [
+        {
+          "id": 1,
+          "name": "Tereza Perez",
+          "status": "active",
+          "note": "Observed in DB schedule reports; not part of first production booking scope."
+        },
+        {
+          "id": 2,
+          "name": "Rostislav Bednar",
+          "status": "active",
+          "note": "Active Bednar row used by availability/write revalidation."
+        },
+        {
+          "id": 4,
+          "name": "Rostislav Bednar",
+          "status": "excluded",
+          "note": "Duplicate row without schedule contexts in tested window."
+        },
+        {
+          "id": 8,
+          "name": "Maria Bartonova",
+          "status": "active"
+        },
+        {
+          "id": 10,
+          "name": "Petra Pospisilova",
+          "status": "excluded",
+          "note": "No schedule contexts in tested window."
+        },
+        {
+          "id": 11,
+          "name": "Dusana Selecka",
+          "status": "active"
+        },
+        {
+          "id": 12,
+          "name": "Marta Skolarova",
+          "status": "active"
+        },
+        {
+          "id": 13,
+          "name": "Zuzana Slosarova",
+          "status": "active",
+          "note": "Schedule interval may vary by day/context."
+        },
+        {
+          "id": 15,
+          "name": "Filip Ferencz",
+          "status": "active"
+        }
+      ],
+      "globally_allowed_doctor_ids": [],
+      "globally_excluded_doctor_ids": [
+        4,
+        10
+      ]
+    },
+    "shared_resources": {
+      "dermatoscope": {
+        "blocking_idcinnosti": [
+          1,
+          6
+        ],
+        "capacity": 1
+      }
+    },
+    "operational_rules": {
+      "before_time_requires_emergency": {
+        "enabled": true,
+        "before": "08:00",
+        "request_flag": "emergency",
+        "agent_note": "Before 08:00, only emergency/pohotovost slots may be offered."
+      },
+      "afternoon_arrival_buckets": [
+        {
+          "enabled": true,
+          "service": "skin",
+          "weekdays": [
+            1,
+            2,
+            3,
+            4,
+            5
+          ],
+          "time_from": "11:00",
+          "time_to": "12:00",
+          "spoken_time_label": "11:00",
+          "note": "Draft client rule: late-morning skin patients may be communicated as one shared arrival bucket while the backend writes exact technical slots."
+        },
+        {
+          "enabled": true,
+          "service": "skin",
+          "weekdays": [
+            1
+          ],
+          "time_from": "15:00",
+          "time_to": "16:00",
+          "spoken_time_label": "15:00",
+          "note": "Monday afternoon skin bucket: communicate 15:00 while writing exact technical slots."
+        },
+        {
+          "enabled": true,
+          "service": "skin",
+          "weekdays": [
+            2,
+            3,
+            4
+          ],
+          "time_from": "16:00",
+          "time_to": "17:00",
+          "spoken_time_label": "16:00",
+          "note": "Tuesday-Wednesday-Thursday afternoon skin bucket: communicate 16:00 while writing exact technical slots."
+        },
+        {
+          "enabled": true,
+          "service": "skin",
+          "weekdays": [
+            5
+          ],
+          "time_from": "14:00",
+          "time_to": "15:00",
+          "spoken_time_label": "14:00",
+          "note": "Friday afternoon skin bucket: communicate 14:00 while writing exact technical slots."
+        }
+      ]
+    },
+    "services": {
+      "skin": {
+        "label": "Kozni vysetreni",
+        "agent_can_offer_availability": true,
+        "agent_can_book_finally": false,
+        "idcinnosti": null,
+        "duration": {
+          "mode": "schedule_interval",
+          "minutes": null
+        },
+        "followup": {
+          "create": false,
+          "kind": "dermatoscope_reservation",
+          "idcinnosti": 6,
+          "duration": {
+            "mode": "schedule_interval",
+            "minutes": null
+          },
+          "info": "AI_DERMATOSCOPE_RESERVATION"
+        },
+        "dermatoscope": {
+          "requires_shared_capacity": false
+        },
+        "allowed_doctor_ids": [],
+        "excluded_doctor_ids": [],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "single_row"
+        }
+      },
+      "plasma": {
+        "label": "Plazma",
+        "agent_can_offer_availability": false,
+        "agent_can_book_finally": false,
+        "idcinnosti": 3,
+        "duration": {
+          "mode": "fixed_minutes",
+          "minutes": 30
+        },
+        "info_marker": "plazma",
+        "allowed_doctor_ids": [
+          8
+        ],
+        "excluded_doctor_ids": [
+          2,
+          4
+        ],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "single_row"
+        }
+      },
+      "dermatoscope_first": {
+        "label": "Dermatoskopie prvni",
+        "agent_can_offer_availability": false,
+        "agent_can_book_finally": false,
+        "idcinnosti": 1,
+        "duration": {
+          "mode": "schedule_interval",
+          "minutes": null
+        },
+        "dermatoscope": {
+          "requires_shared_capacity": true,
+          "scan_before_minutes": 15,
+          "scan_duration_minutes": 15,
+          "scan_blocker_inferred_idcinnosti": [
+            1
+          ],
+          "scan_blocker_actual_idcinnosti": [
+            6
+          ],
+          "communication_note": "Pacient ma prijit o 15 minut drive na sken."
+        },
+        "allowed_doctor_ids": [],
+        "excluded_doctor_ids": [],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "single_row"
+        }
+      },
+      "dermatoscope_followup": {
+        "label": "Dermatoskopie kontrola",
+        "agent_can_offer_availability": false,
+        "agent_can_book_finally": false,
+        "idcinnosti": 2,
+        "duration": {
+          "mode": "schedule_interval",
+          "minutes": null
+        },
+        "allowed_doctor_ids": [],
+        "excluded_doctor_ids": [],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "disabled_not_in_first_scope"
+        }
+      },
+      "laser": {
+        "label": "Laserove vykony",
+        "agent_can_offer_availability": false,
+        "agent_can_book_finally": false,
+        "idcinnosti": 3,
+        "duration": {
+          "mode": "fixed_minutes",
+          "minutes": null
+        },
+        "allowed_doctor_ids": [],
+        "excluded_doctor_ids": [],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "disabled_not_in_first_scope"
+        }
+      },
+      "regular_check": {
+        "label": "Kontrola po scanu",
+        "agent_can_offer_availability": false,
+        "agent_can_book_finally": false,
+        "idcinnosti": 5,
+        "duration": {
+          "mode": "schedule_interval",
+          "minutes": null
+        },
+        "allowed_doctor_ids": [],
+        "excluded_doctor_ids": [],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "disabled_not_in_first_scope"
+        }
+      },
+      "dermatoscope_reservation": {
+        "label": "Rezervace dermatoskopu",
+        "agent_can_offer_availability": false,
+        "agent_can_book_finally": false,
+        "idcinnosti": 6,
+        "duration": {
+          "mode": "schedule_interval",
+          "minutes": null
+        },
+        "allowed_doctor_ids": [],
+        "excluded_doctor_ids": [],
+        "seasonality": {
+          "enabled": false,
+          "start": "01-01",
+          "end": "12-31"
+        },
+        "write": {
+          "strategy": "disabled_not_in_first_scope"
+        }
+      }
+    }
+  },
+  "search_config": {
+    "allowed_doctor_ids": [],
+    "system_excluded_doctor_ids": [
+      4,
+      10
+    ],
+    "excluded_doctor_ids": [],
+    "slot_interval_minutes": 15
+  },
+  "laser_mapping": {
+    "enabled": true,
+    "database": "C:/Medicus 3 Laser/data/MEDICUS.FDB",
+    "calendar_id": 5,
+    "workplace_id": 1
+  },
+  "files": {
+    "api_server": {
+      "sha256": "28be8f278a0689c82ca64ff69994eb1e3e8767e07016dbef1a1515b726f2679f",
+      "symbols": {
+        "load_api_config": {
+          "line": 34,
+          "ast_sha256": "b693c58a382ef4e0b3686e9a1256100dcf5e396f4e491e7f6af65adeeba9c881"
+        },
+        "AvailabilityRequest": {
+          "line": 48,
+          "ast_sha256": "645b411102199d35ec0ecf1f1fe6a49c97306fa20a156b843f166939f6f3afda"
+        },
+        "PlaceholderRequest": {
+          "line": 64,
+          "ast_sha256": "6dde10d2860719b278b0d0076475819d6e5b0876f710160b38fea7ea31b3b1a2"
+        },
+        "require_auth": {
+          "line": 68,
+          "ast_sha256": "81428ddcfdc833f9208b767b9742c288f6d154fc7e7673aea574d7748dd9f691"
+        },
+        "normalize_availability_payload": {
+          "line": 79,
+          "ast_sha256": "3ad417e8e69bd62e01f1790b8c43424da5bada77178de27b9dc1878941df9be1"
+        },
+        "health": {
+          "line": 102,
+          "ast_sha256": "51dc7c338d1d9840bbdb1dc1311388bdf1aa391043ccde95b927c99f79c019f3"
+        },
+        "agent_capabilities_get": {
+          "line": 107,
+          "ast_sha256": "2f98025174e059d7363bf31479a21ea3b43d25faa268f2e2f230bb415d1d6fb7"
+        },
+        "agent_capabilities_post": {
+          "line": 117,
+          "ast_sha256": "eae5b8937f0c580eedfa9cdd6773057a28c10aaa6afd0bc8806cb7c9b36e3205"
+        },
+        "doctor_availability": {
+          "line": 122,
+          "ast_sha256": "bbf4cdf6d43c90b20b82980e98d950c3e7654ca69e854811579bb589717b28d6"
+        },
+        "patient_lookup": {
+          "line": 146,
+          "ast_sha256": "1fee0254948776a52ecc3bb6d2b7f3896915573de2c36e4c36ec9e070348ceec"
+        },
+        "book_appointment": {
+          "line": 163,
+          "ast_sha256": "3eaa329b0754a496f841848ae23b5069b1371f3ed1c59a21608bdf520c8af312"
+        },
+        "handoff_summary": {
+          "line": 190,
+          "ast_sha256": "c8aa69c5bb3c068302e9130fd588048d71f163573bd5d4e241f5dec2ed615485"
+        }
+      }
+    },
+    "business_rules": {
+      "sha256": "4ee4f093064b9bf5d01f1607e6fadd5adbea9a6e24b4f2553582caeec5629275",
+      "symbols": {
+        "_deep_merge": {
+          "line": 16,
+          "ast_sha256": "7383982e416a22cbea88b3f115481b380395ce5a50c6961596cc6b5a42193132"
+        },
+        "_load_json": {
+          "line": 26,
+          "ast_sha256": "9398fdc084ed5bf69fced1a5b1a58af3c2300703199222b86f7fdbe16a62a8b9"
+        },
+        "load_business_rules": {
+          "line": 31,
+          "ast_sha256": "3a951863a12fc652525cd21f690545c362bd410b576001b87359d7533a048ff2"
+        },
+        "_as_int_set": {
+          "line": 49,
+          "ast_sha256": "1c9d6436b22b418bd64680f856da21a04ec589d1b451cf00aeffd0417cc3a740"
+        },
+        "known_doctor_ids": {
+          "line": 55,
+          "ast_sha256": "3bffc0648c955d7be4ff75fd0901279aa001d4f9e025d48688c3ac67ccd28c26"
+        },
+        "validate_business_rules": {
+          "line": 63,
+          "ast_sha256": "f1b57bcd3df17f515507023cd91d77d78ced3bf9ac9bc0cd0f3f327f265d33c8"
+        },
+        "agent_context_overlay": {
+          "line": 117,
+          "ast_sha256": "a5e9ed758f01148099d84ecc3b17ff60a1364a4dbbe2ed16dd96aba058b38850"
+        },
+        "filter_doctors_for_service": {
+          "line": 148,
+          "ast_sha256": "9ed6d0703f4ded957103a72e66285e75486020f5fd013a76eb8edffeceb16ef5"
+        },
+        "service_enabled_for_availability": {
+          "line": 170,
+          "ast_sha256": "ef962d14457374df5ec2ddee37ac8cd6190ec1ba628adddd92f8d964ecfb4db9"
+        },
+        "service_enabled_for_booking": {
+          "line": 175,
+          "ast_sha256": "181095e9784372bb1621c721a971321d6af2885e9a2cf94070d99c89de4fa953"
+        },
+        "service_followup_enabled": {
+          "line": 180,
+          "ast_sha256": "aa025f8fc6289128914fbad2bc1ab29bf5e557200d80add11e44c8b8af5170df"
+        },
+        "agent_capabilities": {
+          "line": 185,
+          "ast_sha256": "843ed1b563c9a76381558202ad6fda7582574c3f077055e7a9e3b8ffae54ec5a"
+        },
+        "_capabilities_voice_answer_cs": {
+          "line": 214,
+          "ast_sha256": "2bb644905ec5b5460bd0c467bd19ee7b558ac9a7cf1342649600c4790c80b596"
+        },
+        "is_service_in_season": {
+          "line": 232,
+          "ast_sha256": "9236cae5533591f61e22c3d4a7071f59b67efad59badcfa7f9d49866bdb14f0a"
+        },
+        "before_time_rule": {
+          "line": 239,
+          "ast_sha256": "8e293bc5c866daaba82ca7846b334f7618cc68355bbffe77ab6bf70a1625018b"
+        },
+        "afternoon_bucket_for_time": {
+          "line": 243,
+          "ast_sha256": "8d994217dff175a74b772243278f761af1d2777524f02e49259e588a9866969e"
+        }
+      }
+    },
+    "availability_search": {
+      "sha256": "a35bc4b77ff195514c338f4a80e254711a19d5253cf990b52d78762f5f92b51e",
+      "symbols": {
+        "_clinic_now": {
+          "line": 46,
+          "ast_sha256": "c31a46b1e5294461c9c65408ff6de72537dbbe626e7e7e1f17441a3b6be48047"
+        },
+        "_option_is_future": {
+          "line": 50,
+          "ast_sha256": "9aad28e3d336df994788c558990a1a17200ca89a154fcb3de2ca4a55f8426ade"
+        },
+        "_parse_date": {
+          "line": 68,
+          "ast_sha256": "924af3a110cae192cb0534f6b537d6e72a4441db35efd72527f334b9e8073118"
+        },
+        "_parse_time": {
+          "line": 76,
+          "ast_sha256": "33f5d24c8a9c8452037f336febe1ba2b0f488940db18d050503e97f991e36c98"
+        },
+        "_parse_bool": {
+          "line": 84,
+          "ast_sha256": "12afb4551f002e7ae5ab7d933e52eae822d15b426ec5776645a8dcdd77fca3c9"
+        },
+        "_parse_weekdays": {
+          "line": 100,
+          "ast_sha256": "d7772b8ec0a78922487c0b28994a21da3f76f954639b31f1a0042f58feea957f"
+        },
+        "_effective_weekdays": {
+          "line": 121,
+          "ast_sha256": "5407dd64c5a7dfc03a37a2f45b46ed4c494c58a8ea3dc8f6a87696dc45a397fb"
+        },
+        "_weekday_payload": {
+          "line": 129,
+          "ast_sha256": "b16e9e979ca47c03d2f18b63aab9baa2a76e9ee03408ad85e55ab88d2213dcca"
+        },
+        "_iter_dates": {
+          "line": 138,
+          "ast_sha256": "36fa10a8118993f13e22517fdc93d446a146f951b70482d5fb1af6d6a1bbda0c"
+        },
+        "_option_matches_time": {
+          "line": 152,
+          "ast_sha256": "48599e2c0df28d489a97ab4e7e8cdf5bf3ef8107ff20993d87b1b5ea272ad3b0"
+        },
+        "_filtered_doctors": {
+          "line": 161,
+          "ast_sha256": "372dc58412d606ab5d8e85bc9c6c8896d26f520eb73ecdfbc79fe6662c227611"
+        },
+        "_merge_config": {
+          "line": 167,
+          "ast_sha256": "91c3f6a3c5ee9ebf60cc4738d90dd6353cb12c3e66505a166590df000418c268"
+        },
+        "_normalize_name": {
+          "line": 182,
+          "ast_sha256": "efc4e4cd73a0e34e1a4d9313ad516c4a26f1a72ac0b20f8629f300bb8291e9c4"
+        },
+        "_resolve_doctor_filter": {
+          "line": 190,
+          "ast_sha256": "dda984564042e2df50b30a286bba30dc9f24139511e170dd97159c71e1f9f65f"
+        },
+        "load_search_config": {
+          "line": 247,
+          "ast_sha256": "21380fb1c8f358b44e95b2ff7f139aa55fa689766d953ed7913b197608b7ae38"
+        },
+        "_option_allowed_by_operational_rules": {
+          "line": 259,
+          "ast_sha256": "45a82d37997cafb378e29bcc542f0d2570d1a0b93521a8db806f2bf8a58a3622"
+        },
+        "_apply_spoken_time": {
+          "line": 273,
+          "ast_sha256": "0bca178bcf676cbe2b3019fcff1a519de1046b2f180bd85ce8f9705f90b95563"
+        },
+        "search_availability": {
+          "line": 292,
+          "ast_sha256": "45cc9333c2dac033a664ac49b8177eb2de89b48d099d5ec9e34701e59a8e433b"
+        },
+        "_search_availability": {
+          "line": 297,
+          "ast_sha256": "944da2e1ec9e3140010c37457d53d91f698323ac2f7bb66678940e2eb81d4124"
+        },
+        "compact_options": {
+          "line": 501,
+          "ast_sha256": "f2877a81bed872f08bc849a8c7a3cc250e74f1496602c69f4dae41e7741375f4"
+        }
+      }
+    },
+    "availability_engine": {
+      "sha256": "e5b36510cf5bd695a5002de306dc0ed851b95f39fcea918c7d8da1f7e1d95088",
+      "symbols": {
+        "to_time": {
+          "line": 12,
+          "ast_sha256": "d83db51540e44a031a4f71d36e193dd94ceb2828bbe32c504804cb9ce37bece3"
+        },
+        "format_time": {
+          "line": 28,
+          "ast_sha256": "12d7bfb39cf1e1215673e30c4447403045646053af4fa7919452994ba8f5162c"
+        },
+        "generate_slots": {
+          "line": 33,
+          "ast_sha256": "90d105c8cc29a249cb8d8763d726416a16684accf9c5427fa94a4efdcffb379c"
+        },
+        "schedule_interval_values": {
+          "line": 48,
+          "ast_sha256": "24c56335d6a69915d593de64f94c97f05aa45ee15f7385ecb191139e1244e7ef"
+        },
+        "primary_schedule_interval": {
+          "line": 60,
+          "ast_sha256": "551dc795159e978c753ce9ed66c903cd3451a752dce22416bf5e2f4e77d83727"
+        },
+        "load_doctors": {
+          "line": 68,
+          "ast_sha256": "880ff304de7d018b5f9a30f8a875ec6d255c7993134c5e38cb0d0b87705ab63f"
+        },
+        "find_schedule_contexts": {
+          "line": 95,
+          "ast_sha256": "83a51cc096624fd94629f92979862a1db888a55192306463f9d4c14cdaf2f9dc"
+        },
+        "load_schedule_blocks": {
+          "line": 122,
+          "ast_sha256": "ce863278c8ad7113a3dc478409d30300c4caa4c0a93eefc789d1b97b305548eb"
+        },
+        "load_appointments": {
+          "line": 136,
+          "ast_sha256": "e5101020ed72291ee84506e9b5d4a07d84743d8001a794d56bc007352e9ca4ac"
+        },
+        "compute_slots": {
+          "line": 149,
+          "ast_sha256": "cb382328d8065b233b9e1566fae6b220cdc9b1270777867d82a7f836be5ae0f5"
+        },
+        "compute_day_availability": {
+          "line": 185,
+          "ast_sha256": "5ac7bc5df5570b8f93a8718d9148bd13f4364606cd4c45aa6b50bc28ee395e6a"
+        },
+        "compute_week_availability": {
+          "line": 239,
+          "ast_sha256": "ae6c100de4417c0de5514ec28705aec3a9a6acc68c620664e7adcbfa563462a0"
+        }
+      }
+    },
+    "agent_context": {
+      "sha256": "a20ac6792bb3ee810e82356dfc97f516644c0bc2f70735ae53b7c5dd04124289",
+      "symbols": {
+        "parse_time": {
+          "line": 73,
+          "ast_sha256": "6e906432ea1481e832d30c747b4c97813d8a2b9c883bf6077afd546da14317c6"
+        },
+        "add_minutes": {
+          "line": 84,
+          "ast_sha256": "0a765546918ea57ccaa9a4c309273186860deaef742a95bff949db837da34360"
+        },
+        "time_to_minutes": {
+          "line": 90,
+          "ast_sha256": "9eb7ca48f05d12b2d26316ed202b4957c7b7a3d4b7201aff5dee68bceef382d3"
+        },
+        "time_interval_overlaps": {
+          "line": 94,
+          "ast_sha256": "b5919bd58be4d9e8dde7a381880081464a744221e1f0730d4e4fbeebb6518175"
+        },
+        "normalize_config": {
+          "line": 99,
+          "ast_sha256": "2b9e920a5ab0eca2336712970444590c133dc007b5a54eaf77e4f9983f18460e"
+        },
+        "date_window": {
+          "line": 118,
+          "ast_sha256": "372f4c8cfa7e210f6c456322abf14c8a4f7c80a6d5a9c2527215bdc80838573a"
+        },
+        "filter_doctors": {
+          "line": 138,
+          "ast_sha256": "de1a5547e8efc9841bf323c17549443acc814779a512d813814fba5d7f0a1cbe"
+        },
+        "context_slot_interval": {
+          "line": 157,
+          "ast_sha256": "50dad238214bfcfdd8c5a7960fe81a9a2676ea8b20df1b4343f6e10b3ab6a3ff"
+        },
+        "configured_minutes": {
+          "line": 165,
+          "ast_sha256": "ec08fb100b03f5ea26925f02ba64cff5a1862d786d0c73a2188257c16265713b"
+        },
+        "load_dermatoscope_blockers": {
+          "line": 173,
+          "ast_sha256": "d431318b913e9a3a302833403811b8fc8253eb6d01f45cff51e86a3d7878a446"
+        },
+        "has_required_consecutive_slots": {
+          "line": 205,
+          "ast_sha256": "3b02170e94fca6c91db639c96f60263088b2ee68fd87391e6dd0deac6c4ce377"
+        },
+        "dermatoscope_conflict": {
+          "line": 220,
+          "ast_sha256": "606b82d339284ae91f773e21a7aab3c7672ddd77b853bdfcd7bd72f649a625d3"
+        },
+        "inferred_scan_conflict": {
+          "line": 243,
+          "ast_sha256": "fefcc5b59a9e1f4da30a5dff53312ecd26d15b853aa317e577a2c7bb1c6b6c53"
+        },
+        "build_skin_options": {
+          "line": 280,
+          "ast_sha256": "eb73bbd87aa2d74c064af0aece0f0465d44fd43f8b0edaaa8bd98f5584e6bac6"
+        },
+        "build_dermatoscope_options": {
+          "line": 339,
+          "ast_sha256": "0561167ed56f43fdb5c356f5542976f822ade6bc2b6041bff00e3137b2178f7b"
+        },
+        "build_simple_service_options": {
+          "line": 411,
+          "ast_sha256": "4f604a8e70e7a78b7562a7375a9ad92f4eb19b102a7310591c4693dc5bf202e6"
+        },
+        "build_agent_context": {
+          "line": 447,
+          "ast_sha256": "8b86034c1afd722b4f45de44e3bea988f0fbae3b285f706a0f8b965a1d42118e"
+        }
+      }
+    },
+    "laser_calendar": {
+      "sha256": "4fdc4a20dd74f1d2b4e8247456703bc9ffb76d0555aedff1397fb43f369b6985",
+      "symbols": {
+        "ScanCalendarUnavailable": {
+          "line": 12,
+          "ast_sha256": "8db4d54375a9da2380cbfc994243597c4d6e68f0336da73383d2ba81ee8daee7"
+        },
+        "interval_is_available": {
+          "line": 16,
+          "ast_sha256": "867ee5930f64b8be9f2b333b7d6f0d9f83d669fb22fe0b66539b0b43b92def23"
+        },
+        "ScanCalendar": {
+          "line": 45,
+          "ast_sha256": "9945052b171048294faf10d7ef2d853db0ce05533c2c2b2536502902c83b037e"
+        },
+        "open_scan_calendar": {
+          "line": 67,
+          "ast_sha256": "68b79669c9b6d42f248d75da22299e5bed474ce575bb055d0b6953ec7255452e"
+        }
+      }
+    },
+    "appointment_write": {
+      "sha256": "fbbb0f57d092ee56d35daacdb1a71668a3e5272868a2a4b56e472d3175cb8a1d",
+      "symbols": {
+        "_clean": {
+          "line": 25,
+          "ast_sha256": "7565b4f6b39b55a75bac563634f69afada291b6c4352e9d0e298d533f54b013d"
+        },
+        "_parse_date": {
+          "line": 31,
+          "ast_sha256": "12a76907498d635a05dbf3b06da2d99523c69599b2be1c06ca44e27c4f96b664"
+        },
+        "_parse_time": {
+          "line": 40,
+          "ast_sha256": "e87f3e67070895e96e85f39ea8586e4cd2e55f1e2c4274d56baec2eb9fa83c19"
+        },
+        "_format_time": {
+          "line": 54,
+          "ast_sha256": "ba757597c4822c438ad9188b33416bd0ac9473e7dbb368cacc74978ce8b58de2"
+        },
+        "_bool": {
+          "line": 58,
+          "ast_sha256": "61c108543f392d85f265addc50c1f6bed9789d9a178f6410bab73557e3a6d3c4"
+        },
+        "_configured_bool": {
+          "line": 68,
+          "ast_sha256": "82a5af6a1d9090cb786d45e83d565c50c7bb0b35d5f87b3d81ff252d5c7bdd1f"
+        },
+        "_write_enabled": {
+          "line": 74,
+          "ast_sha256": "8fc08b8e22e12725ecd2955a49c2e62836b390c8c59826d7c43a9e5a661ec285"
+        },
+        "_cancel_enabled": {
+          "line": 78,
+          "ast_sha256": "a9ae2fa48a02bbe64d3cef2220d8e10cc3219141e00ff51d5d88560c76d1870d"
+        },
+        "_created_by": {
+          "line": 82,
+          "ast_sha256": "2fa746f7909e88bbee06ce3311c5b3e5be56f0f76253818dbaa12321a691536a"
+        },
+        "_info_prefix": {
+          "line": 86,
+          "ast_sha256": "a9a1d1c6120b0fe4a9ce29a0c30e7dda11e6d48453cffe5fddbc2c1eaf2bad59"
+        },
+        "_skin_followup_idcinnosti": {
+          "line": 90,
+          "ast_sha256": "ef24e7083eff0613ad49901fb0941ef0c30c3bcf562a07d8e96f2a5bd3753aa6"
+        },
+        "_skin_followup_info": {
+          "line": 98,
+          "ast_sha256": "f39bd31c1c9d9c980b6715d674b3fd106e22721edb930be175682ec41ba447e9"
+        },
+        "_service_followup_enabled": {
+          "line": 106,
+          "ast_sha256": "98a857c728cfaf1cfea0f0e081c21087b1be2862ec5063b0f9ade09dcbac1323"
+        },
+        "_service_info": {
+          "line": 111,
+          "ast_sha256": "53d2c55da2355b0bfa9253b6e795539183eee6cb5c4603f4d2ca99f6ea45e202"
+        },
+        "_require_patient_verified": {
+          "line": 125,
+          "ast_sha256": "6b77bed819940308df13ca11f306068a3961451987ef7f34d91bff9c7c36e286"
+        },
+        "_appointment_ids": {
+          "line": 130,
+          "ast_sha256": "8e9abecee711ea334daacd41271c1d5dd033977a9db9e6f880769c181d697694"
+        },
+        "_fetch_appointment_rows": {
+          "line": 146,
+          "ast_sha256": "0818f144e1d302f53193e140b0a020efaa724825c4fabb09afec97dfde29baef"
+        },
+        "_expand_related_appointment_ids": {
+          "line": 191,
+          "ast_sha256": "40c5af16830ce1cbea916ee27957467fad03882b3f9612edd42fbfe0f16cd431"
+        },
+        "_find_exact_bookable_option": {
+          "line": 238,
+          "ast_sha256": "765c697b0d01bccada8082a80dcbc227f7466ee69553ea5de6f9584040d9e4c5"
+        },
+        "_find_conflicts": {
+          "line": 296,
+          "ast_sha256": "5e8b920261210f16551dac7055742f0cac3988dee71a36dbb38bd23a6da0201f"
+        },
+        "_insert_appointment": {
+          "line": 330,
+          "ast_sha256": "65d5673385e5b32cf3b69ec84d244449560be5b751f5b524df6df3c761b0e6d2"
+        },
+        "_create_appointments": {
+          "line": 396,
+          "ast_sha256": "08883f439efd1ff6c611a321d10d3e6d2bbcc5842e7db2e05b5600cfc6f47526"
+        },
+        "_cancel_appointments": {
+          "line": 464,
+          "ast_sha256": "504d2da6e57efc5611a9e0abf945e4daf1c5b196c6b35895a0d95d19deedf5ec"
+        },
+        "write_appointment": {
+          "line": 508,
+          "ast_sha256": "d955d37930b5231be91c3410bcdbbaa536da4bb671c530b59cf491ef37d54c17"
+        }
+      }
+    },
+    "patient_lookup": {
+      "sha256": "ed14850fb593558cf628440dc221b4aabbf4468fc16f9fd89c0463ec4ca86f25",
+      "symbols": {
+        "_clean": {
+          "line": 45,
+          "ast_sha256": "7565b4f6b39b55a75bac563634f69afada291b6c4352e9d0e298d533f54b013d"
+        },
+        "_normalize_text": {
+          "line": 51,
+          "ast_sha256": "de2dc1589fc70411c549453331512937621b3bcf895ec10b55bf5bc4d7ff57fa"
+        },
+        "_digits": {
+          "line": 57,
+          "ast_sha256": "cf6a7f7af85f2ef3bba999992276b5b2ff40a97834dfd3016b77ab7d60a8e384"
+        },
+        "_last4": {
+          "line": 61,
+          "ast_sha256": "2cd7906d109fe05468e059a8f9ad2a30ee93b7be6195b2660d3da10e1b6b2d3a"
+        },
+        "_date_iso": {
+          "line": 68,
+          "ast_sha256": "537b956d32bbe7ec12f974444d0201eb0b66369f076efce213872bd97f7e11b6"
+        },
+        "_load_column_metadata": {
+          "line": 79,
+          "ast_sha256": "5452c88ca14ee4f1ed586fbe167819ca03a45a48acb50dfa31b9a4714a817c17"
+        },
+        "_available_columns": {
+          "line": 102,
+          "ast_sha256": "dcf64c93ede32425dc978198e0a2f5d4014d0369cbb927d2b3f5136e2ad95165"
+        },
+        "_is_text_column": {
+          "line": 106,
+          "ast_sha256": "e1fc0cd37f112520725dbfb9643fc2381d49d823bf93be3b6a05a021757b3dd1"
+        },
+        "_build_patient_query": {
+          "line": 110,
+          "ast_sha256": "8ae8217b88ba71620168f2138688f541f23906e14248cf0afcae060006b0f5e5"
+        },
+        "_requested_name_filters": {
+          "line": 198,
+          "ast_sha256": "d11d7057b9bf38f60ba0c53e232b5ce1fbeec17ace42e06fd85a5f77565e28a4"
+        },
+        "_has_stable_anchor": {
+          "line": 207,
+          "ast_sha256": "c62c0c1dc01ab4c1bb1f5413588d2dc069768dcbc149e3b2d86e7fcd3ef7ab2e"
+        },
+        "_name_fallback_request": {
+          "line": 218,
+          "ast_sha256": "558493c03b85766bbd12d888fef775cc3614df5dfc47ff13115258fff105005c"
+        },
+        "_text_contains_normalized": {
+          "line": 232,
+          "ast_sha256": "cb87f9095006b953e05a5ad3fe1b6655d1bd7cae33fb9acdb7d0d3d310a00df4"
+        },
+        "_levenshtein_distance": {
+          "line": 239,
+          "ast_sha256": "073ad946a461926906a441082ad13ec24b9a65894c910b36f16dc14adbbf37f8"
+        },
+        "_text_fuzzy_matches": {
+          "line": 259,
+          "ast_sha256": "cc95e932a61008fd7424c0552f5e7720294a41acaa1013a7be6eb85818fe5d58"
+        },
+        "_patient_matches_requested_names": {
+          "line": 274,
+          "ast_sha256": "c7e9bab37f3d85863a511227111def0bc2983f80c1106c6876fb864198a67b0b"
+        },
+        "_patient_fuzzy_matches_requested_names": {
+          "line": 282,
+          "ast_sha256": "e8d0db70ee13c067629687bbd1ebcc40c9fbfbefec28e79db3630c6267cac5fa"
+        },
+        "_verification_method": {
+          "line": 290,
+          "ast_sha256": "1158b528811fbf8cc72639de81453ff3efec37569635dc974a12c5b7f432b0e4"
+        },
+        "_next_step_for_multiple_matches": {
+          "line": 304,
+          "ast_sha256": "9f276f565d3998f1cf9155f5303f9ee7bb1902c1d3a29a1fe8c5f77d9c4f175f"
+        },
+        "_patient_from_row": {
+          "line": 314,
+          "ast_sha256": "c8a5a5915ca01b346db4864b9ac4eefe90c99f0d159f9f01f1670eb315e11ef8"
+        },
+        "_sanitize_patient": {
+          "line": 334,
+          "ast_sha256": "859787e41731da330d3f5828c98175097cab392032a768b28f6b315f46aae24e"
+        },
+        "_appointment_row_to_dict": {
+          "line": 338,
+          "ast_sha256": "19f8ea7f5f1e1603def26d02232a0c802ab23e993519d10fe52693a9d3bb2eeb"
+        },
+        "_load_appointments": {
+          "line": 355,
+          "ast_sha256": "4144f7782a413a910926f434983016905c1c2b1ac118d8b50bbd49c2b475665f"
+        },
+        "_load_future_appointments": {
+          "line": 385,
+          "ast_sha256": "3f082f3b402474691ab480e0a490549c7b5409fddea7a41d223f72bc79e461ce"
+        },
+        "_load_past_appointments": {
+          "line": 391,
+          "ast_sha256": "2912c9bdfad0b2d06cbc0d23a70beb42fedbdb33f94613b6f657d0e5963342dc"
+        },
+        "lookup_patient": {
+          "line": 397,
+          "ast_sha256": "09eb9dd8d1d0e11f948d10f4d16b1add22cb05386c4bc58465997ece11f37521"
+        }
+      }
+    },
+    "handoff_summary": {
+      "sha256": "f3e936a4c4b25290bfc704b1a0a93ed3e4d427111d0228699dc6d4a739191b14",
+      "symbols": {
+        "_clean": {
+          "line": 12,
+          "ast_sha256": "7565b4f6b39b55a75bac563634f69afada291b6c4352e9d0e298d533f54b013d"
+        },
+        "_compact_patient": {
+          "line": 18,
+          "ast_sha256": "43e80c4e433faa6e07c5874c7e7837620a0e86d84bff60c2d5b863b852ceeb9a"
+        },
+        "build_handoff_summary": {
+          "line": 27,
+          "ast_sha256": "b1960466751637bcd7d86d96c09524cc50b07ad51cd728e6e148804090bbbc17"
+        }
+      }
+    }
+  },
+  "databases": {
+    "MAIN": {
+      "database": "C:/Medicus 3/data/MEDICUS.FDB",
+      "users": [
+        [
+          1,
+          "Tereza",
+          "Pérez"
+        ],
+        [
+          2,
+          "Rostislav",
+          "Bednář"
+        ],
+        [
+          3,
+          null,
+          "Správce"
+        ],
+        [
+          4,
+          "Rostislav",
+          "Bednář"
+        ],
+        [
+          6,
+          null,
+          "Recepce"
+        ],
+        [
+          7,
+          null,
+          "Laser"
+        ],
+        [
+          8,
+          "Mária",
+          "Bartoňová"
+        ],
+        [
+          10,
+          "Petra",
+          "Pospíšlová"
+        ],
+        [
+          11,
+          "Dušana",
+          "Selecká"
+        ],
+        [
+          12,
+          "Marta",
+          "Školařová"
+        ],
+        [
+          13,
+          "Zuzana",
+          "Šlosárová"
+        ],
+        [
+          15,
+          "Tamara",
+          "Hrudová"
+        ]
+      ],
+      "activities": [
+        [
+          1,
+          "Sken znamének č. 1",
+          null,
+          null
+        ],
+        [
+          2,
+          "kontrola po skenu",
+          null,
+          null
+        ],
+        [
+          3,
+          "laser výkony",
+          null,
+          null
+        ],
+        [
+          5,
+          "Sken znamének 2 a vyšší",
+          null,
+          null
+        ],
+        [
+          6,
+          "rezervace dermatoskop",
+          null,
+          null
+        ]
+      ],
+      "schedule_workplaces": [
+        [
+          1
+        ],
+        [
+          2
+        ]
+      ],
+      "workplace_relations": [
+        [
+          "IVAR_PRAC"
+        ],
+        [
+          "KARINETUZIV_PRAC"
+        ],
+        [
+          "KARINFOPRAC"
+        ],
+        [
+          "OBSPRAC"
+        ],
+        [
+          "OBSPRAC_NAST"
+        ],
+        [
+          "PLA_PLAN_PRACE"
+        ],
+        [
+          "PLEPROFPRAC"
+        ],
+        [
+          "PRACDOBA"
+        ],
+        [
+          "PRACOV"
+        ],
+        [
+          "PRACOVISTE"
+        ],
+        [
+          "PRACPRISTPRAV"
+        ],
+        [
+          "PRACUZIV"
+        ],
+        [
+          "PRACVZDAL"
+        ],
+        [
+          "PROVPRAC"
+        ],
+        [
+          "REH_PRACE"
+        ],
+        [
+          "REH_PRACECAS"
+        ],
+        [
+          "REH_PRACOVISTE"
+        ],
+        [
+          "REHKABPRAC"
+        ],
+        [
+          "REHPECPRAC"
+        ],
+        [
+          "SABLOVYKPRACOVISTE"
+        ],
+        [
+          "SPA_KABPRAC"
+        ],
+        [
+          "SPA_OBSPRAC"
+        ],
+        [
+          "SPA_PECPRAC"
+        ],
+        [
+          "SPA_PRACE"
+        ],
+        [
+          "SPA_PRACECAS"
+        ],
+        [
+          "SPA_PRACOLD"
+        ],
+        [
+          "SPA_PRACOVISTE"
+        ],
+        [
+          "SPA_PRACUZIV"
+        ],
+        [
+          "SPA_PRACVZDAL"
+        ],
+        [
+          "SPA_PROVPRAC"
+        ],
+        [
+          "SPA_SABLOVYKPRAC"
+        ],
+        [
+          "SPA_SABLPRAC"
+        ],
+        [
+          "SPA_SKUPPRAC"
+        ],
+        [
+          "TYPPRAC"
+        ],
+        [
+          "TYPPRAC_DEF"
+        ],
+        [
+          "OBSPRAC_CINNOST"
+        ],
+        [
+          "ZPRACSML"
+        ],
+        [
+          "MEDDI_PRACOVISTE"
+        ],
+        [
+          "PRACSKUP"
+        ],
+        [
+          "HOSPITALIZACE_PRAC"
+        ]
+      ],
+      "procedures": {
+        "OBJOBJ_SEL": "declare variable MINDATUM date;\r\ndeclare variable MAXDATUM date;\r\ndeclare variable ROZDIL integer;\r\nbegin\r\n  for select\r\n  IDOBJ,IDPAC,IDPRAC,DATUM,CAS,TYP,PRISEL,INFO,ODESLEKAR,OPERATER,DIAGNOZA,PLANVYKON,POZNAMKA,IDUZI,DATUMDO,CASDO,REZERVACE,DATZAPIS,COLORID,\r\n  CELEJMENO,RODCIS,POJ,IDREC,TYPPROH,IDEXT,IDCAL_EXT,COS_PAC,CREATEDBY,CREATED,IDCINNOSTI,IDZARAZENI,CHANGED,PIN,ES_APPID,ES_UID,ES_ODESLANO,\r\n  ES_RESYNC_NEEDED,ES_TASK_ID,WEBCAL_UID,WEBCAL_SYNC,GUID,TELEFON,CEKATEL\r\n  from OBJOBJ where ((IDOBJ = :AIDOBJ) or (:AIDOBJ is null)) and ((IDPAC = :AIDPAC) or (:AIDPAC is null)) and ((IDPRAC = :AIDPRAC) or (:AIDPRAC is null))\r\n  and not (TYP in (9, 10)) and ((IDUZI = :AIDUZI) or (:AIDUZI is null)) and (DATUM >= :ADATUMOD) and (DATUM <= :ADATUMDO) into\r\n  :IDOBJ,:IDPAC,:IDPRAC,:DATUM,:CAS,:TYP,:PRISEL,:INFO,:ODESLEKAR,:OPERATER,:DIAGNOZA,:PLANVYKON,:POZNAMKA,:IDUZI,:DATUMDO,:CASDO,:REZERVACE,:DATZAPIS,:COLORID,\r\n  :CELEJMENO,:RODCIS,:POJ,:IDREC,:TYPPROH,:IDEXT,:IDCAL_EXT,:COS_PAC,:CREATEDBY,:CREATED,:IDCINNOSTI,:IDZARAZENI,:CHANGED,:PIN,:ES_APPID,:ES_UID,:ES_ODESLANO,\r\n  :ES_RESYNC_NEEDED,:ES_TASK_ID,:WEBCAL_UID,:WEBCAL_SYNC,:GUID,:TELEFON,:CEKATEL do\r\n  begin\r\n    suspend;\r\n  end\r\n  /* pravidelna objednavka - kazdy den v tydnu */\r\n  for select\r\n  IDOBJ,IDPAC,IDPRAC,DATUM,CAS,TYP,PRISEL,INFO,ODESLEKAR,OPERATER,DIAGNOZA,PLANVYKON,POZNAMKA,IDUZI,DATUMDO,CASDO,REZERVACE,DATZAPIS,COLORID,\r\n  CELEJMENO,RODCIS,POJ,IDREC,TYPPROH,IDEXT,IDCAL_EXT,COS_PAC,CREATEDBY,CREATED,IDCINNOSTI,IDZARAZENI,CHANGED,PIN,ES_APPID,ES_UID,ES_ODESLANO,\r\n  ES_RESYNC_NEEDED,ES_TASK_ID,WEBCAL_UID,WEBCAL_SYNC,GUID,TELEFON,CEKATEL\r\n  from OBJOBJ where ((IDOBJ = :AIDOBJ) or (:AIDOBJ is null)) and ((IDPAC = :AIDPAC) or (:AIDPAC is null)) and ((IDPRAC = :AIDPRAC) or (:AIDPRAC is null))\r\n  and ((IDUZI = :AIDUZI) or (:AIDUZI is null)) and (DATUM <= :ADATUMDO) and (DATUMDO >= :ADATUMOD) and (TYP = 9) into\r\n  :IDOBJ,:IDPAC,:IDPRAC,:DATUM,:CAS,:TYP,:PRISEL,:INFO,:ODESLEKAR,:OPERATER,:DIAGNOZA,:PLANVYKON,:POZNAMKA,:IDUZI,:DATUMDO,:CASDO,:REZERVACE,:DATZAPIS,:COLORID,\r\n  :CELEJMENO,:RODCIS,:POJ,:IDREC,:TYPPROH,:IDEXT,:IDCAL_EXT,:COS_PAC,:CREATEDBY,:CREATED,:IDCINNOSTI,:IDZARAZENI,:CHANGED,:PIN,:ES_APPID,:ES_UID,:ES_ODESLANO,\r\n  :ES_RESYNC_NEEDED,:ES_TASK_ID,:WEBCAL_UID,:WEBCAL_SYNC,:GUID,:TELEFON,:CEKATEL do\r\n  begin\r\n    MINDATUM = DATUM;\r\n    if (MINDATUM < ADATUMOD) then\r\n      MINDATUM = ADATUMOD;\r\n    MAXDATUM = DATUMDO;\r\n    if (MAXDATUM > ADATUMDO) then\r\n      MAXDATUM = ADATUMDO;\r\n    while (MINDATUM <= MAXDATUM) do\r\n    begin\r\n      DATUM = MINDATUM;\r\n      suspend;\r\n      MINDATUM = MINDATUM + 1;\r\n    end\r\n  end\r\n  /* pravidelna objednavka - jen stejny den v tydnu */\r\n  for select\r\n  IDOBJ,IDPAC,IDPRAC,DATUM,CAS,TYP,PRISEL,INFO,ODESLEKAR,OPERATER,DIAGNOZA,PLANVYKON,POZNAMKA,IDUZI,DATUMDO,CASDO,REZERVACE,DATZAPIS,COLORID,\r\n  CELEJMENO,RODCIS,POJ,IDREC,TYPPROH,IDEXT,IDCAL_EXT,COS_PAC,CREATEDBY,CREATED,IDCINNOSTI,IDZARAZENI,CHANGED,PIN,ES_APPID,ES_UID,ES_ODESLANO,\r\n  ES_RESYNC_NEEDED,ES_TASK_ID,WEBCAL_UID,WEBCAL_SYNC,GUID,TELEFON,CEKATEL\r\n  from OBJOBJ where ((IDOBJ = :AIDOBJ) or (:AIDOBJ is null)) and ((IDPAC = :AIDPAC) or (:AIDPAC is null)) and ((IDPRAC = :AIDPRAC) or (:AIDPRAC is null))\r\n  and ((IDUZI = :AIDUZI) or (:AIDUZI is null)) and (DATUM <= :ADATUMDO) and (DATUMDO >= :ADATUMOD) and (TYP = 10) into\r\n  :IDOBJ,:IDPAC,:IDPRAC,:DATUM,:CAS,:TYP,:PRISEL,:INFO,:ODESLEKAR,:OPERATER,:DIAGNOZA,:PLANVYKON,:POZNAMKA,:IDUZI,:DATUMDO,:CASDO,:REZERVACE,:DATZAPIS,:COLORID,\r\n  :CELEJMENO,:RODCIS,:POJ,:IDREC,:TYPPROH,:IDEXT,:IDCAL_EXT,:COS_PAC,:CREATEDBY,:CREATED,:IDCINNOSTI,:IDZARAZENI,:CHANGED,:PIN,:ES_APPID,:ES_UID,:ES_ODESLANO,\r\n  :ES_RESYNC_NEEDED,:ES_TASK_ID,:WEBCAL_UID,:WEBCAL_SYNC,:GUID,:TELEFON,:CEKATEL do\r\n  begin\r\n    MINDATUM = DATUM;\r\n    /* pokud pravidelna tydenni objednavka zacina pred rozhodnym datem, musime jeji zacatek nastavit na datum, ktere odpovida prislusnemu dni v tydnu */\r\n    if (MINDATUM < ADATUMOD) then\r\n    begin\r\n      ROZDIL = MOD(ADATUMOD - MINDATUM, 7);\r\n      if (ROZDIL = 0) then\r\n        MINDATUM = ADATUMOD;\r\n      else\r\n        MINDATUM = ADATUMOD + 7 - ROZDIL;\r\n    end\r\n    MAXDATUM = DATUMDO;\r\n    if (MAXDATUM > ADATUMDO) then\r\n      MAXDATUM = ADATUMDO;\r\n    while (MINDATUM <= MAXDATUM) do\r\n    begin\r\n      DATUM = MINDATUM;\r\n      suspend;\r\n      MINDATUM = MINDATUM + 7;\r\n    end\r\n  end\r\nend",
+        "OBSDNE_PRAVODLIS_SEL": "DECLARE VARIABLE SUSP CHAR(1);\r\nBEGIN\r\n  SUSP = 'F';\r\n  FOR SELECT CAS, DOBA, IDUZI, INTERVAL\r\n    FROM OBSODLIS\r\n    WHERE IDPRAC=:IDPRAC AND DATUM=:DATUM AND OBJED = 'A'\r\n    ORDER BY CAS\r\n    INTO :CAS, :DOBA, :IDUZI, :INTERVAL DO\r\n  BEGIN\r\n    SUSPEND;\r\n    SUSP = 'T';\r\n  END\r\n  IF (SUSP = 'T') THEN\r\n    EXIT;\r\n  ELSE BEGIN\r\n    FOR SELECT CAS, DOBA, IDUZI, INTERVAL\r\n      FROM OBSPRAC\r\n      WHERE DENTYD=:DENTYD AND IDPRAC=:IDPRAC AND\r\n           (TYPTYD=:TYPTYD OR TYPTYD=4) AND OBJED = 'A' AND\r\n            PLATIOD<=:DATUM AND (PLATIDO IS NULL OR PLATIDO >=:DATUM)\r\n      ORDER BY CAS\r\n      INTO :CAS, :DOBA, :IDUZI, :INTERVAL DO\r\n    BEGIN\r\n      SUSPEND;\r\n    END\r\n  END\r\nEND"
+      },
+      "day_2026_10_07": [
+        [
+          1,
+          1,
+          "15:00:00",
+          "15:15:00",
+          1,
+          5
+        ],
+        [
+          1,
+          1,
+          "15:15:00",
+          "15:30:00",
+          1,
+          null
+        ],
+        [
+          1,
+          1,
+          "15:30:00",
+          "15:40:00",
+          1,
+          null
+        ],
+        [
+          1,
+          1,
+          "15:40:00",
+          "15:55:00",
+          1,
+          null
+        ],
+        [
+          1,
+          1,
+          "16:00:00",
+          "16:15:00",
+          1,
+          5
+        ],
+        [
+          1,
+          1,
+          "16:15:00",
+          "16:30:00",
+          1,
+          null
+        ],
+        [
+          1,
+          1,
+          "16:30:00",
+          "16:40:00",
+          1,
+          null
+        ],
+        [
+          1,
+          1,
+          "16:40:00",
+          "16:50:00",
+          1,
+          null
+        ],
+        [
+          1,
+          1,
+          "16:50:00",
+          "17:00:00",
+          1,
+          null
+        ],
+        [
+          8,
+          1,
+          "08:30:00",
+          "08:40:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "08:40:00",
+          "09:00:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "09:00:00",
+          "09:20:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "09:20:00",
+          "09:30:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "09:30:00",
+          "09:40:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "09:40:00",
+          "09:55:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "10:00:00",
+          "10:30:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "10:30:00",
+          "11:00:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "11:00:00",
+          "11:20:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "11:20:00",
+          "11:30:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "11:30:00",
+          "11:45:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "11:45:00",
+          "12:00:00",
+          1,
+          5
+        ],
+        [
+          8,
+          1,
+          "13:00:00",
+          "13:20:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "13:20:00",
+          "13:40:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "13:40:00",
+          "13:55:00",
+          1,
+          3
+        ],
+        [
+          8,
+          1,
+          "13:55:00",
+          "14:15:00",
+          1,
+          null
+        ],
+        [
+          8,
+          1,
+          "14:15:00",
+          "14:30:00",
+          1,
+          null
+        ],
+        [
+          8,
+          1,
+          "14:30:00",
+          "14:40:00",
+          1,
+          3
+        ],
+        [
+          12,
+          1,
+          "07:00:00",
+          "07:15:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "07:15:00",
+          "07:30:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "07:30:00",
+          "07:45:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "07:45:00",
+          "08:00:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "08:00:00",
+          "08:15:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "08:15:00",
+          "08:30:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "08:30:00",
+          "08:45:00",
+          1,
+          2
+        ],
+        [
+          12,
+          1,
+          "08:45:00",
+          "09:00:00",
+          1,
+          1
+        ],
+        [
+          12,
+          1,
+          "09:00:00",
+          "09:10:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "09:10:00",
+          "09:20:00",
+          1,
+          2
+        ],
+        [
+          12,
+          1,
+          "09:20:00",
+          "09:30:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "09:30:00",
+          "09:45:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "09:45:00",
+          "10:00:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "10:00:00",
+          "10:15:00",
+          1,
+          2
+        ],
+        [
+          12,
+          1,
+          "10:15:00",
+          "10:30:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "10:30:00",
+          "10:45:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "10:45:00",
+          "10:55:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "10:55:00",
+          "11:05:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "11:05:00",
+          "11:15:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "11:15:00",
+          "11:30:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "11:30:00",
+          "11:40:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "11:40:00",
+          "11:50:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "11:50:00",
+          "12:00:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "12:45:00",
+          "13:00:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "13:00:00",
+          "13:15:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "13:15:00",
+          "13:30:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "13:30:00",
+          "13:45:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "13:45:00",
+          "14:00:00",
+          1,
+          5
+        ],
+        [
+          12,
+          1,
+          "14:00:00",
+          "14:15:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "14:15:00",
+          "14:30:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "14:30:00",
+          "14:40:00",
+          1,
+          null
+        ],
+        [
+          12,
+          1,
+          "15:20:00",
+          "15:30:00",
+          1,
+          3
+        ],
+        [
+          12,
+          1,
+          "15:30:00",
+          "15:50:00",
+          1,
+          3
+        ],
+        [
+          12,
+          1,
+          "15:55:00",
+          "16:20:00",
+          1,
+          3
+        ],
+        [
+          12,
+          1,
+          "16:20:00",
+          "16:35:00",
+          1,
+          3
+        ],
+        [
+          12,
+          1,
+          "16:35:00",
+          "16:45:00",
+          1,
+          3
+        ],
+        [
+          12,
+          1,
+          "16:45:00",
+          "17:00:00",
+          1,
+          3
+        ]
+      ]
+    },
+    "LASER": {
+      "database": "C:/Medicus 3 Laser/data/MEDICUS.FDB",
+      "users": [
+        [
+          1,
+          "Eva",
+          "Bednářová"
+        ],
+        [
+          2,
+          "Rostislav",
+          "Bednář"
+        ],
+        [
+          3,
+          null,
+          "Správce"
+        ],
+        [
+          4,
+          "Petra",
+          "Pospíšilová"
+        ],
+        [
+          5,
+          "Sken",
+          "Focení skeny"
+        ],
+        [
+          6,
+          "Jitka",
+          "Horká"
+        ],
+        [
+          8,
+          "Iveta",
+          "Hojgrová"
+        ],
+        [
+          15,
+          "Mária",
+          "Bartoňová"
+        ]
+      ],
+      "activities": [
+        [
+          1,
+          "Projevy znaménka,fibromy,pigment",
+          null,
+          null
+        ],
+        [
+          2,
+          "Epilace",
+          null,
+          null
+        ],
+        [
+          5,
+          "Dodělky,kontroly",
+          null,
+          null
+        ],
+        [
+          6,
+          "Laserová gelová maska",
+          null,
+          null
+        ],
+        [
+          13,
+          "Dermatoskop potvrzeno",
+          null,
+          null
+        ],
+        [
+          17,
+          "Botulotoxin",
+          null,
+          null
+        ],
+        [
+          18,
+          "Výplně",
+          null,
+          null
+        ],
+        [
+          19,
+          "Frakční laser",
+          null,
+          null
+        ],
+        [
+          22,
+          "Karbonová maska + lgm",
+          null,
+          null
+        ],
+        [
+          23,
+          "Lampa Biostimulace-Omnilux",
+          null,
+          null
+        ],
+        [
+          24,
+          "Žilky",
+          null,
+          null
+        ],
+        [
+          25,
+          "EMLA",
+          null,
+          null
+        ],
+        [
+          26,
+          "Mezoterapie",
+          null,
+          null
+        ],
+        [
+          27,
+          "Spectra XT - program  akné",
+          null,
+          null
+        ],
+        [
+          28,
+          "Dermatoskop",
+          null,
+          null
+        ],
+        [
+          29,
+          "Karbonová maska",
+          null,
+          null
+        ],
+        [
+          30,
+          "Trichosken  - vlasy",
+          null,
+          null
+        ],
+        [
+          31,
+          "Meesma -  Estetic",
+          null,
+          null
+        ]
+      ],
+      "schedule_workplaces": [
+        [
+          1
+        ],
+        [
+          2
+        ],
+        [
+          9
+        ],
+        [
+          12
+        ]
+      ],
+      "workplace_relations": [
+        [
+          "KARINFOPRAC"
+        ],
+        [
+          "SPA_SABLPRAC"
+        ],
+        [
+          "OBSPRAC_NAST"
+        ],
+        [
+          "PRACVZDAL"
+        ],
+        [
+          "TYPPRAC_DEF"
+        ],
+        [
+          "SPA_OBSPRAC"
+        ],
+        [
+          "PROVPRAC"
+        ],
+        [
+          "SPA_PRACOVISTE"
+        ],
+        [
+          "IVAR_PRAC"
+        ],
+        [
+          "KARINETUZIV_PRAC"
+        ],
+        [
+          "OBSPRAC_CINNOST"
+        ],
+        [
+          "SPA_PRACUZIV"
+        ],
+        [
+          "SPA_PRACVZDAL"
+        ],
+        [
+          "OBSPRAC"
+        ],
+        [
+          "PLEPROFPRAC"
+        ],
+        [
+          "PRACDOBA"
+        ],
+        [
+          "PRACOV"
+        ],
+        [
+          "PRACOVISTE"
+        ],
+        [
+          "PRACPRISTPRAV"
+        ],
+        [
+          "PRACUZIV"
+        ],
+        [
+          "REH_PRACE"
+        ],
+        [
+          "REH_PRACECAS"
+        ],
+        [
+          "REH_PRACOVISTE"
+        ],
+        [
+          "REHKABPRAC"
+        ],
+        [
+          "REHPECPRAC"
+        ],
+        [
+          "SABLOVYKPRACOVISTE"
+        ],
+        [
+          "TYPPRAC"
+        ],
+        [
+          "SPA_PROVPRAC"
+        ],
+        [
+          "SPA_PRACE"
+        ],
+        [
+          "SPA_PRACECAS"
+        ],
+        [
+          "SPA_PRACOLD"
+        ],
+        [
+          "SPA_KABPRAC"
+        ],
+        [
+          "SPA_PECPRAC"
+        ],
+        [
+          "SPA_SABLOVYKPRAC"
+        ],
+        [
+          "SPA_SKUPPRAC"
+        ],
+        [
+          "PLA_PLAN_PRACE"
+        ],
+        [
+          "ZPRACSML"
+        ],
+        [
+          "PRACSKUP"
+        ],
+        [
+          "MEDDI_PRACOVISTE"
+        ],
+        [
+          "HOSPITALIZACE_PRAC"
+        ]
+      ],
+      "procedures": {
+        "OBJOBJ_SEL": "declare variable MINDATUM date;\r\ndeclare variable MAXDATUM date;\r\ndeclare variable ROZDIL integer;\r\nbegin\r\n  for select\r\n  IDOBJ,IDPAC,IDPRAC,DATUM,CAS,TYP,PRISEL,INFO,ODESLEKAR,OPERATER,DIAGNOZA,PLANVYKON,POZNAMKA,IDUZI,DATUMDO,CASDO,REZERVACE,DATZAPIS,COLORID,\r\n  CELEJMENO,RODCIS,POJ,IDREC,TYPPROH,IDEXT,IDCAL_EXT,COS_PAC,CREATEDBY,CREATED,IDCINNOSTI,IDZARAZENI,CHANGED,PIN,ES_APPID,ES_UID,ES_ODESLANO,\r\n  ES_RESYNC_NEEDED,ES_TASK_ID,WEBCAL_UID,WEBCAL_SYNC,GUID,TELEFON,CEKATEL\r\n  from OBJOBJ where ((IDOBJ = :AIDOBJ) or (:AIDOBJ is null)) and ((IDPAC = :AIDPAC) or (:AIDPAC is null)) and ((IDPRAC = :AIDPRAC) or (:AIDPRAC is null))\r\n  and not (TYP in (9, 10)) and ((IDUZI = :AIDUZI) or (:AIDUZI is null)) and (DATUM >= :ADATUMOD) and (DATUM <= :ADATUMDO) into\r\n  :IDOBJ,:IDPAC,:IDPRAC,:DATUM,:CAS,:TYP,:PRISEL,:INFO,:ODESLEKAR,:OPERATER,:DIAGNOZA,:PLANVYKON,:POZNAMKA,:IDUZI,:DATUMDO,:CASDO,:REZERVACE,:DATZAPIS,:COLORID,\r\n  :CELEJMENO,:RODCIS,:POJ,:IDREC,:TYPPROH,:IDEXT,:IDCAL_EXT,:COS_PAC,:CREATEDBY,:CREATED,:IDCINNOSTI,:IDZARAZENI,:CHANGED,:PIN,:ES_APPID,:ES_UID,:ES_ODESLANO,\r\n  :ES_RESYNC_NEEDED,:ES_TASK_ID,:WEBCAL_UID,:WEBCAL_SYNC,:GUID,:TELEFON,:CEKATEL do\r\n  begin\r\n    suspend;\r\n  end\r\n  /* pravidelna objednavka - kazdy den v tydnu */\r\n  for select\r\n  IDOBJ,IDPAC,IDPRAC,DATUM,CAS,TYP,PRISEL,INFO,ODESLEKAR,OPERATER,DIAGNOZA,PLANVYKON,POZNAMKA,IDUZI,DATUMDO,CASDO,REZERVACE,DATZAPIS,COLORID,\r\n  CELEJMENO,RODCIS,POJ,IDREC,TYPPROH,IDEXT,IDCAL_EXT,COS_PAC,CREATEDBY,CREATED,IDCINNOSTI,IDZARAZENI,CHANGED,PIN,ES_APPID,ES_UID,ES_ODESLANO,\r\n  ES_RESYNC_NEEDED,ES_TASK_ID,WEBCAL_UID,WEBCAL_SYNC,GUID,TELEFON,CEKATEL\r\n  from OBJOBJ where ((IDOBJ = :AIDOBJ) or (:AIDOBJ is null)) and ((IDPAC = :AIDPAC) or (:AIDPAC is null)) and ((IDPRAC = :AIDPRAC) or (:AIDPRAC is null))\r\n  and ((IDUZI = :AIDUZI) or (:AIDUZI is null)) and (DATUM <= :ADATUMDO) and (DATUMDO >= :ADATUMOD) and (TYP = 9) into\r\n  :IDOBJ,:IDPAC,:IDPRAC,:DATUM,:CAS,:TYP,:PRISEL,:INFO,:ODESLEKAR,:OPERATER,:DIAGNOZA,:PLANVYKON,:POZNAMKA,:IDUZI,:DATUMDO,:CASDO,:REZERVACE,:DATZAPIS,:COLORID,\r\n  :CELEJMENO,:RODCIS,:POJ,:IDREC,:TYPPROH,:IDEXT,:IDCAL_EXT,:COS_PAC,:CREATEDBY,:CREATED,:IDCINNOSTI,:IDZARAZENI,:CHANGED,:PIN,:ES_APPID,:ES_UID,:ES_ODESLANO,\r\n  :ES_RESYNC_NEEDED,:ES_TASK_ID,:WEBCAL_UID,:WEBCAL_SYNC,:GUID,:TELEFON,:CEKATEL do\r\n  begin\r\n    MINDATUM = DATUM;\r\n    if (MINDATUM < ADATUMOD) then\r\n      MINDATUM = ADATUMOD;\r\n    MAXDATUM = DATUMDO;\r\n    if (MAXDATUM > ADATUMDO) then\r\n      MAXDATUM = ADATUMDO;\r\n    while (MINDATUM <= MAXDATUM) do\r\n    begin\r\n      DATUM = MINDATUM;\r\n      suspend;\r\n      MINDATUM = MINDATUM + 1;\r\n    end\r\n  end\r\n  /* pravidelna objednavka - jen stejny den v tydnu */\r\n  for select\r\n  IDOBJ,IDPAC,IDPRAC,DATUM,CAS,TYP,PRISEL,INFO,ODESLEKAR,OPERATER,DIAGNOZA,PLANVYKON,POZNAMKA,IDUZI,DATUMDO,CASDO,REZERVACE,DATZAPIS,COLORID,\r\n  CELEJMENO,RODCIS,POJ,IDREC,TYPPROH,IDEXT,IDCAL_EXT,COS_PAC,CREATEDBY,CREATED,IDCINNOSTI,IDZARAZENI,CHANGED,PIN,ES_APPID,ES_UID,ES_ODESLANO,\r\n  ES_RESYNC_NEEDED,ES_TASK_ID,WEBCAL_UID,WEBCAL_SYNC,GUID,TELEFON,CEKATEL\r\n  from OBJOBJ where ((IDOBJ = :AIDOBJ) or (:AIDOBJ is null)) and ((IDPAC = :AIDPAC) or (:AIDPAC is null)) and ((IDPRAC = :AIDPRAC) or (:AIDPRAC is null))\r\n  and ((IDUZI = :AIDUZI) or (:AIDUZI is null)) and (DATUM <= :ADATUMDO) and (DATUMDO >= :ADATUMOD) and (TYP = 10) into\r\n  :IDOBJ,:IDPAC,:IDPRAC,:DATUM,:CAS,:TYP,:PRISEL,:INFO,:ODESLEKAR,:OPERATER,:DIAGNOZA,:PLANVYKON,:POZNAMKA,:IDUZI,:DATUMDO,:CASDO,:REZERVACE,:DATZAPIS,:COLORID,\r\n  :CELEJMENO,:RODCIS,:POJ,:IDREC,:TYPPROH,:IDEXT,:IDCAL_EXT,:COS_PAC,:CREATEDBY,:CREATED,:IDCINNOSTI,:IDZARAZENI,:CHANGED,:PIN,:ES_APPID,:ES_UID,:ES_ODESLANO,\r\n  :ES_RESYNC_NEEDED,:ES_TASK_ID,:WEBCAL_UID,:WEBCAL_SYNC,:GUID,:TELEFON,:CEKATEL do\r\n  begin\r\n    MINDATUM = DATUM;\r\n    /* pokud pravidelna tydenni objednavka zacina pred rozhodnym datem, musime jeji zacatek nastavit na datum, ktere odpovida prislusnemu dni v tydnu */\r\n    if (MINDATUM < ADATUMOD) then\r\n    begin\r\n      ROZDIL = MOD(ADATUMOD - MINDATUM, 7);\r\n      if (ROZDIL = 0) then\r\n        MINDATUM = ADATUMOD;\r\n      else\r\n        MINDATUM = ADATUMOD + 7 - ROZDIL;\r\n    end\r\n    MAXDATUM = DATUMDO;\r\n    if (MAXDATUM > ADATUMDO) then\r\n      MAXDATUM = ADATUMDO;\r\n    while (MINDATUM <= MAXDATUM) do\r\n    begin\r\n      DATUM = MINDATUM;\r\n      suspend;\r\n      MINDATUM = MINDATUM + 7;\r\n    end\r\n  end\r\nend",
+        "OBSDNE_PRAVODLIS_SEL": "\r\nDECLARE VARIABLE SUSP CHAR(1);\r\nBEGIN\r\n  SUSP = 'F';\r\n  FOR SELECT CAS, DOBA, IDUZI, INTERVAL\r\n    FROM OBSODLIS\r\n    WHERE IDPRAC=:IDPRAC AND DATUM=:DATUM AND OBJED = 'A'\r\n    ORDER BY CAS\r\n    INTO :CAS, :DOBA, :IDUZI, :INTERVAL DO\r\n  BEGIN\r\n    SUSPEND;\r\n    SUSP = 'T';\r\n  END\r\n  IF (SUSP = 'T') THEN\r\n    EXIT;\r\n  ELSE BEGIN\r\n    FOR SELECT CAS, DOBA, IDUZI, INTERVAL\r\n      FROM OBSPRAC\r\n      WHERE DENTYD=:DENTYD AND IDPRAC=:IDPRAC AND\r\n           (TYPTYD=:TYPTYD OR TYPTYD=4) AND OBJED = 'A' AND\r\n            PLATIOD<=:DATUM AND (PLATIDO IS NULL OR PLATIDO >=:DATUM)\r\n      ORDER BY CAS\r\n      INTO :CAS, :DOBA, :IDUZI, :INTERVAL DO\r\n    BEGIN\r\n      SUSPEND;\r\n    END\r\n  END\r\nEND"
+      },
+      "day_2026_10_07": [
+        [
+          5,
+          1,
+          "07:40:00",
+          "08:00:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "08:30:00",
+          "08:45:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "09:15:00",
+          "09:30:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "10:15:00",
+          "10:30:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "10:45:00",
+          "11:00:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "11:30:00",
+          "11:45:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "13:00:00",
+          "13:15:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "13:30:00",
+          "13:45:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "14:00:00",
+          "14:15:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "14:45:00",
+          "15:00:00",
+          1,
+          28
+        ],
+        [
+          5,
+          1,
+          "15:45:00",
+          "16:00:00",
+          1,
+          28
+        ],
+        [
+          8,
+          9,
+          "08:00:00",
+          "08:20:00",
+          1,
+          null
+        ],
+        [
+          8,
+          9,
+          "08:55:00",
+          "09:40:00",
+          1,
+          22
+        ],
+        [
+          8,
+          9,
+          "10:00:00",
+          "10:55:00",
+          1,
+          2
+        ],
+        [
+          8,
+          9,
+          "11:00:00",
+          "11:50:00",
+          1,
+          22
+        ],
+        [
+          8,
+          9,
+          "14:00:00",
+          "14:15:00",
+          1,
+          29
+        ],
+        [
+          8,
+          9,
+          "14:15:00",
+          "15:00:00",
+          1,
+          27
+        ],
+        [
+          8,
+          9,
+          "15:00:00",
+          "15:15:00",
+          1,
+          25
+        ],
+        [
+          8,
+          9,
+          "15:30:00",
+          "16:10:00",
+          1,
+          26
+        ],
+        [
+          8,
+          9,
+          "16:15:00",
+          "16:55:00",
+          1,
+          22
+        ]
+      ]
+    }
+  }
+}

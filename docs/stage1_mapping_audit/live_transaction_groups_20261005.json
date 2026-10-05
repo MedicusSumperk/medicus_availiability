@@ -1,0 +1,73 @@
+{
+  "checked_at": "2026-10-05 14:15:27 UTC",
+  "read_only": true,
+  "groups": [
+    {
+      "database": "MAIN",
+      "transaction_groups": [
+        {
+          "process_class": "medicus_gui",
+          "state": 0,
+          "isolation_mode": 2,
+          "read_only": 0,
+          "count": 1,
+          "oldest_started": "2026-10-05 16:12:41.724000"
+        },
+        {
+          "process_class": "medicus_gui",
+          "state": 0,
+          "isolation_mode": 2,
+          "read_only": 1,
+          "count": 4,
+          "oldest_started": "2026-10-05 16:14:10.145000"
+        },
+        {
+          "process_class": "medicus_gui",
+          "state": 1,
+          "isolation_mode": 2,
+          "read_only": 0,
+          "count": 6,
+          "oldest_started": "2026-10-05 14:30:49.114000"
+        },
+        {
+          "process_class": "unknown",
+          "state": 0,
+          "isolation_mode": 2,
+          "read_only": 0,
+          "count": 3,
+          "oldest_started": "2026-10-05 16:06:39.746000"
+        },
+        {
+          "process_class": "unknown",
+          "state": 1,
+          "isolation_mode": 2,
+          "read_only": 0,
+          "count": 4,
+          "oldest_started": "2026-10-05 16:06:39.588000"
+        }
+      ]
+    },
+    {
+      "database": "LASER",
+      "transaction_groups": [
+        {
+          "process_class": "medicus_gui",
+          "state": 0,
+          "isolation_mode": 2,
+          "read_only": 1,
+          "count": 1,
+          "oldest_started": "2026-10-05 16:13:53.095000"
+        },
+        {
+          "process_class": "medicus_gui",
+          "state": 1,
+          "isolation_mode": 2,
+          "read_only": 0,
+          "count": 4,
+          "oldest_started": "2026-10-05 14:24:01.930000"
+        }
+      ]
+    }
+  ],
+  "interpretation": "Open Medicus transactions observed; monitoring snapshot alone does not identify the exact conflicting lock owner. No sessions terminated."
+}

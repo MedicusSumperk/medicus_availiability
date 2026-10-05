@@ -1,0 +1,62 @@
+{
+  "date": "2026-10-05",
+  "status": "implementation_candidate_live_writes_blocked_by_calendar_lock",
+  "local_tests": {
+    "total": 180,
+    "passed": 180,
+    "new_paired_tests": 16
+  },
+  "live_attempts": [
+    {
+      "request_id": "PAIRTEST_20261005_create1",
+      "http": 200,
+      "ok": false
+    },
+    {
+      "request_id": "PAIRTEST_20261005_create2",
+      "http": 200,
+      "ok": false,
+      "failure_phase": "ConnectionGroup.begin",
+      "sqlcode": -901,
+      "firebird_error": 335544345
+    }
+  ],
+  "test_scope": {
+    "main_idpac": "[REDACTED_TEST_CARD]",
+    "doctor_id": 8,
+    "date": "2027-01-04",
+    "start": "09:30",
+    "expected_scan_start": "09:15"
+  },
+  "live_evidence": {
+    "restricted_directory": "C:/db_bridge/state/gui-test-20261005",
+    "baseline": "B0.json",
+    "final": "B1.json",
+    "diff": "B0-B1.json",
+    "journal": "paired-test-journal.sqlite",
+    "version_hashes": "paired-candidate-manifest.json",
+    "main_objobj_objhist_objproc_changes": 0,
+    "laser_objobj_objhist_objproc_changes": 0,
+    "test_process_stopped": true
+  },
+  "observed_constraints": [
+    "OBJOBJ.INFO is VARCHAR(80) in both databases",
+    "MAIN actor 10 does not exist in LASER; LASER actor 2 exists and authored the three most recent activity28 appointments",
+    "PROTECTED WRITE NOWAIT reservation of OBJOBJ refused in both databases with SNAPSHOT and READ COMMITTED",
+    "Multiple Medicus transactions active; monitoring did not establish exact blocker identity"
+  ],
+  "not_done": [
+    "No successful live create/move/cancel of the new pair",
+    "No GUI verification of the new implementation",
+    "No production deployment or enablement",
+    "No uncertain 2PC recovery drill or automatic recovery executor",
+    "No proof that conservative locking is usable during normal staff activity"
+  ],
+  "safety": [
+    "No Firebird schema/procedure changes",
+    "No production restart",
+    "No other sessions terminated",
+    "No weakening of write locking",
+    "No SMS"
+  ]
+}

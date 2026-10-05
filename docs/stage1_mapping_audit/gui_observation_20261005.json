@@ -1,0 +1,67 @@
+{
+  "observed_on": "2026-10-05",
+  "method": "Read-only comparison of logged-in Medicus GUI through RDP and read-only Firebird queries",
+  "gui_available": [
+    "Ordinace",
+    "Laser"
+  ],
+  "calendar_date": "2026-10-07",
+  "laser": {
+    "calendar_label": "Focení skeny Sken - SKEN",
+    "selected_appointment": {
+      "idobj": 98683,
+      "start": "14:45:00",
+      "end": "15:00:00",
+      "duration_minutes_gui": 15,
+      "activity_label_gui": "Dermatoskop",
+      "activity_id": 28,
+      "type": 1,
+      "has_patient_link": false,
+      "gui_and_procedure_interval_match": true
+    },
+    "second_observed_interval": {
+      "idobj": 98692,
+      "start": "15:45:00",
+      "end": "16:00:00",
+      "activity_id": 28,
+      "type": 1,
+      "has_patient_link": false,
+      "gui_calendar_visible": true,
+      "detail_dialog_opened": false
+    }
+  },
+  "main": {
+    "doctor_id": 12,
+    "doctor_label": "Školařová Marta",
+    "current_procedure_intervals_include": [
+      {
+        "idobj": 144675,
+        "start": "15:00:00",
+        "end": "15:10:00"
+      },
+      {
+        "idobj": 144685,
+        "start": "15:10:00",
+        "end": "15:20:00"
+      }
+    ],
+    "calendar_column_has_afternoon_appointments": true,
+    "individual_details_verified": false
+  },
+  "test_identity": {
+    "documented_main_card_exists": true,
+    "main_name_contains_test_marker": true,
+    "same_id_exists_in_laser": false,
+    "exact_name_and_birth_date_match_in_laser": false,
+    "selected_in_gui": false
+  },
+  "writes_performed": false,
+  "detail_closed_without_saving": true,
+  "limits": [
+    "Current occupancy is not proof of occupancy at the time of the original incident.",
+    "Two anonymous LASER samples do not establish a universal policy for scanner reservations.",
+    "No GUI create, move or cancel has been performed yet.",
+    "No patient names, birth numbers, phone numbers or raw screenshots are copied into this report.",
+    "MAIN/LASER identity mapping and paired-write behavior remain unverified."
+  ]
+}

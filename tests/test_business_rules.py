@@ -1,6 +1,7 @@
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -169,8 +170,9 @@ class BusinessRulesTests(unittest.TestCase):
             )
 
         self.assertNotIn("error", option)
-        self.assertEqual(captured_request["time_from"], "15:20")
-        self.assertEqual(captured_request["time_to"], "15:20")
+        self.assertEqual(captured_request["technical_start_time"], "15:20")
+        self.assertNotIn("time_from", captured_request)
+        self.assertNotIn("time_to", captured_request)
 
     def test_skin_followup_disabled_creates_single_row(self):
         inserted = []
@@ -217,7 +219,7 @@ class BusinessRulesTests(unittest.TestCase):
         self.assertTrue(response["ok"])
         self.assertEqual(len(inserted), 1)
 
-    def test_dermatoscope_write_creates_single_main_row(self):
+    def test_dermatoscope_cannot_use_single_database_writer(self):
         inserted = []
 
         def fake_insert(_cursor, **kwargs):
@@ -259,14 +261,16 @@ class BusinessRulesTests(unittest.TestCase):
                 {"appointment_created_by": 10},
             )
 
-        self.assertTrue(response["ok"])
-        self.assertEqual(len(inserted), 1)
-        self.assertEqual(inserted[0]["idcinnosti"], 1)
-        self.assertEqual(inserted[0]["info"], "AI_RECEPTION dermatoscope_first")
+        self.assertFalse(response["ok"])
+        self.assertEqual(len(inserted), 0)
+        self.assertEqual(response["status"], "paired_writer_required")
 
 
 class AvailabilityRulesTests(unittest.TestCase):
     def setUp(self):
+        clock = patch.object(availability_search, "_clinic_now", return_value=datetime(2026, 7, 26, tzinfo=timezone.utc))
+        clock.start()
+        self.addCleanup(clock.stop)
         self.base_config = {
             "slot_interval_minutes": 10,
             "services": {
@@ -343,7 +347,18 @@ class AvailabilityRulesTests(unittest.TestCase):
         self.assertNotIn("07:50", [option["start_time"] for option in response["options"]])
         self.assertIn("08:00", [option["start_time"] for option in response["options"]])
 
-    def test_before_8_slots_are_returned_with_emergency(self):
+    def test_scan_before_opening_is_not_hidden_by_later_exam(self):
+        rules = {"operational_rules": {"before_time_requires_emergency": {
+            "enabled": True, "before": "08:00"}}}
+        option = {"start_time": "08:00", "scan_slot": {"start_time": "07:45"}}
+        self.assertFalse(availability_search._option_allowed_by_operational_rules(
+            option, "dermatoscope_first", rules, False))
+        option["start_time"] = "08:15"
+        option["scan_slot"]["start_time"] = "08:00"
+        self.assertTrue(availability_search._option_allowed_by_operational_rules(
+            option, "dermatoscope_first", rules, False))
+
+    def test_emergency_returns_staff_transfer_without_slots(self):
         with (
             patch.object(availability_search, "load_doctors", return_value=self.doctors),
             patch.object(availability_search, "compute_day_availability", side_effect=self._availability),
@@ -363,7 +378,12 @@ class AvailabilityRulesTests(unittest.TestCase):
                 self.base_config,
             )
 
-        self.assertIn("07:50", [option["start_time"] for option in response["options"]])
+        self.assertEqual(response["options"], [])
+        self.assertEqual(response["next_action"], "handoff_to_staff")
+        self.assertEqual(response["scanned"], {"days": 0, "contexts": 0})
+        compact = availability_search.compact_options(response)
+        self.assertEqual(compact["next_action"], "handoff_to_staff")
+        self.assertEqual(compact["reason"], "emergency_requires_staff")
 
     def test_afternoon_option_has_technical_and_spoken_times(self):
         with (
@@ -377,8 +397,7 @@ class AvailabilityRulesTests(unittest.TestCase):
                     "service": "skin",
                     "date_from": "2026-07-27",
                     "date_to": "2026-07-27",
-                    "time_from": "15:20",
-                    "time_to": "15:20",
+                    "technical_start_time": "15:20",
                     "limit": 1,
                 },
                 self.base_config,
@@ -483,18 +502,19 @@ class AvailabilityRulesTests(unittest.TestCase):
 
     def test_dermatoscope_option_has_inferred_scan_slot(self):
         with (
+            patch.object(availability_search, "open_scan_calendar") as scan_calendar,
             patch.object(availability_search, "load_doctors", return_value=[self.doctors[0]]),
             patch.object(availability_search, "compute_day_availability", side_effect=self._availability),
             patch.object(availability_search, "load_dermatoscope_blockers", return_value=[]),
         ):
+            scan_calendar.return_value.__enter__.return_value.is_available.return_value = True
             response = availability_search.search_availability(
                 object(),
                 {
                     "service": "dermatoscope_first",
                     "date_from": "2026-07-27",
                     "date_to": "2026-07-27",
-                    "time_from": "15:20",
-                    "time_to": "15:20",
+                    "technical_start_time": "15:20",
                     "limit": 1,
                 },
                 self.base_config,
@@ -528,8 +548,7 @@ class AvailabilityRulesTests(unittest.TestCase):
                     "service": "dermatoscope_first",
                     "date_from": "2026-07-27",
                     "date_to": "2026-07-27",
-                    "time_from": "15:20",
-                    "time_to": "15:20",
+                    "technical_start_time": "15:20",
                     "limit": 1,
                 },
                 self.base_config,

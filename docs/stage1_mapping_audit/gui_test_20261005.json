@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-05",
+  "status": "blocked_test_card_inactive_no_booking_saved",
+  "card_documentation": "research/db-mapping/phase3_rollback_insert_test.md",
+  "main_test_card": {
+    "idpac": "[REDACTED_TEST_CARD]",
+    "vyrazen": "A",
+    "gui_found_including_discharged": true,
+    "gui_selection_disabled": true
+  },
+  "laser_test_card": {
+    "same_id_exists": false,
+    "exact_name_and_birth_date_matches": 0
+  },
+  "candidate_create": {
+    "date": "2027-01-04",
+    "start": "08:30",
+    "end": "08:40",
+    "doctor_id": 8,
+    "idprac": 1,
+    "service": "skin",
+    "api_available": true,
+    "gui_available": true,
+    "gui_form_duration_minutes": 10
+  },
+  "candidate_move": {
+    "date": "2027-01-05",
+    "start": "09:20",
+    "end": "09:30",
+    "doctor_id": 8,
+    "api_available": true,
+    "gui_target_slot_not_yet_verified": true
+  },
+  "negative_availability_checks": [
+    {
+      "date": "2027-01-01",
+      "reason": "holiday",
+      "option_count": 0
+    },
+    {
+      "date": "2027-01-02",
+      "reason": "weekend",
+      "option_count": 0
+    }
+  ],
+  "availability_check_method": "Production search_availability module on DB host with read-only Firebird transactions; no HTTP endpoint write",
+  "baseline": {
+    "captured_at_utc": "2026-10-05T11:46:09.050644+00:00",
+    "server_path": "C:/db_bridge/state/gui-test-20261005/S0.json",
+    "main_rows": 45,
+    "laser_rows": 6,
+    "schema_version": 2,
+    "acl": "SYSTEM and Administrators only",
+    "must_refresh_before_later_write": true
+  },
+  "gui_write_performed": false,
+  "schema_changes": false,
+  "next_step": "User reactivates documented test card through Medicus or identifies another active test card; refresh availability and capture S0 immediately before create/move/cancel test."
+}

@@ -1,0 +1,130 @@
+{
+  "tested_at": "2026-10-05T12:46:38Z",
+  "scope": "Real HTTP requests to an isolated loopback instance importing the server API source, followed by read-only Firebird snapshots and Medicus GUI verification.",
+  "authorization": "User approved bounded API tests on MAIN card [REDACTED_TEST_CARD] in January 2027 and cleanup.",
+  "production_writes_enabled": false,
+  "test_only_overrides": [
+    "Enable writes and cancellations in the isolated process",
+    "Enable availability/final booking for skin, dermatoscope_followup, dermatoscope_first in a private rules copy",
+    "Restrict writes to card [REDACTED_TEST_CARD], doctor 8, exact date/time allowlist, test marker and IDs created by this process",
+    "Disable related appointment expansion and Operator telemetry in the test process"
+  ],
+  "cases": [
+    {
+      "case": "holiday",
+      "date": "2027-01-01",
+      "time": "08:30",
+      "result": "slot_not_bookable",
+      "passed": true
+    },
+    {
+      "case": "weekend",
+      "date": "2027-01-02",
+      "time": "08:30",
+      "result": "slot_not_bookable",
+      "passed": true
+    },
+    {
+      "case": "skin_create",
+      "date": "2027-01-04",
+      "time": "08:30",
+      "end": "08:40",
+      "idobj": 144759,
+      "idcinnosti": null,
+      "gui": "Black appointment in MAIN",
+      "passed": true
+    },
+    {
+      "case": "duplicate_skin",
+      "date": "2027-01-04",
+      "time": "08:30",
+      "result": "slot_not_bookable",
+      "passed": true
+    },
+    {
+      "case": "dermatoscope_followup_create",
+      "date": "2027-01-04",
+      "time": "09:00",
+      "end": "09:10",
+      "idobj": 144760,
+      "idcinnosti": 2,
+      "gui": "Green appointment in MAIN",
+      "passed": true,
+      "limit": "Technical mapping only; clinical eligibility not established by this test"
+    },
+    {
+      "case": "dermatoscope_first_create",
+      "date": "2027-01-04",
+      "time": "09:30",
+      "end": "09:40",
+      "idobj": 144761,
+      "idcinnosti": 1,
+      "gui": "Red appointment in MAIN; no scanner reservation in LASER at 09:15-09:30",
+      "passed": false,
+      "finding": "API returns created and a verified free scan_slot, but creates only MAIN appointment. LASER full-day snapshot remains unchanged. Scanner capacity is not reserved."
+    },
+    {
+      "case": "skin_reschedule",
+      "old_idobj": 144759,
+      "new_idobj": 144762,
+      "date": "2027-01-05",
+      "time": "09:20",
+      "end": "09:30",
+      "gui": "Old cell cleared, new black appointment on January 5",
+      "passed": true,
+      "finding": "API delete-and-create changes IDOBJ, unlike the earlier GUI move preserving IDOBJ"
+    },
+    {
+      "case": "cancel_cleanup",
+      "ids": [
+        144760,
+        144761,
+        144762
+      ],
+      "result": "cancelled",
+      "passed": true
+    }
+  ],
+  "cleanup": {
+    "all_test_ids_absent_globally_from_main_objobj": true,
+    "laser_test_marker_rows": 0,
+    "main_and_laser_objobj_equal_to_baseline_for_Jan4_Jan5": true,
+    "objproc_unchanged": true,
+    "main_objhist_added_delete_records": [
+      144759,
+      144760,
+      144761,
+      144762
+    ],
+    "laser_history_unchanged": true,
+    "existing_appointment_141976_unchanged": true,
+    "gui_confirmed_test_cells_cleared": true,
+    "isolated_host_stopped": true
+  },
+  "evidence": {
+    "restricted_server_directory": "C:/db_bridge/state/gui-test-20261005",
+    "files": [
+      "A0.json",
+      "A1.json",
+      "A2.json",
+      "A3.json",
+      "A0-A1.json",
+      "A1-A2.json",
+      "A0-A3.json",
+      "api-batch-results.json",
+      "api-move-result.json",
+      "api-cancel-result.json"
+    ],
+    "baseline_at": "2026-10-05T12:41:25.394334+00:00",
+    "final_snapshot_at": "2026-10-05T12:48:44.388038+00:00"
+  },
+  "limits": [
+    "Not a public production endpoint or ElevenLabs end-to-end write test",
+    "Production booking flags remain disabled",
+    "No schema, procedure, trigger or production source/config changes",
+    "MAIN/LASER snapshots are not atomic together",
+    "No concurrency/race or partial cross-database failure test",
+    "Combined booking remains incomplete; prevent enablement before scanner reservation and paired lifecycle are implemented",
+    "Holiday rejection alone does not isolate the holiday rule from absence of a schedule on that date"
+  ]
+}

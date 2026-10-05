@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-05",
+  "scope": "Bounded isolated HTTP API, live MAIN/LASER, approved test card",
+  "result": "create_move_cancel_passed",
+  "appointments": {
+    "MAIN": 144778,
+    "LASER": 100057
+  },
+  "created": {
+    "date": "2027-01-04",
+    "physician": "09:30-09:40",
+    "scan": "09:15-09:30",
+    "both_rows_read_back": true
+  },
+  "moved": {
+    "date": "2027-01-05",
+    "physician": "09:20-09:30",
+    "scan": "09:05-09:20",
+    "both_rows_read_back": true,
+    "same_ids": true
+  },
+  "cancelled": {
+    "both_rows_absent": true
+  },
+  "final_delta": {
+    "OBJOBJ": "unchanged in both scoped days/databases",
+    "OBJPROC": "unchanged",
+    "OBJHIST": "one U and one D per database for test IDs",
+    "original_141976": "fingerprint unchanged"
+  },
+  "evidence_directory": "C:/db_bridge/state/gui-test-20261005",
+  "evidence_files": [
+    "SF4.json",
+    "SF5.json",
+    "SF6.json",
+    "SF7.json",
+    "SF4-SF7.json",
+    "staff-first2-create-result.json",
+    "staff-first2-move-result.json",
+    "staff-first2-cancel-result.json",
+    "staff-first-move-diagnosis.json"
+  ],
+  "helper_stopped": true,
+  "limitations": [
+    "Not a GUI verification",
+    "Not the staff approval workflow",
+    "No uncertain 2PC recovery drill",
+    "No production activation"
+  ]
+}

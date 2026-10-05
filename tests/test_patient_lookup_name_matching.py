@@ -97,17 +97,17 @@ class PatientLookupNameMatchingTests(unittest.TestCase):
         self.assertEqual(response["patients"][0]["idpac"], 52166)
         self.assertEqual(len(cursor.patient_queries), 2)
 
-    def test_lookup_patient_phone_unique_verifies_without_last4(self):
+    def test_lookup_patient_phone_unique_requires_full_identity(self):
         cursor = FakeLookupCursor(query_results=[[self.patient_row]])
 
         response = lookup_patient(cursor, {"phone": "777111222", "include_appointments": False})
 
         self.assertEqual(response["status"], "found")
-        self.assertTrue(response["verification"]["verified"])
-        self.assertEqual(response["verification"]["method"], "phone_unique")
+        self.assertFalse(response["verification"]["verified"])
+        self.assertIsNone(response["verification"]["method"])
         self.assertEqual(response["appointments"], [])
 
-    def test_lookup_patient_last_name_and_birth_date_verifies_without_last4(self):
+    def test_lookup_patient_last_name_and_birth_date_requires_full_identity(self):
         cursor = FakeLookupCursor(query_results=[[self.patient_row]])
 
         response = lookup_patient(
@@ -120,10 +120,10 @@ class PatientLookupNameMatchingTests(unittest.TestCase):
         )
 
         self.assertEqual(response["status"], "found")
-        self.assertTrue(response["verification"]["verified"])
-        self.assertEqual(response["verification"]["method"], "name_birth_date_unique")
+        self.assertFalse(response["verification"]["verified"])
+        self.assertIsNone(response["verification"]["method"])
 
-    def test_lookup_patient_fuzzy_name_with_birth_date_verifies_without_last4(self):
+    def test_lookup_patient_fuzzy_name_with_birth_date_requires_full_identity(self):
         cursor = FakeLookupCursor(query_results=[[], [], [self.fuzzy_patient_row]])
 
         response = lookup_patient(
@@ -138,8 +138,8 @@ class PatientLookupNameMatchingTests(unittest.TestCase):
 
         self.assertEqual(response["status"], "found")
         self.assertEqual(response["name_match"], "fuzzy_fallback")
-        self.assertTrue(response["verification"]["verified"])
-        self.assertEqual(response["verification"]["method"], "fuzzy_name_birth_date_unique")
+        self.assertFalse(response["verification"]["verified"])
+        self.assertIsNone(response["verification"]["method"])
         self.assertEqual(response["patients"][0]["idpac"], 52167)
 
     def test_lookup_patient_multiple_matches_asks_for_missing_first_name(self):
@@ -167,6 +167,7 @@ class PatientLookupNameMatchingTests(unittest.TestCase):
         response = lookup_patient(
             cursor,
             {
+                "first_name": "Vladimír",
                 "last_name": "Jan\u010da",
                 "birth_date": "2015-12-23",
                 "birth_number_last4": "9999",
@@ -176,6 +177,35 @@ class PatientLookupNameMatchingTests(unittest.TestCase):
 
         self.assertEqual(response["status"], "found")
         self.assertTrue(response["verification"]["verified"])
+
+    def test_partial_names_do_not_verify_or_load_history(self):
+        cursor = FakeLookupCursor(query_results=[[self.patient_row]])
+        result = lookup_patient(cursor, {'first_name':'Vlad', 'last_name':'Jan', 'birth_date':'2015-12-23',
+                                         'include_past_appointments':True})
+        self.assertFalse(result['verification']['verified'])
+        self.assertEqual(len(cursor.patient_queries), 1)
+        self.assertEqual(result['past_appointments'], [])
+
+    def test_limit_one_cannot_hide_second_match(self):
+        cursor = FakeLookupCursor(query_results=[[self.patient_row, self.patient_row]])
+        result = lookup_patient(cursor, {'first_name':'Vladimir','last_name':'Janca','birth_date':'2015-12-23','limit':1})
+        self.assertIn('SELECT FIRST 2', cursor.patient_queries[0][0])
+        self.assertFalse(result['verification']['verified'])
+
+    def test_truncated_fallback_cannot_prove_uniqueness(self):
+        others = [(60000+i,'Different','Other','','','2015-12-23','','') for i in range(19)]
+        cursor = FakeLookupCursor(query_results=[[], [self.patient_row]+others])
+        result = lookup_patient(cursor, {'first_name':'Vladimir','last_name':'Janca','birth_date':'2015-12-23'})
+        self.assertEqual(result['status'],'found')
+        self.assertTrue(result['search_truncated'])
+        self.assertFalse(result['verification']['verified'])
+
+    def test_full_birth_number_fallback_can_verify_but_last4_cannot(self):
+        for number, expected in [('1512230401',True), ('0401',False)]:
+            with self.subTest(number_length=len(number)):
+                cursor = FakeLookupCursor(query_results=[[self.patient_row]])
+                result = lookup_patient(cursor, {'birth_number':number,'include_appointments':False})
+                self.assertEqual(result['verification']['verified'],expected)
 
 
 if __name__ == "__main__":

@@ -185,7 +185,8 @@ def _build_patient_query(
     if not where_parts:
         raise ValueError("patient lookup requires phone, idpac, birth_number, name, surname, or birth_date")
 
-    safe_limit = min(max(int(limit), 1), 20)
+    # A caller-supplied limit=1 must not turn ambiguous results into proof.
+    safe_limit = min(max(int(limit), 2), 20)
     query = f"""
         SELECT FIRST {safe_limit} {", ".join(output_columns)}
         FROM {PATIENT_TABLE}
@@ -287,18 +288,26 @@ def _patient_fuzzy_matches_requested_names(patient: dict[str, Any], request: dic
     )
 
 
-def _verification_method(applied_filters: list[str], name_match: str) -> str:
-    if "idpac" in applied_filters:
-        return "idpac_unique"
-    if "birth_number" in applied_filters:
-        return "birth_number_unique"
-    if "phone" in applied_filters and len(applied_filters) == 1:
-        return "phone_unique"
-    if "birth_date" in applied_filters and ("last_name" in applied_filters or "first_name" in applied_filters):
-        return "name_birth_date_unique" if name_match != "fuzzy_fallback" else "fuzzy_name_birth_date_unique"
-    if "phone" in applied_filters:
-        return "phone_refined_unique"
-    return "unique_match"
+def verified_identity_method(request, response):
+    patients = response.get('patients', [])
+    filters = set(response.get('filters', []))
+    if (response.get('status') != 'found' or len(patients) != 1
+            or response.get('search_truncated') or response.get('name_match') == 'fuzzy_fallback'):
+        return None
+    number = _digits(request.get('birth_number') or request.get('rodne_cislo') or request.get('rodcis'))
+    if 'birth_number' in filters and len(number) in (9, 10):
+        return 'birth_number_unique'
+    required = {'first_name', 'last_name', 'birth_date'}
+    if not required.issubset(filters):
+        return None
+    patient = patients[0]
+    for field, alias in [('first_name', 'name'), ('last_name', 'surname')]:
+        requested = _normalize_text(request.get(field) or request.get(alias))
+        if not requested or requested != _normalize_text(patient.get(field)):
+            return None
+    if not request.get('birth_date') or str(request['birth_date']).strip() != patient.get('birth_date'):
+        return None
+    return 'name_birth_date_unique'
 
 
 def _next_step_for_multiple_matches(applied_filters: list[str]) -> str:
@@ -308,7 +317,7 @@ def _next_step_for_multiple_matches(applied_filters: list[str]) -> str:
         return "Ask the caller for first name, then call patient lookup again."
     if "last_name" not in applied_filters:
         return "Ask the caller for surname, then call patient lookup again."
-    return "Ask the caller for one more identifying detail and hand off to staff if the match remains ambiguous."
+    return "Offer the caller a choice: lookup using their full birth number, or transfer to staff. Do not request last four digits."
 
 
 def _patient_from_row(columns: list[str], row: tuple[Any, ...]) -> dict[str, Any]:
@@ -407,6 +416,7 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
     cursor.execute(query, tuple(params))
 
     raw_patients = [_patient_from_row(output_columns, row) for row in cursor.fetchall()]
+    search_truncated = False
     name_match = "sql"
     if not raw_patients:
         fallback_request = _name_fallback_request(request)
@@ -416,6 +426,7 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
             )
             cursor.execute(fallback_query, tuple(fallback_params))
             fallback_patients = [_patient_from_row(fallback_columns, row) for row in cursor.fetchall()]
+            search_truncated = len(fallback_patients) >= 20
             raw_patients = [
                 patient for patient in fallback_patients if _patient_matches_requested_names(patient, request)
             ]
@@ -431,6 +442,7 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
             )
             cursor.execute(fallback_query, tuple(fallback_params))
             fallback_patients = [_patient_from_row(fallback_columns, row) for row in cursor.fetchall()]
+            search_truncated = search_truncated or len(fallback_patients) >= 20
             raw_patients = [
                 patient for patient in fallback_patients if _patient_fuzzy_matches_requested_names(patient, request)
             ]
@@ -443,10 +455,11 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
         "status": "not_found" if not raw_patients else "multiple_matches" if len(raw_patients) > 1 else "found",
         "filters": applied_filters,
         "name_match": name_match,
+        "search_truncated": search_truncated,
         "verification": {
             "required": False,
-            "verified": len(raw_patients) == 1,
-            "method": _verification_method(applied_filters, name_match) if len(raw_patients) == 1 else None,
+            "verified": False,
+            "method": None,
         },
         "patients": [_sanitize_patient(patient) for patient in raw_patients],
         "appointments": [],
@@ -456,8 +469,11 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
         "agent_next_step": None,
     }
 
+    method = verified_identity_method(request, response)
+    response['verification'] = {'required': method is None, 'verified': method is not None, 'method': method}
+
     if not raw_patients:
-        response["agent_next_step"] = "Ask the caller for surname and date of birth, then call patient lookup again."
+        response["agent_next_step"] = "Confirm the supplied first name, surname and date of birth with the caller. Repeat lookup with corrections; if they confirm unchanged details and no card is found, offer transfer to staff."
         return response
 
     if len(raw_patients) > 1:
@@ -465,6 +481,9 @@ def lookup_patient(cursor, request: dict[str, Any] | None = None) -> dict[str, A
         return response
 
     patient = raw_patients[0]
+    if method is None:
+        response['agent_next_step'] = 'Identity is not verified. Confirm full first name, surname and date of birth and repeat lookup, or transfer to staff. Do not claim verification or disclose appointment history.'
+        return response
     if include_appointments and patient.get("idpac") is not None:
         response["appointments"] = _load_future_appointments(cursor, int(patient["idpac"]), appointment_days_ahead)
     if include_past_appointments and patient.get("idpac") is not None:

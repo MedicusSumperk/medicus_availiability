@@ -1,0 +1,103 @@
+{
+  "description": "Verify the patient using confirmed first name, last name and date of birth before disclosing appointments or submitting changes. Phone alone is not verification. If no match, repeat the supplied details and allow correction. If still unresolved, offer either full birth-number lookup with explicit caller choice or immediate staff transfer. Never create a patient card.",
+  "api_schema": {
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Use confirmed patient details, not guesses. Normal route requires first_name, last_name and birth_date together. Full birth_number is an optional last resort chosen by the caller; never use last4. Accept identity only when verification.verified=true and use the current patient_verification_token for a proposal. Never read patient identifiers or personal data from the response aloud. Ask for history only when needed for the caller request; do not infer a universal follow-up interval.",
+      "properties": [
+        {
+          "id": "first_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Confirmed first name; required together with last_name and birth_date for the normal verification route.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "last_name",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Confirmed last name of the patient being booked, including when the caller represents someone else.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "birth_date",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Confirmed patient birth date as YYYY-MM-DD; required in the normal name-and-DOB route.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "birth_number",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Full birth number, as text, only if normal lookup remains unresolved and the caller explicitly chooses this alternative instead of staff transfer. Never request only last4.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "include_appointments",
+          "type": "boolean",
+          "value_type": "llm_prompt",
+          "description": "Set true to return future appointments after successful verification.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "include_past_appointments",
+          "type": "boolean",
+          "value_type": "llm_prompt",
+          "description": "True only when past appointments are needed for the caller request, such as checking a stated follow-up recommendation. Otherwise false or omitted.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    }
+  },
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "patient_lookup_status",
+      "value_path": "status",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "patient_verified",
+      "value_path": "verification.verified",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "patient_appointments_json",
+      "value_path": "appointments",
+      "sanitize": false,
+      "preserve_native_type": true
+    }
+  ]
+}

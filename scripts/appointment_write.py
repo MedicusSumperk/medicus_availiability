@@ -235,7 +235,7 @@ def _expand_related_appointment_ids(
     return expanded
 
 
-def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, Any]:
+def _find_exact_bookable_option(cursor, request: dict[str, Any], *, scan_calendar=None, exclude_main_ids=()) -> dict[str, Any]:
     service = _clean(request.get("service") or "skin").lower()
     rules = load_business_rules()
     supported_services = {
@@ -258,8 +258,7 @@ def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, An
         "service": service,
         "date_from": target_date.isoformat(),
         "date_to": target_date.isoformat(),
-        "time_from": _format_time(start_time),
-        "time_to": _format_time(start_time),
+        "technical_start_time": _format_time(start_time),
         "limit": int(request.get("availability_limit") or 10),
         "max_limit": int(request.get("availability_max_limit") or 50),
     }
@@ -270,9 +269,11 @@ def _find_exact_bookable_option(cursor, request: dict[str, Any]) -> dict[str, An
     if request.get("emergency") is not None:
         availability_request["emergency"] = request["emergency"]
 
-    response = search_availability(cursor, availability_request)
+    response = search_availability(cursor, availability_request,
+        **({'scan_calendar': scan_calendar} if scan_calendar is not None else {}),
+        **({'exclude_main_ids': exclude_main_ids} if exclude_main_ids else {}))
     doctor_filter = response.get("filters", {}).get("doctor", {})
-    if request.get("doctor_name") and doctor_filter.get("match_type") not in {"exact", "partial"}:
+    if request.get("doctor_name") and doctor_filter.get("match_type") not in {"exact", "partial", "doctor_id"}:
         return {
             "error": "doctor_not_resolved",
             "availability_response": response,
@@ -395,6 +396,8 @@ def _insert_appointment(
 
 def _create_appointments(cursor, request: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
     _require_patient_verified(request)
+    if _clean(request.get('service')).lower() == 'dermatoscope_first':
+        return {'ok': False, 'status': 'paired_writer_required', 'booking_confirmed': False}
     idpac = int(request["idpac"])
     option = _find_exact_bookable_option(cursor, request)
     if option.get("error"):
@@ -454,11 +457,27 @@ def _create_appointments(cursor, request: dict[str, Any], config: dict[str, Any]
     return {
         "ok": True,
         "status": "created",
+        "booking_confirmed": True,
         "service": service,
         "appointment_ids": [row["idobj"] for row in inserted_rows],
         "appointments": inserted_rows,
         "availability_option": option,
     }
+
+
+def _single_change_guard(cursor, row):
+    """Only mapped, ordinary cells without unverified external/procedure links."""
+    if row['idcinnosti'] not in (None, 2):
+        return 'service_change_or_mapping_requires_staff'
+    cursor.execute('SELECT IDREC,TYPPROH,IDEXT,IDCAL_EXT,ES_UID,DATUMDO FROM OBJOBJ WHERE IDOBJ=?', (row['idobj'],))
+    extra = cursor.fetchone()
+    if (not extra or any(value is not None for value in extra[:5]) or str(extra[5]) != row['date']
+            or row['typ'] != 1 or row['prisel'] != 'N'):
+        return 'linked_or_nonstandard_appointment_requires_staff'
+    cursor.execute('SELECT COUNT(*) FROM OBJPROC WHERE IDOBJ=?', (row['idobj'],))
+    if cursor.fetchone()[0]:
+        return 'appointment_procedures_require_staff'
+    return None
 
 
 def _cancel_appointments(cursor, request: dict[str, Any], config: dict[str, Any]) -> dict[str, Any]:
@@ -482,9 +501,9 @@ def _cancel_appointments(cursor, request: dict[str, Any], config: dict[str, Any]
             "appointments": rows_before,
         }
 
-    if _bool(request.get("include_related", True)):
-        appointment_ids = _expand_related_appointment_ids(cursor, appointment_ids, rows_before, config)
-        rows_before = _fetch_appointment_rows(cursor, appointment_ids)
+    if _bool(request.get('include_related', False)):
+        # A matching patient/time alone does not establish a managed pair.
+        return {'ok': False, 'status': 'related_appointments_require_staff', 'booking_confirmed': False}
 
     idpac = int(request["idpac"])
     mismatched = [row for row in rows_before if row["idpac"] != idpac]
@@ -495,14 +514,63 @@ def _cancel_appointments(cursor, request: dict[str, Any], config: dict[str, Any]
             "appointments": rows_before,
         }
 
+    if any(row.get('idcinnosti') == 1 or 'AI_PAIR_V1:' in row.get('info', '') for row in rows_before):
+        return {'ok': False, 'status': 'paired_writer_required', 'booking_confirmed': False}
+
+    for row in rows_before:
+        issue = _single_change_guard(cursor, row)
+        if issue:
+            return {'ok': False, 'status': issue, 'booking_confirmed': False}
+
     placeholders = ", ".join("?" for _ in appointment_ids)
     cursor.execute(f"DELETE FROM OBJOBJ WHERE IDOBJ IN ({placeholders})", tuple(appointment_ids))
     return {
         "ok": True,
         "status": "cancelled",
+        "booking_confirmed": True,
         "appointment_ids": appointment_ids,
         "appointments_before_cancel": rows_before,
     }
+
+
+def _reschedule_appointment(cursor, request, config):
+    """Move a single verified calendar cell without replacing its identity."""
+    _require_patient_verified(request)
+    if not _cancel_enabled(config):
+        return {'ok': False, 'status': 'cancel_not_enabled'}
+    ids = _appointment_ids(request)
+    if len(ids) != 1:
+        return {'ok': False, 'status': 'single_appointment_required'}
+    rows = _fetch_appointment_rows(cursor, ids)
+    if len(rows) != 1 or rows[0]['idpac'] != int(request['idpac']):
+        return {'ok': False, 'status': 'appointment_not_found_or_patient_mismatch'}
+    old = rows[0]
+    if old['idcinnosti'] == 1 or 'AI_PAIR_V1:' in old['info']:
+        return {'ok': False, 'status': 'paired_writer_required'}
+    service = _clean(request.get('service') or 'skin').lower()
+    activity = {'skin': None, 'dermatoscope_followup': 2}
+    if service not in activity or old['idcinnosti'] != activity[service] or _service_followup_enabled(service):
+        return {'ok': False, 'status': 'service_change_or_mapping_requires_staff'}
+    issue = _single_change_guard(cursor, old)
+    if issue:
+        return {'ok': False, 'status': issue}
+    # Exclude only the verified source from the read projection, without
+    # executing DELETE triggers merely to check availability.
+    option = _find_exact_bookable_option(cursor, request, exclude_main_ids=(old['idobj'],))
+    if option.get('error'):
+        return {'ok': False, 'status': option['error'], 'booking_confirmed': False}
+    if option.get('idcinnosti') != old['idcinnosti']:
+        return {'ok': False, 'status': 'service_mapping_changed'}
+    day = _parse_date(option['date'], 'date')
+    start = _parse_time(option['start_time'], 'start_time')
+    end = _parse_time(option['end_time'], 'end_time')
+    cursor.execute('UPDATE OBJOBJ SET IDPRAC=?,IDUZI=?,DATUM=?,DATUMDO=?,CAS=?,CASDO=? WHERE IDOBJ=?',
+                   (int(option['idprac']), int(option['doctor_id']), day, day, start, end, old['idobj']))
+    moved = dict(old, idprac=int(option['idprac']), doctor_id=int(option['doctor_id']),
+                 date=day.isoformat(), start_time=_format_time(start), end_time=_format_time(end))
+    return {'ok': True, 'status': 'rescheduled', 'booking_confirmed': True, 'service': service,
+            'appointment_ids': ids, 'appointments': [moved], 'appointments_before_move': [old],
+            'availability_option': option}
 
 
 def write_appointment(cursor, request: dict[str, Any] | None, config: dict[str, Any]) -> dict[str, Any]:
@@ -523,15 +591,4 @@ def write_appointment(cursor, request: dict[str, Any] | None, config: dict[str, 
     if action == "cancel":
         return _cancel_appointments(cursor, request, config)
 
-    cancelled = _cancel_appointments(cursor, request, config)
-    if not cancelled.get("ok"):
-        return cancelled
-    created = _create_appointments(cursor, request, config)
-    if not created.get("ok"):
-        return created
-    return {
-        "ok": True,
-        "status": "rescheduled",
-        "cancelled": cancelled,
-        "created": created,
-    }
+    return _reschedule_appointment(cursor, request, config)

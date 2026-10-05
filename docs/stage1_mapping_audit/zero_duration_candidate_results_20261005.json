@@ -1,0 +1,47 @@
+[
+  {
+    "request": {
+      "service": "dermatoscope_first",
+      "date_from": "2026-10-02",
+      "limit": 3,
+      "compact": true,
+      "days_ahead": 30,
+      "max_limit": 10
+    },
+    "ok": true,
+    "options": [
+      {
+        "date": "2026-10-15",
+        "start_time": "11:00",
+        "doctor_id": 13,
+        "scan_start_time": null
+      },
+      {
+        "date": "2026-11-11",
+        "start_time": "08:30",
+        "doctor_id": 12,
+        "scan_start_time": null
+      },
+      {
+        "date": "2026-11-11",
+        "start_time": "09:00",
+        "doctor_id": 12,
+        "scan_start_time": null
+      }
+    ]
+  },
+  {
+    "request": {
+      "service": "skin",
+      "date_from": "2026-10-09",
+      "date_to": "2026-10-09",
+      "doctor_id": 15,
+      "limit": 10,
+      "compact": true,
+      "days_ahead": 30,
+      "max_limit": 10
+    },
+    "ok": true,
+    "options": []
+  }
+]

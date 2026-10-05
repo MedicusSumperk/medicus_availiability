@@ -1,0 +1,32 @@
+{
+  "checked_at_utc": "2026-10-05T21:59:35.166170+00:00",
+  "sample_date": "2026-09-10",
+  "selection": "Previously selected random day from empirical_calendar_candidate.json, seed 20261007; targeted comparison of its two full-day blocking rows",
+  "database": "MAIN",
+  "read_only": true,
+  "rows": [
+    {"appointment_id":142681,"doctor_id":11,"start":"07:00","end":"22:00","activity":null},
+    {"appointment_id":142682,"doctor_id":13,"start":"07:00","end":"22:00","activity":null},
+    {"appointment_id":136432,"doctor_id":13,"start":"13:45","end":"14:00","activity":5}
+  ],
+  "raw_matches_OBJOBJ_SEL": true,
+  "matches_previous_sample_rows": true,
+  "gui": {
+    "calendar_date_confirmed": "10.09.2026",
+    "doctor_11": {"column":"Selecká Dušana","status_bar_interval":"07:00-22:00","full_day_block_visible":true},
+    "doctor_13": {"column":"Šlosárová Zuzana","status_bar_interval":"07:00-22:00","full_day_block_visible":true},
+    "method":"Calendar navigation and single selection only; no appointment edit dialog or save",
+    "screenshots_saved":false
+  },
+  "deployed_engine_results": [
+    {"doctor_id":11,"has_schedule":true,"total_slots":12,"occupied_slots":12,"free_slots":[]},
+    {"doctor_id":13,"has_schedule":true,"total_slots":40,"occupied_slots":40,"free_slots":[]}
+  ],
+  "conclusion":"For this historical sample, GUI interval, raw row, display procedure and deployed availability engine agree: full-day rows block all scheduled cells even though IDCINNOSTI is NULL.",
+  "limits":[
+    "Engine function invoked read-only directly on the server, not HTTP. A current HTTP query for this historical date would be filtered as past independently of occupancy.",
+    "No universal color or clinical meaning inferred from the GUI; selected blocks render differently from unselected blocks.",
+    "No independent GUI row ID read. Correlation uses date, doctor and unique full-day interval.",
+    "The separate 13:45 row was read in the database/procedure but its GUI detail was not inspected."
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "artifact": "PDF meeting packet",
+  "pages": 11,
+  "questions": 18,
+  "practical_rules": 24,
+  "feedback_forms": 1,
+  "inventory_coverage": 40,
+  "source_review_entries": 45,
+  "pdf_sha256": "6c9a2c7baa4907919aa771e7db465203a9a606f8b8b7972505dca9d00fa6d289",
+  "qa": "All 11 pages rendered with Poppler and visually inspected in contact sheets; no overflow, blank pages or clipped content; all 18 question and 24 rule IDs text-verified.",
+  "runtime_tests": "Not run: this change is documentation and an offline PDF builder only.",
+  "production_changes": false,
+  "goal_complete": false,
+  "version": "v1-review-2"
+}

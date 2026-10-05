@@ -1,0 +1,59 @@
+{
+  "date": "2026-10-05",
+  "source_commit": "e0ed6231479566237833abeda29d78bb8fa86d95",
+  "scope": "Exact staged release; isolated bounded staff HTTP create/reschedule/cancel with Medicus GUI observation",
+  "test_identity": "authorized MAIN test card; identifier omitted",
+  "appointments": {
+    "MAIN": 144781,
+    "LASER": 100060
+  },
+  "created": {
+    "date": "2027-01-04",
+    "physician": "09:30-09:40",
+    "scan": "09:15-09:30",
+    "gui_main": "red, Sken znamének č. 1; selected interval confirmed",
+    "gui_laser": "brown, Dermatoskop; detail confirmed date and interval, no patient card"
+  },
+  "moved": {
+    "date": "2027-01-05",
+    "physician": "09:20-09:30",
+    "scan": "09:05-09:20",
+    "same_ids": true,
+    "gui_main_interval_confirmed": true,
+    "gui_laser_interval_confirmed": true
+  },
+  "cancelled": {
+    "http_state": "committed",
+    "gui_both_test_cells_cleared": true,
+    "global_test_row_counts": {
+      "MAIN": 0,
+      "LASER": 0
+    }
+  },
+  "comparison": {
+    "snapshot_names": [
+      "G0.json",
+      "G1.json",
+      "G2.json",
+      "G3.json"
+    ],
+    "final_diff": "G0-G3.json",
+    "OBJOBJ_scoped_delta": 0,
+    "OBJPROC_scoped_delta": 0,
+    "OBJHIST": "one U and one D per database for owned test IDs",
+    "original_appointment_141976_unchanged": true
+  },
+  "cleanup": {
+    "host_stopped": true,
+    "listener_owner_checked": true,
+    "no_production_restart": true
+  },
+  "evidence_directory": "C:/db_bridge/state/gui-test-20261005/release-gui-cycle3",
+  "limitations": [
+    "Identity and offer references prepared for authorized test; not obtained through a voice call",
+    "Changes executed through staff HTTP; GUI observation is not a new GUI-authored booking workflow",
+    "No uncertain-commit recovery drill",
+    "No claim that this proves the clinic's preferred category for every post-scan workflow",
+    "Production flags remain unchanged; not activated"
+  ]
+}

@@ -1,0 +1,184 @@
+{
+  "description": "Read-only search for services listed in current review_services. Present only returned options, preserving each date, doctor, arrival, scan and examination as one indivisible option. Never mix fields between options. This is availability, not a confirmed reservation. Respect explicit doctor/date/time preferences; offer an alternative doctor only with caller consent.",
+  "api_schema": {
+    "request_body_schema": {
+      "type": "object",
+      "description": "Use service IDs from current agent_capabilities.review_services. Dates YYYY-MM-DD, times HH:MM. For earliest availability omit date_to; backend may search up to six calendar months from date_from. For a recommended future control use a narrow agreed date window, not the entire preceding year. Time preferences concern required arrival including scan. Weekends, Czech holidays and minimum lead time are server policy. For an acute request offer immediate staff transfer, not an emergency booking. Use arrival_time and scan_start_time for arrival; retain offer_token of the exact selected option.",
+      "dynamic_variable": "",
+      "is_omitted": false,
+      "properties": {
+        "service": {
+          "type": "string",
+          "description": "Exact service ID from review_services; never assume a disabled service is available. Plasma and other out-of-scope services require staff.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "doctor_name": {
+          "type": "string",
+          "description": "Jmeno nebo prijmeni lekare tak, jak ho rekl pacient, napr. Bednar nebo Bartonova. Nepouzivat doctor_id.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "date_from": {
+          "type": "string",
+          "description": "Pocatecni datum hledani ve formatu YYYY-MM-DD. Vyplnit jen pokud pacient uvede datum nebo obdobi.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "date_to": {
+          "type": "string",
+          "description": "Konec explicitniho hledaneho rozsahu YYYY-MM-DD. Pro nejblizsi mozny termin nevyplnovat; pouzit jen kdyz volajici rekne konkretni mesic, datum nebo rozsah.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "days_ahead": {
+          "type": "integer",
+          "description": "Volitelny kratky horizont. Pro nejblizsi mozny termin backend muze hledani prodlouzit, pokud date_to neni zadane.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "weekdays": {
+          "type": "array",
+          "description": "Explicit requested working days only, ISO Monday=1 through Friday=5.",
+          "dynamic_variable": "",
+          "is_omitted": false,
+          "constant_value": null,
+          "items": {
+            "type": "integer",
+            "description": "ISO working weekday 1..5, only if requested by caller.",
+            "dynamic_variable": "",
+            "constant_value": "",
+            "enum": null,
+            "is_system_provided": false,
+            "is_omitted": false,
+            "allowed_values": null,
+            "allowed_values_dynamic_variable": ""
+          }
+        },
+        "time_from": {
+          "type": "string",
+          "description": "Earliest acceptable patient arrival HH:MM, including scan before examination.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "time_to": {
+          "type": "string",
+          "description": "Latest acceptable patient arrival HH:MM, including scan before examination.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "limit": {
+          "type": "integer",
+          "description": "Set to 3. Return up to three options for the voice conversation.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "compact": {
+          "type": "boolean",
+          "description": "Always set true for the voice conversation.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "emergency": {
+          "type": "boolean",
+          "description": "True means an acute request requiring staff; the server returns handoff_to_staff with no booking options. Prefer immediate transfer instead of an availability search.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "reschedule_appointment_id": {
+          "type": "integer",
+          "description": "For rescheduling only: copy the single original MAIN appointment ID explicitly selected by the caller from verified patient_lookup. Never use a LASER ID or infer a pair from time. Omit for new bookings.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "patient_verification_token": {
+          "type": "string",
+          "description": "Required when reschedule_appointment_id is supplied. Copy the exact patient_lookup verification token from this conversation. Never invent or modify.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        }
+      },
+      "required": [
+        "service",
+        "limit",
+        "compact"
+      ]
+    }
+  },
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "availability_doctor_match_type",
+      "value_path": "filters.doctor.match_type",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "availability_options_json",
+      "value_path": "options_json",
+      "sanitize": false,
+      "preserve_native_type": true
+    }
+  ]
+}

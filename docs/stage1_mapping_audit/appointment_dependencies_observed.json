@@ -1,0 +1,6681 @@
+{
+  "captured_at_utc": "2026-10-01T22:57:38.176714+00:00",
+  "databases": {
+    "MAIN": {
+      "triggers": [
+        {
+          "name": "IDREC_REF_AU",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if ((old.TYPPROH = 'D') and (old.IDREC is not NULL)) then\r\n    update PROPRI set DATUM = new.DATUM, CAS = new.CAS where ID = new.IDREC and IDPAC = new.IDPAC and IDPRAC = new.IDPRAC;\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (not(old.idext is null) and not(old.idcal_ext is null)) then\r\n    insert into cos_delobj(idext, idcal_ext)\r\n           values(old.idext, old.idcal_ext);\r\n\r\n  execute procedure COS_NEEDCALSYNC(old.iduzi, old.idprac, old.datum);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (not(old.ES_UID is null)) then begin\r\n    if (not(old.ES_ODESLANO is null)) then\r\n      insert into ES_APPUPD(UID, IDPAC, IDPRAC, IDUZI, IDOBJ, DATUM, CAS, CASDO, TYP)\r\n      values(old.es_uid, old.idpac, old.idprac, old.iduzi, old.idobj, old.datum, old.cas, old.casdo, 'D');\r\n    else /* automaticky zamitnout objednavku */\r\n      update ES_APP EA set EA.STAV='C' where EA.UID=old.ES_UID and (EA.ODESLANO is null);\r\n  end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (not(new.idext is null)) then begin /* je to internetova objednavka */\r\n    /* napojeni internetoveho pacienta na kartoteku */\r\n    if ((old.idpac is null) and not(new.idpac is null) and not(new.cos_pac is null)) then begin\r\n      update cos_pac cp\r\n      set cp.idpac = new.idpac\r\n      where cp.id = new.cos_pac;\r\n    end\r\n  end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (\r\n      not(new.ES_UID is null) and\r\n      not(new.es_odeslano is null) and\r\n      not((new.datum=old.datum) and (new.cas=old.cas) and (new.casdo=old.casdo))\r\n      )\r\n  then begin\r\n    /* smazat dosud neodeslane updaty */\r\n    delete from ES_APPUPD where IDOBJ=new.idobj and TYP='U' and (ODESLANO is NULL);\r\n\r\n    insert into ES_APPUPD(UID, IDPAC, IDPRAC, IDUZI, IDOBJ, DATUM, CAS, CASDO, TYP, IDCINNOSTI)\r\n    values(new.es_uid, new.idpac, new.idprac, new.iduzi, new.idobj, new.datum, new.cas, new.casdo, 'U', new.idcinnosti);\r\n  end\r\n\r\n  /* odeslani requestu se nezdarilo vynulujeme odeslano v ES_APP */\r\n  if (not(new.ES_UID is null) and\r\n      not(new.es_appid is null) and\r\n      (new.es_odeslano is null)\r\n      )\r\n  then\r\n    update ES_APP set odeslano=null where ES_APP.id = new.es_appid;\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 5,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  INSERT INTO OBJHIST (IDPRAC, IDUZIV, IDPAC, DATUM, CAS, CASDO, PACIENT, INFO, IDCINNOSTI, IDZARAZENI, POZN, IDOBJ, AKCE, WEBCAL_UID)\r\n  VALUES (OLD.IDPRAC, OLD.IDUZI, OLD.IDPAC, OLD.DATUM, OLD.CAS, OLD.CASDO,\r\n    F_CONCAT(OLD.CELEJMENO, F_CONCAT(OLD.RODCIS, F_CONCAT(OLD.POJ, OLD.TELEFON, ' '), ' '), ' '), OLD.INFO,\r\n    OLD.IDCINNOSTI, OLD.IDZARAZENI, OLD.POZNAMKA, OLD.IDOBJ, 'D', OLD.WEBCAL_UID);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BI",
+          "type": 1,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nBEGIN\r\n  IF (NEW.IDOBJ IS NULL) THEN\r\n    NEW.IDOBJ = GEN_ID(GEN_IDOBJ,1);\r\nEND"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 3,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  /* pri presunuti internetove objednavky ji v COSu smazeme */\r\n    if (not(old.idcal_ext is null) and\r\n        not(old.idext is null) and\r\n        ((old.datum <> new.datum) or\r\n         (old.cas <> new.cas) or\r\n         (old.casdo <> new.casdo))\r\n        )\r\n    then begin\r\n      /* zrusit vazbu na COS */\r\n      new.idext = null;\r\n      new.idcal_ext = null;\r\n\r\n      /* do smazanych */\r\n      insert into cos_delobj(idext, idcal_ext)\r\n             values(old.idext, old.idcal_ext);\r\n    end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_CREATED",
+          "type": 1,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS begin\r\n  NEW.CREATED = 'NOW';\r\nend"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_D",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "as begin\r\n  execute procedure sp_log(old.idpac, 24, old.idobj, 'D', null, null);\r\nend"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_I",
+          "type": 2,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "as begin\r\n  execute procedure sp_log(new.idpac, 24, new.idobj, 'I', null, null);\r\nend"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_U",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "as begin\r\n  if (user <> 'ESER') then\r\n    execute procedure sp_log(old.idpac, 24, old.idobj, 'U', null, null);\r\nend"
+        },
+        {
+          "name": "CHECK_386",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 4,
+          "source": null
+        },
+        {
+          "name": "CHECK_387",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 4,
+          "source": null
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 18,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  execute procedure COS_NEEDCALSYNC(new.iduzi, new.idprac, new.datum);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 17,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 0,
+          "source": "AS\r\ndeclare variable CELEJMENO varchar(75);\r\nbegin\r\n  CELEJMENO = NULL;\r\n  if (new.PRIJMENI is not NULL) then\r\n    CELEJMENO = trim(coalesce(CELEJMENO, '') || ' ' || new.PRIJMENI);\r\n  if (new.JMENO is not NULL) then\r\n    CELEJMENO = trim(coalesce(CELEJMENO, '') || ' ' || new.JMENO);\r\n  if (new.TITUL is not NULL) then\r\n    CELEJMENO = trim(coalesce(CELEJMENO, '') || ' ' || new.TITUL);\r\n  if (CELEJMENO is not NULL) then\r\n    new.CELEJMENO = CELEJMENO;\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 1,
+          "inactive": 1,
+          "sequence": 2,
+          "system_flag": 0,
+          "source": "AS\r\ndeclare variable P integer;\r\ndeclare variable X integer;\r\ndeclare variable ID integer;\r\nbegin\r\n  /* vygenerovat ctyrmistny PIN unikatni v ramci dne */\r\n  if (new.PIN is NULL) then begin\r\n    P = null;\r\n    ID = null;\r\n    X = 0;\r\n    while ((X<100) and ((P is null) or not(ID is null))) do begin /* max 100 pokusu */\r\n      P = null;\r\n      ID = null;\r\n      select F_ROUND(RAND() * 8999 + 1000, 0) from RDB$DATABASE into :P;\r\n      select first 1 O.IDOBJ from OBJOBJ O where O.PIN=:P and O.DATUM=new.DATUM into :ID;\r\n      X = X + 1;\r\n    end\r\n    new.PIN = P;\r\n  end\r\n\r\n  when any do\r\n  begin\r\n    /* smula, nekde je chyba */\r\n  end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 3,
+          "inactive": 0,
+          "sequence": 2,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if  (\r\n      (OLD.IDPRAC is distinct from NEW.IDPRAC)\r\n  or  (OLD.IDUZI is distinct from NEW.IDUZI)\r\n  or  (OLD.IDPAC is distinct from NEW.IDPAC)\r\n  or  (OLD.DATUM is distinct from NEW.DATUM)\r\n  or  (OLD.CAS is distinct from NEW.CAS)\r\n  or  (OLD.CASDO is distinct from NEW.CASDO)\r\n  or  (OLD.INFO is distinct from NEW.INFO)\r\n  or  (OLD.IDOBJ is distinct from NEW.IDOBJ)\r\n  or  (OLD.IDCINNOSTI is distinct from NEW.IDCINNOSTI)\r\n  or  (OLD.IDZARAZENI is distinct from NEW.IDZARAZENI)\r\n  or  (OLD.POZNAMKA is distinct from NEW.POZNAMKA)\r\n  or  (F_CONCAT(OLD.CELEJMENO, F_CONCAT(OLD.RODCIS, F_CONCAT(OLD.POJ, OLD.TELEFON, ' '), ' '), ' ') is distinct from F_CONCAT(NEW.CELEJMENO, F_CONCAT(NEW.RODCIS, F_CONCAT(NEW.POJ, NEW.TELEFON, ' '), ' '), ' '))\r\n      )\r\n  then\r\n  INSERT INTO OBJHIST (IDPRAC, IDUZIV, IDPAC, DATUM, CAS, CASDO, PACIENT, INFO, IDCINNOSTI, IDZARAZENI, POZN, IDOBJ, AKCE, WEBCAL_UID, DUVODZMENY)\r\n  VALUES (OLD.IDPRAC, OLD.IDUZI, OLD.IDPAC, OLD.DATUM, OLD.CAS, OLD.CASDO,\r\n    F_CONCAT(OLD.CELEJMENO, F_CONCAT(OLD.RODCIS, F_CONCAT(OLD.POJ, OLD.TELEFON, ' '), ' '), ' '), OLD.INFO,\r\n    OLD.IDCINNOSTI, OLD.IDZARAZENI, OLD.POZNAMKA, OLD.IDOBJ, 'U', OLD.WEBCAL_UID, NEW.DUVODZMENY);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 18,
+          "inactive": 0,
+          "sequence": 5,
+          "system_flag": 0,
+          "source": "as\r\nbegin\r\n  if (coalesce(old.IDOBJ,0) <> coalesce(new.IDOBJ,0) or \r\n      coalesce(old.IDPAC,0) <> coalesce(new.IDPAC,0) or \r\n      coalesce(old.IDPRAC,0) <> coalesce(new.IDPRAC,0) or\r\n      coalesce(old.DATUM,'1900-01-01') <> coalesce(new.DATUM,'1900-01-01') or \r\n      coalesce(old.CAS,'0:00:00') <> coalesce(new.CAS,'0:00:00') or \r\n      coalesce(old.TYP,0) <> coalesce(new.TYP,0) or \r\n      coalesce(old.PRISEL,'') <> coalesce(new.PRISEL,'') or \r\n      coalesce(old.INFO,'') <> coalesce(new.INFO,'') or \r\n      coalesce(old.ODESLEKAR,'') <> coalesce(new.ODESLEKAR,'') or \r\n      coalesce(old.OPERATER,'') <> coalesce(new.OPERATER,'') or \r\n      coalesce(old.DIAGNOZA,'') <> coalesce(new.DIAGNOZA,'') or \r\n      coalesce(old.PLANVYKON,'') <> coalesce(new.PLANVYKON,'') or \r\n      (old.POZNAMKA is null and new.POZNAMKA is not null) or\r\n      (old.POZNAMKA is not null and new.POZNAMKA is null) or\r\n      (old.POZNAMKA <> new.POZNAMKA) or\r\n      coalesce(old.IDUZI,0) <> coalesce(new.IDUZI,0) or \r\n      coalesce(old.DATUMDO,'1900-01-01') <> coalesce(new.DATUMDO,'1900-01-01') or \r\n      coalesce(old.CASDO,'0:00:00') <> coalesce(new.CASDO,'0:00:00') or \r\n      coalesce(old.REZERVACE,'') <> coalesce(new.REZERVACE,'') or \r\n      coalesce(old.DATZAPIS,'1900-01-01') <> coalesce(new.DATZAPIS,'1900-01-01') or \r\n      coalesce(old.COLORID,0) <> coalesce(new.COLORID,0) or \r\n      coalesce(old.CELEJMENO,'') <> coalesce(new.CELEJMENO,'') or \r\n      coalesce(old.RODCIS,'') <> coalesce(new.RODCIS,'') or \r\n      coalesce(old.POJ,'') <> coalesce(new.POJ,'') or \r\n      coalesce(old.TELEFON,'') <> coalesce(new.TELEFON,'') or\r\n      coalesce(old.IDREC,0) <> coalesce(new.IDREC,0) or\r\n      coalesce(old.TYPPROH,'') <> coalesce(new.TYPPROH,'') or \r\n      coalesce(old.IDEXT,0) <> coalesce(new.IDEXT,0) or \r\n      coalesce(old.COS_PAC,0) <> coalesce(new.COS_PAC,0) or \r\n      coalesce(old.IDCINNOSTI,0) <> coalesce(new.IDCINNOSTI,0) or \r\n      coalesce(old.IDZARAZENI,0) <> coalesce(new.IDZARAZENI,0) or \r\n      coalesce(old.PIN,0) <> coalesce(new.PIN,0)) \r\n  then\r\n    POST_EVENT 'OBJOBJ_AIUD';\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AD6",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 6,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  POST_EVENT 'OBJOBJ_AIUD';\r\n  POST_EVENT 'OBJOBJ_DELETED';\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BIU",
+          "type": 17,
+          "inactive": 0,
+          "sequence": 9,
+          "system_flag": 0,
+          "source": "AS\r\nBEGIN\r\n  NEW.CHANGED = 'NOW';\r\nEND"
+        },
+        {
+          "name": "OBJOBJ_AU10",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 10,
+          "system_flag": 0,
+          "source": "as\r\nbegin\r\n  UPDATE CLICKDOC_OBJ SET REMOTECHANGE = 'F' WHERE IDOBJ = NEW.IDOBJ;\r\nend"
+        }
+      ],
+      "dependencies": [
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TYPPROH"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_NEEDCALSYNC",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "STAV"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "TYP"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "COS_PAC",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "COS_PAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "COS_PAC",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "COS_PAC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_APPID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "TYP"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "POZN"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "PACIENT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "F_CONCAT",
+          "target_type": 15,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TELEFON"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDUZIV"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BI",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI",
+          "dependent_type": 2,
+          "target_name": "GEN_IDOBJ",
+          "target_type": 14,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_CREATED",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CREATED"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_D",
+          "dependent_type": 2,
+          "target_name": "SP_LOG",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_D",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_D",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_I",
+          "dependent_type": 2,
+          "target_name": "SP_LOG",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_I",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_I",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_U",
+          "dependent_type": 2,
+          "target_name": "SP_LOG",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_U",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_U",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "CHECK_386",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_386",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_386",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "CHECK_387",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_387",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_387",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "COS_NEEDCALSYNC",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TITUL"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "WIN1250",
+          "target_type": 17,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "JMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PRIJMENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PIN"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "F_ROUND",
+          "target_type": 15,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "RDB$DATABASE",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "DUVODZMENY"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DUVODZMENY"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "POZN"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "PACIENT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "F_CONCAT",
+          "target_type": 15,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TELEFON"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDUZIV"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PIN"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "COS_PAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "PXW_CSY",
+          "target_type": 17,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TYPPROH"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TELEFON"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "WIN1250",
+          "target_type": 17,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "COLORID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATZAPIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "REZERVACE"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUMDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PLANVYKON"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DIAGNOZA"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "OPERATER"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ODESLEKAR"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PRISEL"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TYP"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CHANGED"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "CLICKDOC_OBJ",
+          "target_type": 0,
+          "field_name": "REMOTECHANGE"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "CLICKDOC_OBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "CLICKDOC_OBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": "NEEDSYNC"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": "IDCAL"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "ID1KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "ID1"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "UZIVATEL"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "TABULKA"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "GEN_ZURNAL",
+          "target_type": 14,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "ID1KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "NAZEV"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "DETAIL"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "TABULKA"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "UZIVATEL"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": "VYRAZEN"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGSET",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "WIN1250",
+          "target_type": 17,
+          "field_name": null
+        }
+      ],
+      "incoming_foreign_keys": [
+        {
+          "child_table": "OBJPROC",
+          "name": "FK_OBJPROC_OBJOBJ",
+          "child_field": "IDOBJ",
+          "parent_field": "IDOBJ",
+          "update_rule": "CASCADE",
+          "delete_rule": "CASCADE"
+        }
+      ],
+      "child_table_triggers": {
+        "OBJPROC": []
+      },
+      "child_fields": {
+        "OBJPROC": [
+          {
+            "name": "IDOBJPROC",
+            "field_ordinal": 0,
+            "not_null": 1
+          },
+          {
+            "name": "IDOBJ",
+            "field_ordinal": 1,
+            "not_null": 1
+          },
+          {
+            "name": "IDOBJSAB",
+            "field_ordinal": 2,
+            "not_null": null
+          },
+          {
+            "name": "IDOBJPLAN",
+            "field_ordinal": 3,
+            "not_null": null
+          }
+        ]
+      },
+      "objproc_links_sep_nov_2026": [
+        {
+          "links": 0,
+          "appointments": 0
+        }
+      ],
+      "procedures": [
+        {
+          "name": "COS_NEEDCALSYNC",
+          "source": "DECLARE VARIABLE ID_CAL INTEGER;\r\nDECLARE VARIABLE RESULT INTEGER;\r\nbegin\r\n  begin\r\n    for select distinct cc.id from cos_calend cc\r\n        where cc.idprac = :idprac /* vsechny kalendare pracoviste and cc.iduzi = :iduzi */\r\n        into :id_cal\r\n    do begin\r\n      if (:datum is null) then begin\r\n        delete from COS_CALEND_SYNC cs\r\n        where cs.idcal = :id_cal;\r\n        insert into COS_CALEND_SYNC (idcal, datum, needsync)\r\n        values(:id_cal, NULL, 'T');\r\n      end else begin\r\n        if (not exists (select idcal from COS_CALEND_SYNC\r\n                        where idcal=:id_cal and datum=:datum and needsync='T'))\r\n        then begin\r\n          insert into COS_CALEND_SYNC (idcal, datum, needsync)\r\n          values(:id_cal, :datum, 'T');\r\n        end\r\n      end\r\n    end\r\n    RESULT = 0;\r\n  when any do\r\n    RESULT = 1;\r\n  end\r\nend"
+        },
+        {
+          "name": "SP_LOG",
+          "source": "declare variable tblname varchar(20) character set win1250;\r\ndeclare variable tblkeyfield varchar(10) character set win1250;\r\ndeclare variable tblid1keyfield varchar(10) character set win1250;\r\nbegin\r\n  if ((akce = 'V') or (exists(select first 1 checked from logset))) then\r\n    begin\r\n      if ((idpac is null) and (rodcis is not null)) then\r\n        select first 1 idpac from kar where rodcis = :rodcis order by vyrazen desc into :idpac;\r\n      insert into log (datum, cas, uzivatel, idpac, tabulka, idrec, akce, detail) values ('now', 'now', user, :idpac, :tabulka, :idrec, :akce, :detail);\r\n    end\r\n  else\r\n    begin\r\n      select nazev, keyfield, id1keyfield from logtables where id = :tabulka into :tblname, :tblkeyfield, :tblid1keyfield;\r\n      if (tblkeyfield is not null) then\r\n        insert into zurnal values (next value for gen_zurnal, 'now', 'now', :tblname, :idrec, user, :akce, :tblkeyfield, :id1, :tblid1keyfield);\r\n    end\r\nend"
+        }
+      ],
+      "incoming_dependencies": [
+        {
+          "name": "CHECK_365",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "CHECK_365",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_366",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "CHECK_366",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_367",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "CHECK_367",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_368",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "CHECK_368",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_369",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "CHECK_369",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_370",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "CHECK_370",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_371",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "CHECK_371",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_372",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "CHECK_372",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_386",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_387",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_1065",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "CHECK_1065",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1066",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "CHECK_1066",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "PIN"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "COLORID"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DATZAPIS"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "REZERVACE"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DATUMDO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "PLANVYKON"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DIAGNOZA"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "OPERATER"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "ODESLEKAR"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "PRISEL"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "TYP"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_BIU",
+          "type": 2,
+          "field_name": "CHANGED"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_CREATED",
+          "type": 2,
+          "field_name": "CREATED"
+        },
+        {
+          "name": "OBJOBJ_AU10",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "CHECK_1130",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "CHECK_1130",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1131",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "CHECK_1131",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "ES_APP_AU0",
+          "type": 2,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "ES_APP_AU0",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "ES_APP_AU0",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "ES_UID"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "ES_UID"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_BI",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_D",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_D",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_I",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_I",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_U",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_U",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "CHECK_1456",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_1456",
+          "type": 2,
+          "field_name": "ES_TASK_ID"
+        },
+        {
+          "name": "CHECK_1456",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1457",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_1457",
+          "type": 2,
+          "field_name": "ES_TASK_ID"
+        },
+        {
+          "name": "CHECK_1457",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "GET_OBJLIST",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "GET_OBJLIST",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "GET_OBJLIST",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": "PIN"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CEKATEL"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "GUID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "WEBCAL_SYNC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_TASK_ID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_RESYNC_NEEDED"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_UID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "PIN"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CHANGED"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CREATED"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CREATEDBY"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "COLORID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DATZAPIS"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "REZERVACE"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DATUMDO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "PLANVYKON"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DIAGNOZA"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "OPERATER"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ODESLEKAR"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "PRISEL"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "TYP"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SP_PACIDOCPREH_QUICK",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SP_PACIDOCPREH_QUICK",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "SP_PACIDOCPREH_QUICK",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "TITUL"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "JMENO"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "PRIJMENI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "DUVODZMENY"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDPRAC"
+        }
+      ],
+      "constraints": [
+        {
+          "name": "INTEG_789",
+          "type": "NOT NULL",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "INTEG_790",
+          "type": "NOT NULL",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "INTEG_791",
+          "type": "NOT NULL",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "PK_OBJOBJ",
+          "type": "PRIMARY KEY",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "FK_OBJOBJ_CINNOSTI",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_CINNOSTI",
+          "update_rule": "SET NULL",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_COSPAC",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_COS_PAC",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_KAR",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_KAR",
+          "update_rule": "CASCADE",
+          "delete_rule": "CASCADE"
+        },
+        {
+          "name": "FK_OBJOBJ_PRACOVISTE",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_PRACOVISTE",
+          "update_rule": "CASCADE",
+          "delete_rule": "RESTRICT"
+        },
+        {
+          "name": "FK_OBJOBJ_UZIVATEL",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_UZIVATEL",
+          "update_rule": "CASCADE",
+          "delete_rule": "RESTRICT"
+        },
+        {
+          "name": "FK_OBJOBJ_ZARAZENI",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_ZARAZENI",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_ESAPP",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_ES_APP",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_ES_TASK",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_ES_TASK",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET DEFAULT"
+        },
+        {
+          "name": "OBJOBJ_GUID",
+          "type": "UNIQUE",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        }
+      ]
+    },
+    "LASER": {
+      "triggers": [
+        {
+          "name": "IDREC_REF_AU",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if ((old.TYPPROH = 'D') and (old.IDREC is not NULL)) then\r\n    update PROPRI set DATUM = new.DATUM, CAS = new.CAS where ID = new.IDREC and IDPAC = new.IDPAC and IDPRAC = new.IDPRAC;\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (not(old.idext is null) and not(old.idcal_ext is null)) then\r\n    insert into cos_delobj(idext, idcal_ext)\r\n           values(old.idext, old.idcal_ext);\r\n\r\n  execute procedure COS_NEEDCALSYNC(old.iduzi, old.idprac, old.datum);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (not(old.ES_UID is null)) then begin\r\n    if (not(old.ES_ODESLANO is null)) then\r\n      insert into ES_APPUPD(UID, IDPAC, IDPRAC, IDUZI, IDOBJ, DATUM, CAS, CASDO, TYP)\r\n      values(old.es_uid, old.idpac, old.idprac, old.iduzi, old.idobj, old.datum, old.cas, old.casdo, 'D');\r\n    else /* automaticky zamitnout objednavku */\r\n      update ES_APP EA set EA.STAV='C' where EA.UID=old.ES_UID and (EA.ODESLANO is null);\r\n  end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (not(new.idext is null)) then begin /* je to internetova objednavka */\r\n    /* napojeni internetoveho pacienta na kartoteku */\r\n    if ((old.idpac is null) and not(new.idpac is null) and not(new.cos_pac is null)) then begin\r\n      update cos_pac cp\r\n      set cp.idpac = new.idpac\r\n      where cp.id = new.cos_pac;\r\n    end\r\n  end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if (\r\n      not(new.ES_UID is null) and\r\n      not(new.es_odeslano is null) and\r\n      not((new.datum=old.datum) and (new.cas=old.cas) and (new.casdo=old.casdo))\r\n      )\r\n  then begin\r\n    /* smazat dosud neodeslane updaty */\r\n    delete from ES_APPUPD where IDOBJ=new.idobj and TYP='U' and (ODESLANO is NULL);\r\n\r\n    insert into ES_APPUPD(UID, IDPAC, IDPRAC, IDUZI, IDOBJ, DATUM, CAS, CASDO, TYP, IDCINNOSTI)\r\n    values(new.es_uid, new.idpac, new.idprac, new.iduzi, new.idobj, new.datum, new.cas, new.casdo, 'U', new.idcinnosti);\r\n  end\r\n\r\n  /* odeslani requestu se nezdarilo vynulujeme odeslano v ES_APP */\r\n  if (not(new.ES_UID is null) and\r\n      not(new.es_appid is null) and\r\n      (new.es_odeslano is null)\r\n      )\r\n  then\r\n    update ES_APP set odeslano=null where ES_APP.id = new.es_appid;\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 5,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  INSERT INTO OBJHIST (IDPRAC, IDUZIV, IDPAC, DATUM, CAS, CASDO, PACIENT, INFO, IDCINNOSTI, IDZARAZENI, POZN, IDOBJ, AKCE, WEBCAL_UID)\r\n  VALUES (OLD.IDPRAC, OLD.IDUZI, OLD.IDPAC, OLD.DATUM, OLD.CAS, OLD.CASDO,\r\n    F_CONCAT(OLD.CELEJMENO, F_CONCAT(OLD.RODCIS, F_CONCAT(OLD.POJ, OLD.TELEFON, ' '), ' '), ' '), OLD.INFO,\r\n    OLD.IDCINNOSTI, OLD.IDZARAZENI, OLD.POZNAMKA, OLD.IDOBJ, 'D', OLD.WEBCAL_UID);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BI",
+          "type": 1,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nBEGIN\r\n  IF (NEW.IDOBJ IS NULL) THEN\r\n    NEW.IDOBJ = GEN_ID(GEN_IDOBJ,1);\r\nEND"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 3,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  /* pri presunuti internetove objednavky ji v COSu smazeme */\r\n    if (not(old.idcal_ext is null) and\r\n        not(old.idext is null) and\r\n        ((old.datum <> new.datum) or\r\n         (old.cas <> new.cas) or\r\n         (old.casdo <> new.casdo))\r\n        )\r\n    then begin\r\n      /* zrusit vazbu na COS */\r\n      new.idext = null;\r\n      new.idcal_ext = null;\r\n\r\n      /* do smazanych */\r\n      insert into cos_delobj(idext, idcal_ext)\r\n             values(old.idext, old.idcal_ext);\r\n    end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_CREATED",
+          "type": 1,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "AS begin\r\n  NEW.CREATED = 'NOW';\r\nend"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_D",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "as begin\r\n  execute procedure sp_log(old.idpac, 24, old.idobj, 'D', null, null);\r\nend"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_I",
+          "type": 2,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "as begin\r\n  execute procedure sp_log(new.idpac, 24, new.idobj, 'I', null, null);\r\nend"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_U",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 0,
+          "system_flag": 0,
+          "source": "as begin\r\n  if (user <> 'ESER') then\r\n    execute procedure sp_log(old.idpac, 24, old.idobj, 'U', null, null);\r\nend"
+        },
+        {
+          "name": "CHECK_200",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 4,
+          "source": null
+        },
+        {
+          "name": "CHECK_201",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 4,
+          "source": null
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 18,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  execute procedure COS_NEEDCALSYNC(new.iduzi, new.idprac, new.datum);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 17,
+          "inactive": 0,
+          "sequence": 1,
+          "system_flag": 0,
+          "source": "AS\r\ndeclare variable CELEJMENO varchar(75);\r\nbegin\r\n  CELEJMENO = NULL;\r\n  if (new.PRIJMENI is not NULL) then\r\n    CELEJMENO = trim(coalesce(CELEJMENO, '') || ' ' || new.PRIJMENI);\r\n  if (new.JMENO is not NULL) then\r\n    CELEJMENO = trim(coalesce(CELEJMENO, '') || ' ' || new.JMENO);\r\n  if (new.TITUL is not NULL) then\r\n    CELEJMENO = trim(coalesce(CELEJMENO, '') || ' ' || new.TITUL);\r\n  if (CELEJMENO is not NULL) then\r\n    new.CELEJMENO = CELEJMENO;\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 1,
+          "inactive": 1,
+          "sequence": 2,
+          "system_flag": 0,
+          "source": "AS\r\ndeclare variable P integer;\r\ndeclare variable X integer;\r\ndeclare variable ID integer;\r\nbegin\r\n  /* vygenerovat ctyrmistny PIN unikatni v ramci dne */\r\n  if (new.PIN is NULL) then begin\r\n    P = null;\r\n    ID = null;\r\n    X = 0;\r\n    while ((X<100) and ((P is null) or not(ID is null))) do begin /* max 100 pokusu */\r\n      P = null;\r\n      ID = null;\r\n      select F_ROUND(RAND() * 8999 + 1000, 0) from RDB$DATABASE into :P;\r\n      select first 1 O.IDOBJ from OBJOBJ O where O.PIN=:P and O.DATUM=new.DATUM into :ID;\r\n      X = X + 1;\r\n    end\r\n    new.PIN = P;\r\n  end\r\n\r\n  when any do\r\n  begin\r\n    /* smula, nekde je chyba */\r\n  end\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 3,
+          "inactive": 0,
+          "sequence": 2,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  if  (\r\n      (OLD.IDPRAC is distinct from NEW.IDPRAC)\r\n  or  (OLD.IDUZI is distinct from NEW.IDUZI)\r\n  or  (OLD.IDPAC is distinct from NEW.IDPAC)\r\n  or  (OLD.DATUM is distinct from NEW.DATUM)\r\n  or  (OLD.CAS is distinct from NEW.CAS)\r\n  or  (OLD.CASDO is distinct from NEW.CASDO)\r\n  or  (OLD.INFO is distinct from NEW.INFO)\r\n  or  (OLD.IDOBJ is distinct from NEW.IDOBJ)\r\n  or  (OLD.IDCINNOSTI is distinct from NEW.IDCINNOSTI)\r\n  or  (OLD.IDZARAZENI is distinct from NEW.IDZARAZENI)\r\n  or  (OLD.POZNAMKA is distinct from NEW.POZNAMKA)\r\n  or  (F_CONCAT(OLD.CELEJMENO, F_CONCAT(OLD.RODCIS, F_CONCAT(OLD.POJ, OLD.TELEFON, ' '), ' '), ' ') is distinct from F_CONCAT(NEW.CELEJMENO, F_CONCAT(NEW.RODCIS, F_CONCAT(NEW.POJ, NEW.TELEFON, ' '), ' '), ' '))\r\n      )\r\n  then\r\n  INSERT INTO OBJHIST (IDPRAC, IDUZIV, IDPAC, DATUM, CAS, CASDO, PACIENT, INFO, IDCINNOSTI, IDZARAZENI, POZN, IDOBJ, AKCE, WEBCAL_UID, DUVODZMENY)\r\n  VALUES (OLD.IDPRAC, OLD.IDUZI, OLD.IDPAC, OLD.DATUM, OLD.CAS, OLD.CASDO,\r\n    F_CONCAT(OLD.CELEJMENO, F_CONCAT(OLD.RODCIS, F_CONCAT(OLD.POJ, OLD.TELEFON, ' '), ' '), ' '), OLD.INFO,\r\n    OLD.IDCINNOSTI, OLD.IDZARAZENI, OLD.POZNAMKA, OLD.IDOBJ, 'U', OLD.WEBCAL_UID, NEW.DUVODZMENY);\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 18,
+          "inactive": 0,
+          "sequence": 5,
+          "system_flag": 0,
+          "source": "as\r\nbegin\r\n  if (coalesce(old.IDOBJ,0) <> coalesce(new.IDOBJ,0) or \r\n      coalesce(old.IDPAC,0) <> coalesce(new.IDPAC,0) or \r\n      coalesce(old.IDPRAC,0) <> coalesce(new.IDPRAC,0) or\r\n      coalesce(old.DATUM,'1900-01-01') <> coalesce(new.DATUM,'1900-01-01') or \r\n      coalesce(old.CAS,'0:00:00') <> coalesce(new.CAS,'0:00:00') or \r\n      coalesce(old.TYP,0) <> coalesce(new.TYP,0) or \r\n      coalesce(old.PRISEL,'') <> coalesce(new.PRISEL,'') or \r\n      coalesce(old.INFO,'') <> coalesce(new.INFO,'') or \r\n      coalesce(old.ODESLEKAR,'') <> coalesce(new.ODESLEKAR,'') or \r\n      coalesce(old.OPERATER,'') <> coalesce(new.OPERATER,'') or \r\n      coalesce(old.DIAGNOZA,'') <> coalesce(new.DIAGNOZA,'') or \r\n      coalesce(old.PLANVYKON,'') <> coalesce(new.PLANVYKON,'') or \r\n      (old.POZNAMKA is null and new.POZNAMKA is not null) or\r\n      (old.POZNAMKA is not null and new.POZNAMKA is null) or\r\n      (old.POZNAMKA <> new.POZNAMKA) or\r\n      coalesce(old.IDUZI,0) <> coalesce(new.IDUZI,0) or \r\n      coalesce(old.DATUMDO,'1900-01-01') <> coalesce(new.DATUMDO,'1900-01-01') or \r\n      coalesce(old.CASDO,'0:00:00') <> coalesce(new.CASDO,'0:00:00') or \r\n      coalesce(old.REZERVACE,'') <> coalesce(new.REZERVACE,'') or \r\n      coalesce(old.DATZAPIS,'1900-01-01') <> coalesce(new.DATZAPIS,'1900-01-01') or \r\n      coalesce(old.COLORID,0) <> coalesce(new.COLORID,0) or \r\n      coalesce(old.CELEJMENO,'') <> coalesce(new.CELEJMENO,'') or \r\n      coalesce(old.RODCIS,'') <> coalesce(new.RODCIS,'') or \r\n      coalesce(old.POJ,'') <> coalesce(new.POJ,'') or \r\n      coalesce(old.TELEFON,'') <> coalesce(new.TELEFON,'') or\r\n      coalesce(old.IDREC,0) <> coalesce(new.IDREC,0) or\r\n      coalesce(old.TYPPROH,'') <> coalesce(new.TYPPROH,'') or \r\n      coalesce(old.IDEXT,0) <> coalesce(new.IDEXT,0) or \r\n      coalesce(old.COS_PAC,0) <> coalesce(new.COS_PAC,0) or \r\n      coalesce(old.IDCINNOSTI,0) <> coalesce(new.IDCINNOSTI,0) or \r\n      coalesce(old.IDZARAZENI,0) <> coalesce(new.IDZARAZENI,0) or \r\n      coalesce(old.PIN,0) <> coalesce(new.PIN,0)) \r\n  then\r\n    POST_EVENT 'OBJOBJ_AIUD';\r\nend"
+        },
+        {
+          "name": "OBJOBJ_AD6",
+          "type": 6,
+          "inactive": 0,
+          "sequence": 6,
+          "system_flag": 0,
+          "source": "AS\r\nbegin\r\n  POST_EVENT 'OBJOBJ_AIUD';\r\n  POST_EVENT 'OBJOBJ_DELETED';\r\nend"
+        },
+        {
+          "name": "OBJOBJ_BIU",
+          "type": 17,
+          "inactive": 0,
+          "sequence": 9,
+          "system_flag": 0,
+          "source": "AS\r\nBEGIN\r\n  NEW.CHANGED = 'NOW';\r\nEND"
+        },
+        {
+          "name": "OBJOBJ_AU10",
+          "type": 4,
+          "inactive": 0,
+          "sequence": 10,
+          "system_flag": 0,
+          "source": "as\r\nbegin\r\n  UPDATE CLICKDOC_OBJ SET REMOTECHANGE = 'F' WHERE IDOBJ = NEW.IDOBJ;\r\nend"
+        }
+      ],
+      "dependencies": [
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "PROPRI",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "IDREC_REF_AU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TYPPROH"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_NEEDCALSYNC",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "STAV"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "TYP"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AD1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "COS_PAC",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "COS_PAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "COS_PAC",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "COS_PAC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_APPID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APP",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ES_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "TYP"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AU1",
+          "dependent_type": 2,
+          "target_name": "ES_APPUPD",
+          "target_type": 0,
+          "field_name": "ODESLANO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "POZN"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "PACIENT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "F_CONCAT",
+          "target_type": 15,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TELEFON"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDUZIV"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BD0",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BI",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI",
+          "dependent_type": 2,
+          "target_name": "GEN_IDOBJ",
+          "target_type": 14,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "COS_DELOBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_CREATED",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CREATED"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_D",
+          "dependent_type": 2,
+          "target_name": "SP_LOG",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_D",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_D",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_I",
+          "dependent_type": 2,
+          "target_name": "SP_LOG",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_I",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_I",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_U",
+          "dependent_type": 2,
+          "target_name": "SP_LOG",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_U",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "TRG_OBJOBJ_LOG_U",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "CHECK_200",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_200",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_200",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "CHECK_201",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_201",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "CHECK_201",
+          "dependent_type": 2,
+          "target_name": "OBJPROC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "COS_NEEDCALSYNC",
+          "target_type": 5,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIU0",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TITUL"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "WIN1250",
+          "target_type": 17,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "JMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU1",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PRIJMENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PIN"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "F_ROUND",
+          "target_type": 15,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BI2",
+          "dependent_type": 2,
+          "target_name": "RDB$DATABASE",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "DUVODZMENY"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DUVODZMENY"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "POZN"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "PACIENT"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "F_CONCAT",
+          "target_type": 15,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TELEFON"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDUZIV"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_BU2",
+          "dependent_type": 2,
+          "target_name": "OBJHIST",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PIN"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "COS_PAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDEXT"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "PXW_CSY",
+          "target_type": 17,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TYPPROH"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TELEFON"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "WIN1250",
+          "target_type": 17,
+          "field_name": null
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "COLORID"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATZAPIS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "REZERVACE"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CASDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUMDO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDUZI"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PLANVYKON"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DIAGNOZA"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "OPERATER"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "ODESLEKAR"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "INFO"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "PRISEL"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "TYP"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "OBJOBJ_AIUD",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_BIU",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "CHANGED"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "CLICKDOC_OBJ",
+          "target_type": 0,
+          "field_name": "REMOTECHANGE"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "OBJOBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "CLICKDOC_OBJ",
+          "target_type": 0,
+          "field_name": "IDOBJ"
+        },
+        {
+          "dependent_name": "OBJOBJ_AU10",
+          "dependent_type": 2,
+          "target_name": "CLICKDOC_OBJ",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": "NEEDSYNC"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": "IDCAL"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND_SYNC",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND",
+          "target_type": 0,
+          "field_name": "IDPRAC"
+        },
+        {
+          "dependent_name": "COS_NEEDCALSYNC",
+          "dependent_type": 5,
+          "target_name": "COS_CALEND",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "ID1KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "ID1"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "UZIVATEL"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "TABULKA"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "GEN_ZURNAL",
+          "target_type": 14,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "ZURNAL",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "ID1KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "KEYFIELD"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "NAZEV"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": "ID"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGTABLES",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "DETAIL"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "AKCE"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "IDREC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "TABULKA"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "UZIVATEL"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "CAS"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": "DATUM"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOG",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": "IDPAC"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": "VYRAZEN"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": "RODCIS"
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "KAR",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "LOGSET",
+          "target_type": 0,
+          "field_name": null
+        },
+        {
+          "dependent_name": "SP_LOG",
+          "dependent_type": 5,
+          "target_name": "WIN1250",
+          "target_type": 17,
+          "field_name": null
+        }
+      ],
+      "incoming_foreign_keys": [
+        {
+          "child_table": "OBJPROC",
+          "name": "FK_OBJPROC_OBJOBJ",
+          "child_field": "IDOBJ",
+          "parent_field": "IDOBJ",
+          "update_rule": "CASCADE",
+          "delete_rule": "CASCADE"
+        }
+      ],
+      "child_table_triggers": {
+        "OBJPROC": []
+      },
+      "child_fields": {
+        "OBJPROC": [
+          {
+            "name": "IDOBJPROC",
+            "field_ordinal": 0,
+            "not_null": 1
+          },
+          {
+            "name": "IDOBJ",
+            "field_ordinal": 1,
+            "not_null": 1
+          },
+          {
+            "name": "IDOBJSAB",
+            "field_ordinal": 2,
+            "not_null": null
+          },
+          {
+            "name": "IDOBJPLAN",
+            "field_ordinal": 3,
+            "not_null": null
+          }
+        ]
+      },
+      "objproc_links_sep_nov_2026": [
+        {
+          "links": 0,
+          "appointments": 0
+        }
+      ],
+      "procedures": [
+        {
+          "name": "COS_NEEDCALSYNC",
+          "source": "DECLARE VARIABLE ID_CAL INTEGER;\r\nDECLARE VARIABLE RESULT INTEGER;\r\nbegin\r\n  begin\r\n    for select distinct cc.id from cos_calend cc\r\n        where cc.idprac = :idprac /* vsechny kalendare pracoviste and cc.iduzi = :iduzi */\r\n        into :id_cal\r\n    do begin\r\n      if (:datum is null) then begin\r\n        delete from COS_CALEND_SYNC cs\r\n        where cs.idcal = :id_cal;\r\n        insert into COS_CALEND_SYNC (idcal, datum, needsync)\r\n        values(:id_cal, NULL, 'T');\r\n      end else begin\r\n        if (not exists (select idcal from COS_CALEND_SYNC\r\n                        where idcal=:id_cal and datum=:datum and needsync='T'))\r\n        then begin\r\n          insert into COS_CALEND_SYNC (idcal, datum, needsync)\r\n          values(:id_cal, :datum, 'T');\r\n        end\r\n      end\r\n    end\r\n    RESULT = 0;\r\n  when any do\r\n    RESULT = 1;\r\n  end\r\nend"
+        },
+        {
+          "name": "SP_LOG",
+          "source": "declare variable tblname varchar(20) character set win1250;\r\ndeclare variable tblkeyfield varchar(10) character set win1250;\r\ndeclare variable tblid1keyfield varchar(10) character set win1250;\r\nbegin\r\n  if ((akce = 'V') or (exists(select first 1 checked from logset))) then\r\n    begin\r\n      if ((idpac is null) and (rodcis is not null)) then\r\n        select first 1 idpac from kar where rodcis = :rodcis order by vyrazen desc into :idpac;\r\n      insert into log (datum, cas, uzivatel, idpac, tabulka, idrec, akce, detail) values ('now', 'now', user, :idpac, :tabulka, :idrec, :akce, :detail);\r\n    end\r\n  else\r\n    begin\r\n      select nazev, keyfield, id1keyfield from logtables where id = :tabulka into :tblname, :tblkeyfield, :tblid1keyfield;\r\n      if (tblkeyfield is not null) then\r\n        insert into zurnal values (next value for gen_zurnal, 'now', 'now', :tblname, :idrec, user, :akce, :tblkeyfield, :id1, :tblid1keyfield);\r\n    end\r\nend"
+        }
+      ],
+      "incoming_dependencies": [
+        {
+          "name": "CHECK_183",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "CHECK_183",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_184",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "CHECK_184",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_185",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "CHECK_185",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_186",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "CHECK_186",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_200",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_201",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_1065",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "CHECK_1065",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1066",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "CHECK_1066",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1059",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_1059",
+          "type": 2,
+          "field_name": "ES_TASK_ID"
+        },
+        {
+          "name": "CHECK_1059",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1060",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_1060",
+          "type": 2,
+          "field_name": "ES_TASK_ID"
+        },
+        {
+          "name": "CHECK_1060",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_667",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "CHECK_667",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_668",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "CHECK_668",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "name": "OBJOBJ_AD0",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AIU0",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "OBJOBJ_AU0",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_BU0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BIU",
+          "type": 2,
+          "field_name": "CHANGED"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "PIN"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "COLORID"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DATZAPIS"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "REZERVACE"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DATUMDO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "PLANVYKON"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DIAGNOZA"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "OPERATER"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "ODESLEKAR"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "PRISEL"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "TYP"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AIUD",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "CHECK_839",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "CHECK_839",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_840",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "CHECK_840",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_CREATED",
+          "type": 2,
+          "field_name": "CREATED"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "IDREC_REF_AU",
+          "type": 2,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "CHECK_1130",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "CHECK_1130",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "CHECK_1131",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "CHECK_1131",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "ES_APP_AU0",
+          "type": 2,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "ES_APP_AU0",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "ES_APP_AU0",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "ES_UID"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AD1",
+          "type": 2,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "ES_UID"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_AU1",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_BI",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_BD0",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_D",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_D",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_I",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_I",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_U",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "TRG_OBJOBJ_LOG_U",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_AU10",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "GET_OBJLIST",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "GET_OBJLIST",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "GET_OBJLIST",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "NEED_AUTO_CGMS",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SPA_SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SPA_SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SP_OBJ_KALENDAR",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "SP_OBJ_DUPLICUZI",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "OCKPRI_SEL",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "SP_PACIDOCPREH_QUICK",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "SP_PACIDOCPREH_QUICK",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "SP_PACIDOCPREH_QUICK",
+          "type": 5,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "TITUL"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "JMENO"
+        },
+        {
+          "name": "OBJOBJ_BIU1",
+          "type": 2,
+          "field_name": "PRIJMENI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "DUVODZMENY"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_BU2",
+          "type": 2,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": "PIN"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_BI2",
+          "type": 2,
+          "field_name": null
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CEKATEL"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "TELEFON"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "GUID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "WEBCAL_SYNC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "WEBCAL_UID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_TASK_ID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_RESYNC_NEEDED"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_ODESLANO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_UID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ES_APPID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "PIN"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CHANGED"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDZARAZENI"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDCINNOSTI"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CREATED"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CREATEDBY"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "COS_PAC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDCAL_EXT"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDEXT"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "TYPPROH"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDREC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "POJ"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "RODCIS"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CELEJMENO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "COLORID"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DATZAPIS"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "REZERVACE"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CASDO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DATUMDO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDUZI"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "POZNAMKA"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "PLANVYKON"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DIAGNOZA"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "OPERATER"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "ODESLEKAR"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "INFO"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "PRISEL"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "TYP"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "CAS"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "DATUM"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDPRAC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDPAC"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": "IDOBJ"
+        },
+        {
+          "name": "OBJOBJ_SEL",
+          "type": 5,
+          "field_name": null
+        }
+      ],
+      "constraints": [
+        {
+          "name": "INTEG_562",
+          "type": "NOT NULL",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "INTEG_563",
+          "type": "NOT NULL",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "INTEG_564",
+          "type": "NOT NULL",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "PK_OBJOBJ",
+          "type": "PRIMARY KEY",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        },
+        {
+          "name": "FK_OBJOBJ_KAR",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_KAR",
+          "update_rule": "CASCADE",
+          "delete_rule": "CASCADE"
+        },
+        {
+          "name": "FK_OBJOBJ_PRACOVISTE",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_PRACOVISTE",
+          "update_rule": "CASCADE",
+          "delete_rule": "RESTRICT"
+        },
+        {
+          "name": "FK_OBJOBJ_UZIVATEL",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_UZIVATEL",
+          "update_rule": "CASCADE",
+          "delete_rule": "RESTRICT"
+        },
+        {
+          "name": "FK_OBJOBJ_COSPAC",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_COS_PAC",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_CINNOSTI",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_CINNOSTI",
+          "update_rule": "SET NULL",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_ZARAZENI",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_ZARAZENI",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_ESAPP",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_ES_APP",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET NULL"
+        },
+        {
+          "name": "FK_OBJOBJ_ES_TASK",
+          "type": "FOREIGN KEY",
+          "referenced_constraint": "PK_ES_TASK",
+          "update_rule": "CASCADE",
+          "delete_rule": "SET DEFAULT"
+        },
+        {
+          "name": "OBJOBJ_GUID",
+          "type": "UNIQUE",
+          "referenced_constraint": null,
+          "update_rule": null,
+          "delete_rule": null
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "completed_at_utc":"2026-10-05T22:03:50.750192+00:00",
+  "transport":"Authenticated localhost HTTP on production Medicus server",
+  "date_from":"2026-10-06",
+  "date_to":"2027-04-06",
+  "limit_per_request":1,
+  "doctor_ids":[1,2,8,11,12,13,15],
+  "services":["skin","dermatoscope_first"],
+  "checks":14,
+  "all_http_200":true,
+  "all_ok_true":true,
+  "all_returned_requested_doctor":true,
+  "all_returned_one_option":true,
+  "all_seven_dermatoscope_options_report_verified_laser_scan":true,
+  "observed_request_seconds_range":[0.32,2.34],
+  "appointment_writes":false,
+  "limits":["Checks API behavior and reported scanner verification, not independent GUI confirmation of all fourteen returned options.","Not a voice acceptance test or proof of every day in the search horizon."],
+  "next_phase":"Batch remaining acceptance checks; user requested fewer steps. Do not keep opening isolated historical samples without a concrete missing acceptance requirement."
+}

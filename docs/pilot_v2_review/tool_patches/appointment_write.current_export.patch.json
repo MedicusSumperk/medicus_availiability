@@ -1,0 +1,112 @@
+{
+  "description": "Submit a caller-confirmed appointment request for staff review. This tool does not directly confirm a booking. pending_staff_review means the request awaits staff; only committed together with booking_confirmed=true means a completed Medicus change. Technical retries must reuse the exact request_id and body.",
+  "api_schema": {
+    "request_body_schema": {
+      "type": "object",
+      "description": "Use only server-issued verification and offer references from this conversation. Never send IDPAC or an agent-generated patient_verified flag. A new or changed request needs fresh caller confirmation. If the result is uncertain, preserve the request and hand off; never claim a completed booking.",
+      "dynamic_variable": "",
+      "is_omitted": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "Requested operation.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": [
+            "create",
+            "reschedule",
+            "cancel"
+          ],
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Unique stable identifier for this logical request within the call. Reuse unchanged with identical body on technical retry; use a new value only for a new caller-confirmed request.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "caller_confirmed": {
+          "type": "boolean",
+          "description": "True only after the caller explicitly confirms the exact requested action and selected appointment.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "patient_verification_token": {
+          "type": "string",
+          "description": "Copy exactly from patient_lookup in this call after verification. Never invent or modify.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "offer_token": {
+          "type": "string",
+          "description": "Required for create/reschedule: copy the exact offer_token of the option confirmed by the caller. Omit for cancel.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        },
+        "appointment_ids": {
+          "type": "array",
+          "description": "For cancel/reschedule: exact IDs from the verified patient appointments. Include all explicitly identified linked parts. Never infer linkage from adjacent times. Ambiguous or cross-calendar linkage requires staff.",
+          "dynamic_variable": "",
+          "is_omitted": false,
+          "constant_value": null,
+          "items": {
+            "type": "integer",
+            "description": "Original appointment ID from verified lookup.",
+            "dynamic_variable": "",
+            "constant_value": "",
+            "enum": null,
+            "is_system_provided": false,
+            "is_omitted": false,
+            "allowed_values": null,
+            "allowed_values_dynamic_variable": ""
+          }
+        }
+      },
+      "required": [
+        "action",
+        "request_id",
+        "caller_confirmed",
+        "patient_verification_token"
+      ]
+    }
+  },
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "write_ok",
+      "value_path": "booking_confirmed",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "write_status",
+      "value_path": "status",
+      "sanitize": false,
+      "preserve_native_type": true
+    }
+  ]
+}

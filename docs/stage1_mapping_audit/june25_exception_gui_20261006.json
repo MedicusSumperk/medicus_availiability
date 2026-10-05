@@ -1,0 +1,40 @@
+{
+  "checked_at_utc":"2026-10-05T22:01:48.620115+00:00",
+  "sample_date":"2026-06-25",
+  "database":"MAIN",
+  "doctor_id":11,
+  "workplace_id":1,
+  "selection":"Latest MAIN historical exception previously identified in empirical_calendar_candidate.json",
+  "exception":{"start":"15:00","duration_minutes":110,"interval_minutes":10,"objed":"A"},
+  "schedule_procedure_matches_exception":true,
+  "appointment_raw_matches_display_procedure":true,
+  "appointments":[
+    {"id":137574,"start":"15:00","end":"15:15","activity":5},
+    {"id":137575,"start":"15:15","end":"15:30","activity":5},
+    {"id":137751,"start":"15:30","end":"15:45","activity":null},
+    {"id":136499,"start":"15:45","end":"16:00","activity":null},
+    {"id":134654,"start":"16:00","end":"16:15","activity":null},
+    {"id":137789,"start":"16:15","end":"16:30","activity":null},
+    {"id":134941,"start":"16:30","end":"16:45","activity":null},
+    {"id":139218,"start":"16:45","end":"16:55","activity":null},
+    {"id":140618,"start":"16:50","end":"17:05","activity":null}
+  ],
+  "deployed_engine":{"total_slots":11,"occupied_slots":11,"free_slots":[]},
+  "gui":{
+    "date_confirmed":"25.06.2026",
+    "column":"Selecká Dušana",
+    "first_selected_appointment_status_bar":"15:00-15:15",
+    "first_selected_category":"Sken znamének 2 a vyšší",
+    "afternoon_appointments_visible":true,
+    "exception_editor_inspected":false,
+    "data_written":false,
+    "screenshots_saved":false
+  },
+  "conclusion":"The deployed engine reads the exception's 10-minute cells and blocks them with full actual appointment intervals, which are mostly 15 minutes. Raw bookings and display-procedure results agree. GUI confirms the date, doctor, afternoon occupancy and first appointment interval.",
+  "limits":[
+    "GUI exception settings, final schedule boundary and all individual appointment endpoints were not independently inspected.",
+    "The overlap between the final two database bookings is observed, but its origin or intended workflow is unknown. No correction was attempted.",
+    "Direct read-only deployed engine invocation is not an HTTP historical availability test; the HTTP layer independently rejects past dates.",
+    "A single exception does not verify every historical exception mode."
+  ]
+}

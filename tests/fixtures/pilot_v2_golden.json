@@ -1,0 +1,868 @@
+{
+  "version": 1,
+  "scope": "read-only business regression inputs; synthetic unless attributed; no claim of real DB procedure validation",
+  "cases": [
+    {
+      "id": "normal",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            30,
+            10
+          ]
+        ],
+        "appointments": []
+      },
+      "expected": {
+        "offers": [
+          "09:00",
+          "09:10",
+          "09:20"
+        ]
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "no_schedule",
+      "kind": "intervals",
+      "input": {
+        "blocks": [],
+        "appointments": []
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "fully_occupied",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            30,
+            10
+          ]
+        ],
+        "appointments": [
+          [
+            "09:00",
+            "09:30"
+          ]
+        ]
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "partial_overlap",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "15:30",
+            30,
+            10
+          ]
+        ],
+        "appointments": [
+          [
+            "15:45",
+            "15:55"
+          ]
+        ]
+      },
+      "expected": {
+        "offers": [
+          "15:30"
+        ]
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "adjacent_boundaries",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            10,
+            10
+          ]
+        ],
+        "appointments": [
+          [
+            "08:50",
+            "09:00"
+          ],
+          [
+            "09:10",
+            "09:20"
+          ]
+        ]
+      },
+      "expected": {
+        "offers": [
+          "09:00"
+        ]
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "incomplete_final_cell",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            15,
+            10
+          ]
+        ],
+        "appointments": []
+      },
+      "expected": {
+        "offers": [
+          "09:00"
+        ]
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "invalid_interval_zero",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            30,
+            0
+          ]
+        ],
+        "appointments": []
+      },
+      "expected": {
+        "error": "ValueError"
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "zero_duration_gui_cell",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            30,
+            10
+          ]
+        ],
+        "appointments": [
+          [
+            "09:00",
+            "09:00"
+          ]
+        ]
+      },
+      "expected": {
+        "offers": ["09:10", "09:20"]
+      },
+      "why": "A zero-duration MAIN row at an exact schedule boundary occupies its actual calendar cell; never offer that cell.",
+      "evidence": "docs/stage1_mapping_audit/zero_duration_gui_20261005.json; synthetic 10-minute variant of observed 15-minute cell",
+      "expected_business_result": "Exclude the occupied cell without declaring other verified cells unavailable."
+    },
+    {
+      "id": "invalid_booking_reversed",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            30,
+            10
+          ]
+        ],
+        "appointments": [
+          [
+            "09:20",
+            "09:00"
+          ]
+        ]
+      },
+      "expected": {
+        "error": "CalendarDataUnavailable"
+      },
+      "why": "Only complete, non-overlapping appointments may be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Only complete, non-overlapping appointments may be offered."
+    },
+    {
+      "id": "expanded_recurrence",
+      "kind": "intervals",
+      "input": {
+        "blocks": [
+          [
+            "09:00",
+            30,
+            10
+          ]
+        ],
+        "appointments": [
+          [
+            "09:10",
+            "09:20"
+          ]
+        ]
+      },
+      "expected": {
+        "offers": [
+          "09:00",
+          "09:20"
+        ]
+      },
+      "why": "A recurrence occurrence returned for this day blocks its full interval. SQL expansion is a separate integration test.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "A recurrence occurrence returned for this day blocks its full interval. SQL expansion is a separate integration test."
+    },
+    {
+      "id": "effective_exception_closed",
+      "kind": "intervals",
+      "input": {
+        "blocks": [],
+        "appointments": [
+          [
+            "09:00",
+            "09:30"
+          ]
+        ]
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "A closed effective schedule produces no offers. Correct DB exception selection needs separate validation.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "A closed effective schedule produces no offers. Correct DB exception selection needs separate validation."
+    },
+    {
+      "id": "oct7_scan_1500",
+      "kind": "scan",
+      "input": {
+        "date": "2026-10-07",
+        "start": "14:45",
+        "end": "15:00",
+        "blocks": [
+          [
+            "08:00",
+            480,
+            15
+          ]
+        ],
+        "appointments": [
+          [
+            "14:45",
+            "15:00"
+          ]
+        ]
+      },
+      "expected": {
+        "available": false
+      },
+      "why": "Shared scanner occupancy must be checked independently of main doctor availability.",
+      "evidence": "MAP-36 / sanitized October 7 snapshot",
+      "expected_business_result": "Shared scanner occupancy must be checked independently of main doctor availability."
+    },
+    {
+      "id": "oct7_scan_1510",
+      "kind": "scan",
+      "input": {
+        "date": "2026-10-07",
+        "start": "14:55",
+        "end": "15:10",
+        "blocks": [
+          [
+            "08:00",
+            480,
+            15
+          ]
+        ],
+        "appointments": [
+          [
+            "14:45",
+            "15:00"
+          ]
+        ]
+      },
+      "expected": {
+        "available": false
+      },
+      "why": "Shared scanner occupancy must be checked independently of main doctor availability.",
+      "evidence": "MAP-36 / sanitized October 7 snapshot",
+      "expected_business_result": "Shared scanner occupancy must be checked independently of main doctor availability."
+    },
+    {
+      "id": "scan_adjacent",
+      "kind": "scan",
+      "input": {
+        "date": "2026-10-07",
+        "start": "15:00",
+        "end": "15:15",
+        "blocks": [
+          [
+            "08:00",
+            480,
+            15
+          ]
+        ],
+        "appointments": [
+          [
+            "14:45",
+            "15:00"
+          ]
+        ]
+      },
+      "expected": {
+        "available": true
+      },
+      "why": "Shared scanner occupancy must be checked independently of main doctor availability.",
+      "evidence": "MAP-36 / sanitized October 7 snapshot",
+      "expected_business_result": "Shared scanner occupancy must be checked independently of main doctor availability."
+    },
+    {
+      "id": "missing_laser_mapping",
+      "kind": "missing_mapping",
+      "input": {
+        "mapping": "absent"
+      },
+      "expected": {
+        "error": "ScanCalendarUnavailable"
+      },
+      "why": "Missing external resource mapping cannot be interpreted as free.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Missing external resource mapping cannot be interpreted as free."
+    },
+    {
+      "id": "unknown_doctor",
+      "kind": "doctor",
+      "input": {
+        "doctors": [
+          {
+            "doctor_id": 2,
+            "doctor_name": "Anna Testova"
+          },
+          {
+            "doctor_id": 8,
+            "doctor_name": "Eva Testova"
+          }
+        ],
+        "doctor_name": "Unknown"
+      },
+      "expected": {
+        "doctor_ids": [],
+        "match_type": "not_found"
+      },
+      "why": "Do not substitute or silently choose a conflicting doctor identity.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Do not substitute or silently choose a conflicting doctor identity."
+    },
+    {
+      "id": "ambiguous_doctor",
+      "kind": "doctor",
+      "input": {
+        "doctors": [
+          {
+            "doctor_id": 2,
+            "doctor_name": "Anna Testova"
+          },
+          {
+            "doctor_id": 8,
+            "doctor_name": "Eva Testova"
+          }
+        ],
+        "doctor_name": "Testova"
+      },
+      "expected": {
+        "doctor_ids": [],
+        "match_type": "ambiguous"
+      },
+      "why": "Do not substitute or silently choose a conflicting doctor identity.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Do not substitute or silently choose a conflicting doctor identity."
+    },
+    {
+      "id": "conflicting_doctor_identity",
+      "kind": "doctor",
+      "input": {
+        "doctors": [
+          {
+            "doctor_id": 2,
+            "doctor_name": "Anna Testova"
+          },
+          {
+            "doctor_id": 8,
+            "doctor_name": "Eva Testova"
+          }
+        ],
+        "doctor_id": 2,
+        "doctor_name": "Eva Testova"
+      },
+      "expected": {
+        "doctor_ids": [],
+        "match_type": "conflict"
+      },
+      "why": "Do not substitute or silently choose a conflicting doctor identity.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Do not substitute or silently choose a conflicting doctor identity."
+    },
+    {
+      "id": "normal_api",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ]
+      },
+      "expected": {
+        "offers": [
+          {
+            "date": "2026-10-07",
+            "doctor_id": 2,
+            "time": "09:00",
+            "arrival": "09:00"
+          },
+          {
+            "date": "2026-10-07",
+            "doctor_id": 2,
+            "time": "09:10",
+            "arrival": "09:10"
+          },
+          {
+            "date": "2026-10-07",
+            "doctor_id": 2,
+            "time": "09:20",
+            "arrival": "09:20"
+          }
+        ]
+      },
+      "why": "Normal weekday availability passes through the service search.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Normal weekday availability passes through the service search."
+    },
+    {
+      "id": "unknown_service",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "unknown",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3
+        },
+        "calendars": []
+      },
+      "expected": {
+        "error": "ValueError"
+      },
+      "why": "An unknown service must not fall back to skin.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "An unknown service must not fall back to skin."
+    },
+    {
+      "id": "ineligible_doctor",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3,
+          "doctor_id": 2
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ],
+        "service_overrides": {
+          "skin": {
+            "allowed_doctor_ids": [
+              8
+            ]
+          }
+        }
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "Requested doctor outside service eligibility must not be substituted.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Requested doctor outside service eligibility must not be substituted."
+    },
+    {
+      "id": "past_day",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-09-30",
+          "date_to": "2026-09-30",
+          "limit": 3
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-09-30",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ]
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "Past dates may not be offered.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Past dates may not be offered."
+    },
+    {
+      "id": "past_bucket",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-10-01",
+          "date_to": "2026-10-01",
+          "limit": 3
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-01",
+            "blocks": [
+              [
+                "11:30",
+                10,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ],
+        "now": "2026-10-01T11:10:00+02:00"
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "A future technical cell cannot justify a required arrival that already passed.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "A future technical cell cannot justify a required arrival that already passed."
+    },
+    {
+      "id": "arrival_preference",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3,
+          "time_from": "11:15"
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "11:30",
+                10,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ]
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "Patient can arrive only after 11:15; bucket arrival 11:00 is not suitable.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Patient can arrive only after 11:15; bucket arrival 11:00 is not suitable."
+    },
+    {
+      "id": "global_doctor_order",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 1
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "15:00",
+                10,
+                10
+              ]
+            ],
+            "appointments": []
+          },
+          {
+            "doctor_id": 8,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ],
+        "doctors": [
+          {
+            "doctor_id": 2,
+            "doctor_name": "Anna Testova"
+          },
+          {
+            "doctor_id": 8,
+            "doctor_name": "Eva Testova"
+          }
+        ]
+      },
+      "expected": {
+        "offers": [
+          {
+            "date": "2026-10-07",
+            "doctor_id": 8,
+            "time": "09:00",
+            "arrival": "09:00"
+          }
+        ]
+      },
+      "why": "Apply nearest ordering across doctors before the requested limit.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Apply nearest ordering across doctors before the requested limit."
+    },
+    {
+      "id": "weekend_not_overrideable",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "skin",
+          "date_from": "2026-10-03",
+          "date_to": "2026-10-03",
+          "limit": 3,
+          "include_weekends": true
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-03",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ]
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "The caller cannot override the approved weekday-only rule.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "The caller cannot override the approved weekday-only rule."
+    },
+    {
+      "id": "laser_read_failure",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "dermatoscope_first",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ],
+        "scan_error": true
+      },
+      "expected": {
+        "error": "ScanCalendarUnavailable"
+      },
+      "why": "Unavailable LASER must not fall back to MAIN-only offers.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "Unavailable LASER must not fall back to MAIN-only offers."
+    },
+    {
+      "id": "oct7_combined",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "dermatoscope_first",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "15:00",
+                20,
+                10
+              ],
+              [
+                "15:50",
+                10,
+                10
+              ]
+            ],
+            "appointments": [
+              [
+                "15:55",
+                "16:20"
+              ]
+            ]
+          }
+        ],
+        "scan": {
+          "blocks": [
+            [
+              "08:00",
+              480,
+              15
+            ]
+          ],
+          "appointments": [
+            [
+              "14:45",
+              "15:00"
+            ],
+            [
+              "15:45",
+              "16:00"
+            ]
+          ]
+        }
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "The main calendar excludes 15:50 and LASER excludes 15:00 and 15:10 from the reported incident.",
+      "evidence": "Live read-only recheck: docs/stage1_mapping_audit/october_incident_current.json; current occupancy, not historical call-time state. Doctor ID remapped to fixture ID 2; schedule blocks are synthetic focused test windows.",
+      "expected_business_result": "The main calendar excludes 15:50 and LASER excludes 15:00 and 15:10 from the reported incident."
+    },
+    {
+      "id": "cross_db_disagreement",
+      "kind": "search",
+      "input": {
+        "request": {
+          "service": "dermatoscope_first",
+          "date_from": "2026-10-07",
+          "date_to": "2026-10-07",
+          "limit": 3
+        },
+        "calendars": [
+          {
+            "doctor_id": 2,
+            "date": "2026-10-07",
+            "blocks": [
+              [
+                "09:00",
+                30,
+                10
+              ]
+            ],
+            "appointments": []
+          }
+        ],
+        "scan": {
+          "blocks": [],
+          "appointments": []
+        }
+      },
+      "expected": {
+        "offers": []
+      },
+      "why": "A free doctor does not suffice when the scanner schedule is missing.",
+      "evidence": "approved v2 proposal",
+      "expected_business_result": "A free doctor does not suffice when the scanner schedule is missing."
+    }
+  ]
+}

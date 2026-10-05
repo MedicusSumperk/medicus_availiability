@@ -1,0 +1,38 @@
+{
+  "observed_date": "2026-10-05",
+  "method": "Read-only visual observation of LASER Medicus calendar through the existing RDP session",
+  "calendar_date": "2026-10-07",
+  "visible_calendar_heading": "Focení skeny Sken - SKEN",
+  "observations": [
+    "Calendar header explicitly displayed 07.10.2026 ST after navigation completed.",
+    "Brown occupied cells were visible at the 14:45 and 15:45 grid positions."
+  ],
+  "comparison": {
+    "database_evidence": "incident_postdeploy_20261005.json",
+    "database_intervals": [
+      {"appointment_id": 98683, "start": "14:45", "end": "15:00"},
+      {"appointment_id": 98692, "start": "15:45", "end": "16:00"}
+    ],
+    "result": "Visible occupied grid cells are consistent with the database blockers for the three incident scan intervals."
+  },
+  "followup_20261006": {
+    "method": "Single-select the two occupied scanner cells; read the Medicus status bar, without opening an edit dialog",
+    "date_header": "07.10.2026",
+    "first_status_bar_interval": "14:45-15:00",
+    "first_category": "Dermatoskop",
+    "second_status_bar_interval": "15:45-16:00",
+    "result": "Both exact GUI intervals match the previously read LASER blockers. This supersedes the earlier limitation that endpoints were only inferred from the grid.",
+    "remaining_limit": "GUI row identifiers were not read; correlation uses date, scanner and interval. This is current occupancy, not a historical call-time snapshot.",
+    "data_written": false,
+    "implementation_changed": false
+  },
+  "appointment_detail_opened": false,
+  "data_written": false,
+  "screenshots_saved": false,
+  "limitations": [
+    "No appointment detail or GUI identifier was read; exact endpoints and row IDs above are database evidence, not independently confirmed GUI fields.",
+    "The attempted cell selection was interrupted by detected user input. After refreshing the screen, no further app input was issued.",
+    "Current occupancy cannot reconstruct occupancy at the time of the original call.",
+    "This observation does not prove all calendar mapping or voice acceptance."
+  ]
+}
