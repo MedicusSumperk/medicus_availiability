@@ -166,7 +166,7 @@
       "expected_business_result": "Only complete, non-overlapping appointments may be offered."
     },
     {
-      "id": "invalid_booking_zero",
+      "id": "zero_duration_gui_cell",
       "kind": "intervals",
       "input": {
         "blocks": [
@@ -184,11 +184,11 @@
         ]
       },
       "expected": {
-        "error": "ValueError"
+        "offers": ["09:10", "09:20"]
       },
-      "why": "A zero-duration entry has unknown blocking meaning; reject rather than silently offer the day.",
-      "evidence": "approved v2 proposal",
-      "expected_business_result": "A zero-duration entry has unknown blocking meaning; reject rather than silently offer the day."
+      "why": "A zero-duration MAIN row at an exact schedule boundary occupies its actual calendar cell; never offer that cell.",
+      "evidence": "docs/stage1_mapping_audit/zero_duration_gui_20261005.json; synthetic 10-minute variant of observed 15-minute cell",
+      "expected_business_result": "Exclude the occupied cell without declaring other verified cells unavailable."
     },
     {
       "id": "invalid_booking_reversed",
@@ -209,7 +209,7 @@
         ]
       },
       "expected": {
-        "error": "ValueError"
+        "error": "CalendarDataUnavailable"
       },
       "why": "Only complete, non-overlapping appointments may be offered.",
       "evidence": "approved v2 proposal",

@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 import json
 from pathlib import Path
 
-from availability_engine import find_schedule_contexts, load_schedule_blocks, load_appointments, to_time
+from availability_engine import CalendarDataUnavailable, find_schedule_contexts, load_schedule_blocks, load_appointments, to_time
 
 CONFIG_PATH = Path(__file__).resolve().parents[1] / 'config' / 'laser_calendar.local.json'
 
@@ -87,7 +87,7 @@ def open_scan_calendar():
         if cursor.fetchone() is None:
             raise ScanCalendarUnavailable('Unknown scan calendar')
         yield ScanCalendar(cursor, calendar_id, workplace_id)
-    except ScanCalendarUnavailable:
+    except (ScanCalendarUnavailable, CalendarDataUnavailable):
         raise
     except Exception as exc:
         # Never expose credentials, SQL parameters or connection details.

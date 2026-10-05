@@ -91,7 +91,8 @@ class PilotGoldenTests(unittest.TestCase):
 def make_test(case):
     def test(self):
         expected = case['expected']
-        error_types = {'ValueError': ValueError, 'ScanCalendarUnavailable': laser.ScanCalendarUnavailable}
+        error_types = {'ValueError': ValueError, 'ScanCalendarUnavailable': laser.ScanCalendarUnavailable,
+                       'CalendarDataUnavailable': engine.CalendarDataUnavailable}
         if 'error' in expected:
             with self.assertRaises(error_types[expected['error']], msg=case['why']):
                 run_case(case)

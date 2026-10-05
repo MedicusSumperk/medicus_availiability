@@ -1,0 +1,21 @@
+{
+  "observed_at": "2026-10-05T21:30:31Z",
+  "status": "open_investigation",
+  "request": {"service":"dermatoscope_first","date_from":"2026-10-02","limit":3,"compact":true},
+  "local_http": 500,
+  "public_http_from_server": 403,
+  "public_403_cause": "not yet determined; distinct from local application failure",
+  "underlying_error": "Invalid appointment interval; availability cannot be verified",
+  "source": {"database":"MAIN","doctor_id":15,"date":"2026-10-09","workplace":1,"appointment_id":141243,"start":"11:15:00","end":"11:15:00","activity":5},
+  "error_path": "compute_slots ValueError is wrapped by open_scan_calendar as ScanCalendarUnavailable even though the failing row is in MAIN",
+  "incident_day": "Bounded local requests for doctor 12 on 2026-10-07 returned 200 with no options for skin and dermatoscope_first. All three historical offer intervals now overlap MAIN and LASER rows. This is current state, not reconstruction of occupancy at the earlier call.",
+  "gui_observation": "Native RDP window is available. MAIN doctor Marta Skolarova column for 2026-10-07 displayed occupied afternoon intervals. LASER GUI remained on 2027-01-05 and was not yet compared for the incident date.",
+  "firebird_changes": false,
+  "remaining": [
+    "Inspect the zero-duration record in GUI and preserve uncertainty about its intended meaning",
+    "Handle invalid calendar data without misidentifying the failing database or treating it as free capacity",
+    "Keep request validation distinct from calendar-data failures when correcting exception handling",
+    "Resolve broad availability search failure before claiming voice acceptance",
+    "Investigate public endpoint 403 independently"
+  ]
+}

@@ -9,6 +9,10 @@ from typing import Any
 TIME_FORMAT = "%H:%M"
 
 
+class CalendarDataUnavailable(RuntimeError):
+    """Stored calendar data cannot establish safe capacity; not caller input."""
+
+
 def to_time(value: Any) -> time:
     """Convert a database time-like value to datetime.time."""
     if isinstance(value, time):
@@ -182,13 +186,21 @@ def schedule_slot_ends(schedule_blocks) -> dict[time, time]:
 def compute_slots(schedule_blocks, appointments) -> tuple[list[time], list[time], list[time]]:
     """Compute theoretical, occupied, and free slot starts."""
     # Unknown/corrupt blocking entries cannot be interpreted as free capacity.
+    slot_ends = schedule_slot_ends(schedule_blocks)
     busy_intervals = []
     for app_start, app_end in appointments:
-        start, end = to_time(app_start), to_time(app_end)
+        try:
+            start, end = to_time(app_start), to_time(app_end)
+        except ValueError as exc:
+            raise CalendarDataUnavailable('Invalid appointment interval; availability cannot be verified') from exc
+        # MAIN GUI displays a zero-duration booking at a cell boundary as one
+        # actual schedule cell (observed 2026-10-09: 11:15 -> 11:30). Do not
+        # assume a global duration or extrapolate outside a known cell.
+        if end == start and start in slot_ends:
+            end = slot_ends[start]
         if end <= start:
-            raise ValueError("Invalid appointment interval; availability cannot be verified")
+            raise CalendarDataUnavailable("Invalid appointment interval; availability cannot be verified")
         busy_intervals.append((start, end))
-    slot_ends = schedule_slot_ends(schedule_blocks)
     theoretical_slots = sorted(slot_ends)
 
     occupied_slots: list[time] = []
