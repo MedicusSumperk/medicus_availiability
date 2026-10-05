@@ -1,0 +1,110 @@
+{
+  "description": "Persist a compact request for staff, then perform the requested live transfer separately. stored=true confirms local persistence only; it does not prove staff contact, SMS delivery or successful transfer. Do not prolong a caller-requested transfer with extra questions.",
+  "api_schema": {
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Capture available context only. Do not include birth numbers, verification tokens or internal patient IDs in free text. Preserve the request_id and identical body on retries.",
+      "properties": [
+        {
+          "id": "request_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Stable unique ID for this handoff within the call. Reuse with identical content for technical retry.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "mode",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "live_transfer for immediate transfer; callback for staff to call later.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": [
+            "live_transfer",
+            "callback"
+          ],
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "reason",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Brief reason for contacting staff.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "caller_phone",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Actual caller metadata or explicitly confirmed callback number, if available. Never infer a number.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "intent",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Original caller request, including services outside the agent scope.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "conversation_summary",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Compact factual context: request, what was established, what remains unresolved. Avoid unnecessary personal data.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "recommended_next_step",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Specific action staff should take; no invented promise of completion.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    }
+  },
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "handoff_summary_for_staff",
+      "value_path": "summary_for_staff",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "handoff_reason",
+      "value_path": "reason",
+      "sanitize": false,
+      "preserve_native_type": true
+    }
+  ]
+}

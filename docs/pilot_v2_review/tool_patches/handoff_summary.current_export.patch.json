@@ -1,0 +1,116 @@
+{
+  "description": "Save a durable request for staff. stored=true confirms local persistence, not staff contact or successful transfer. Immediately invoke transfer_to_number separately for live transfer; do not delay caller-requested transfer with extra questions.",
+  "api_schema": {
+    "request_body_schema": {
+      "description": "Persist available staff-request context. Reuse request_id and identical body for technical retries. The tool does not transfer the call.",
+      "dynamic_variable": "",
+      "is_omitted": false,
+      "type": "object",
+      "required": [
+        "mode",
+        "reason",
+        "request_id",
+        "conversation_summary",
+        "recommended_next_step"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "description": "live_transfer pro okamzite predani, callback pro pozdejsi zavolani zpet.",
+          "enum": [
+            "live_transfer",
+            "callback"
+          ],
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        },
+        "caller_phone": {
+          "type": "string",
+          "description": "Telefon volajiciho, pokud je dostupny z call metadata nebo potvrzeny.",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        },
+        "reason": {
+          "type": "string",
+          "description": "Strucny duvod predani nebo callbacku.",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        },
+        "request_id": {
+          "type": "string",
+          "description": "Stable unique ID for this staff request within the call, without spaces. Reuse exactly the same ID and identical content for technical retries. Use a new ID only for a new staff request.",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        },
+        "conversation_summary": {
+          "type": "string",
+          "description": "Concise available context: original request, preferences, what succeeded and what remains. Do not ask extra questions before caller-requested transfer. Do not include birth number, birth date, IDPAC or verification tokens.",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        },
+        "recommended_next_step": {
+          "type": "string",
+          "description": "What staff should do next. Use only known context; do not promise a reservation or a completed transfer.",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        },
+        "intent": {
+          "type": "string",
+          "description": "Brief original purpose of the caller request.",
+          "enum": null,
+          "is_system_provided": false,
+          "dynamic_variable": "",
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": "",
+          "constant_value": "",
+          "is_omitted": false
+        }
+      }
+    }
+  },
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "handoff_summary_for_staff",
+      "value_path": "summary_for_staff",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "handoff_reason",
+      "value_path": "reason",
+      "sanitize": false,
+      "preserve_native_type": true
+    }
+  ]
+}

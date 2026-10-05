@@ -1,0 +1,85 @@
+{
+  "date": "2026-10-05",
+  "status": "deployed_voice_and_postdeploy_gui_pending",
+  "operator_release": "pilot-2026-10-05.staff-first-v1",
+  "backend_commit": "4c949ddde07cf432ee43c8400324f6e2668602e2",
+  "dashboard_commit": "725fb06aa38f457e2befa8d3e6a166a5f7e2dc7c",
+  "medicus_runtime_commit": "e0ed6231479566237833abeda29d78bb8fa86d95",
+  "supabase_alembic_head": "d8a271cf630b",
+  "migration_applied_this_rollout": false,
+  "firebird_ddl": false,
+  "firebird_dml_this_rollout": false,
+  "os_restart": false,
+  "medicus_gui_restart": false,
+  "restart_scope": [
+    "Medicus Local API",
+    "Medicus Handoff Delivery",
+    "Operator API",
+    "Operator Dashboard",
+    "Operator Worker"
+  ],
+  "api_smoke": {
+    "health": [
+      8000,
+      8100,
+      3000
+    ],
+    "booking_mode": "staff_review",
+    "review_services": [
+      "skin",
+      "dermatoscope_first"
+    ],
+    "direct_bookable_services": 0,
+    "staff_http": 200,
+    "operator_bridge_http": 200,
+    "unauthenticated_staff_http": 401
+  },
+  "delivery_status": {
+    "execution_schema_ready": true,
+    "stored_handoffs": 3,
+    "proposals": 0,
+    "stalled_executions": 0,
+    "execution_events": 0
+  },
+  "elevenlabs": {
+    "before_version": "agtvrsn_6301m45pw1arfqdvj0190549vnej",
+    "published_version": "agtvrsn_2701m46xg14ze4j9fjkcpm3kp74z",
+    "prompt_matches_candidate_ignoring_whitespace": true,
+    "normalized_prompt_length": 12938,
+    "normalized_prompt_fnv1a32": "543a3182",
+    "fingerprint_purpose": "Accidental text-change comparison only; not a cryptographic signature",
+    "transport_preserved_for_all_five_webhooks": true,
+    "system_tools_unchanged": true,
+    "workflow_unchanged": true,
+    "no_unpublished_agent_changes": true,
+    "all_five_webhook_assignment_results_visible": true
+  },
+  "configuration_changes": [
+    "staff approval and staff execution enabled",
+    "paired MAIN/LASER writes enabled behind staff approval",
+    "existing handoff store preserved",
+    "skin automatic followup disabled",
+    "unverified categories remain staff handoff",
+    "SMS remains out of scope"
+  ],
+  "tool_editor_findings": [
+    "JSON editor uses properties arrays, exported agent uses property maps",
+    "Submitting new constant fields was rejected; LLM parameters with same intended values saved successfully",
+    "Critical output fields must not be sanitized because current prompt reads tool results rather than legacy interpolated variables"
+  ],
+  "validation": {
+    "server_backend_tests": 56,
+    "dashboard_policy_tests": 8,
+    "dashboard_lint": "passed",
+    "dashboard_build": "passed",
+    "updated_tool_contract_tests": 10
+  },
+  "limitations": [
+    "No postdeployment voice call verified yet",
+    "Operator browser reload timed out twice; no visual frontend verification claimed",
+    "Prior bounded staff HTTP and GUI pair cycle remains the appointment-write evidence",
+    "Uncertain commit recovery and remaining transfer scenarios must be audited against existing coverage"
+  ],
+  "protected_host_evidence": "C:\\db_bridge\\state\\gui-test-20261005\\v1-release-20261005\\switch-plan",
+  "rollback": "Restore listed backed-up code/config files and previous Operator junction; never restore live request store or journal automatically"
+}

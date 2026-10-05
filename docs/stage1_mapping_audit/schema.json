@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Stage 1 mapping review",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "as_of",
+    "scope",
+    "rules"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "stage1-review-v1"
+    },
+    "status": {
+      "const": "DRAFT_FOR_HUMAN_VALIDATION"
+    },
+    "as_of": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "domain",
+          "business_meaning",
+          "db_representation",
+          "implementation_location",
+          "evidence",
+          "confidence",
+          "impact_if_wrong",
+          "reproducible_test_case",
+          "unresolved_question"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "domain": {
+            "type": "string",
+            "minLength": 1
+          },
+          "business_meaning": {
+            "type": "string",
+            "minLength": 1
+          },
+          "db_representation": {
+            "type": "string",
+            "minLength": 1
+          },
+          "implementation_location": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "confidence": {
+            "enum": [
+              "CONFIRMED",
+              "PROBABLE",
+              "UNCLEAR",
+              "CONFLICT"
+            ]
+          },
+          "impact_if_wrong": {
+            "type": "string",
+            "minLength": 1
+          },
+          "reproducible_test_case": {
+            "type": "string",
+            "minLength": 1
+          },
+          "unresolved_question": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

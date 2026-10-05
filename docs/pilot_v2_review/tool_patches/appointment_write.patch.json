@@ -1,0 +1,108 @@
+{
+  "description": "Submit a caller-confirmed appointment request for staff review. This tool does not directly confirm a booking. pending_staff_review means the request awaits staff; only committed together with booking_confirmed=true means a completed Medicus change. Technical retries must reuse the exact request_id and body.",
+  "api_schema": {
+    "request_body_schema": {
+      "id": "body",
+      "type": "object",
+      "description": "Use only server-issued verification and offer references from this conversation. Never send IDPAC or an agent-generated patient_verified flag. A new or changed request needs fresh caller confirmation. If the result is uncertain, preserve the request and hand off; never claim a completed booking.",
+      "properties": [
+        {
+          "id": "action",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Requested operation.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": [
+            "create",
+            "reschedule",
+            "cancel"
+          ],
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "request_id",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Unique stable identifier for this logical request within the call. Reuse unchanged with identical body on technical retry; use a new value only for a new caller-confirmed request.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "caller_confirmed",
+          "type": "boolean",
+          "value_type": "llm_prompt",
+          "description": "True only after the caller explicitly confirms the exact requested action and selected appointment.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "patient_verification_token",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Copy exactly from patient_lookup in this call after verification. Never invent or modify.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": true
+        },
+        {
+          "id": "offer_token",
+          "type": "string",
+          "value_type": "llm_prompt",
+          "description": "Required for create/reschedule: copy the exact offer_token of the option confirmed by the caller. Omit for cancel.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "required": false
+        },
+        {
+          "id": "appointment_ids",
+          "type": "array",
+          "description": "For cancel/reschedule: exact IDs from the verified patient appointments. Include all explicitly identified linked parts. Never infer linkage from adjacent times. Ambiguous or cross-calendar linkage requires staff.",
+          "items": {
+            "id": "appointment_id_item",
+            "type": "integer",
+            "value_type": "llm_prompt",
+            "description": "Original appointment ID from verified lookup.",
+            "dynamic_variable": "",
+            "constant_value": "",
+            "enum": null,
+            "is_system_provided": false,
+            "required": false
+          },
+          "required": false,
+          "dynamic_variable": "",
+          "value_type": "llm_prompt"
+        }
+      ],
+      "required": false,
+      "value_type": "llm_prompt"
+    }
+  },
+  "assignments": [
+    {
+      "source": "response",
+      "dynamic_variable": "write_ok",
+      "value_path": "booking_confirmed",
+      "sanitize": false,
+      "preserve_native_type": true
+    },
+    {
+      "source": "response",
+      "dynamic_variable": "write_status",
+      "value_path": "status",
+      "sanitize": false,
+      "preserve_native_type": true
+    }
+  ]
+}

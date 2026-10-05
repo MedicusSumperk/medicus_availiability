@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-05",
+  "scope": "Isolated bounded HTTP API against live MAIN/LASER; production service unchanged",
+  "policy": "staff_first_snapshot_nowait_without_table_reservation",
+  "create": {
+    "ok": true,
+    "main_idobj": 144777,
+    "laser_idobj": 100056,
+    "date": "2027-01-04",
+    "physician": "09:30-09:40",
+    "scan": "09:15-09:30",
+    "both_rows_read_back": true
+  },
+  "replay": {
+    "same_ids": true
+  },
+  "move": {
+    "ok": false,
+    "status": "paired_write_failed_contact_staff",
+    "target_date": "2027-01-05",
+    "target_start": "09:20",
+    "both_original_row_fingerprints_unchanged": true,
+    "root_cause": "Isolated candidate retained old availability_engine.py: compute_day_availability rejected exclude_ids. Dependency refreshed; same read-only exclusion query now passes. Actual move must be retested."
+  },
+  "cancel": {
+    "ok": true,
+    "both_test_rows_absent_afterward": true
+  },
+  "final_comparison": {
+    "date_scope": [
+      "2027-01-04",
+      "2027-01-05"
+    ],
+    "objobj_changes": 0,
+    "objproc_changes": 0,
+    "objhist_added": {
+      "MAIN": 1,
+      "LASER": 1
+    },
+    "history_action": "D",
+    "excluded_original_141976_unchanged": true
+  },
+  "evidence_directory": "C:/db_bridge/state/gui-test-20261005",
+  "evidence_files": [
+    "SF0.json",
+    "SF1.json",
+    "SF2.json",
+    "SF3.json",
+    "SF0-SF3.json",
+    "staff-first-candidate-manifest.json"
+  ],
+  "helper_stopped": true,
+  "limitations": [
+    "Failed move requires diagnosis and another controlled test",
+    "Not a GUI verification",
+    "Not the staff approval HTTP workflow",
+    "Not a lost-ACK or limbo recovery drill",
+    "Production flags unchanged"
+  ]
+}

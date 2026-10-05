@@ -1,0 +1,26 @@
+{
+  "description": "Read-only current service capabilities. In staff_review mode use review_services for availability and requests awaiting staff approval; these are not directly bookable services. Explain supported services plainly. For a request outside scope preserve its intent and offer staff transfer rather than suggesting an unrelated examination.",
+  "api_schema": {
+    "request_body_schema": {
+      "type": "object",
+      "description": "Send optional purpose=capabilities_check. Read booking_mode, review_services, handoff_services and voice_answer_cs from the current response. Never promise a confirmed booking based on capabilities.",
+      "dynamic_variable": "",
+      "is_omitted": false,
+      "properties": {
+        "purpose": {
+          "type": "string",
+          "description": "Konstantni nefunkcni pole jen kvuli validaci ElevenLabs schema. Backend ho ignoruje.",
+          "dynamic_variable": "",
+          "constant_value": "",
+          "enum": null,
+          "is_system_provided": false,
+          "is_omitted": false,
+          "allowed_values": null,
+          "allowed_values_dynamic_variable": ""
+        }
+      },
+      "required": []
+    }
+  },
+  "assignments": []
+}

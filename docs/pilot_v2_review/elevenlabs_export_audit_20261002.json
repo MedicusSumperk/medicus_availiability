@@ -1,0 +1,37 @@
+{
+  "source_sha256": "cac6887db97c6a91009b9f40119fc7d86c932f31ec7a266acc5e6615712ea9af",
+  "agent_id": "agent_8201ktp2vwv2fbys0xax5qqsbbv9",
+  "version_id": "agtvrsn_0801m3yf865genxs8xkf2jpw361e",
+  "webhooks": [
+    {
+      "name": "doctor_availability",
+      "conversation_binding_valid": true,
+      "auth_connection_present": true
+    },
+    {
+      "name": "patient_lookup",
+      "conversation_binding_valid": true,
+      "auth_connection_present": true
+    },
+    {
+      "name": "appointment_write",
+      "conversation_binding_valid": true,
+      "auth_connection_present": true
+    },
+    {
+      "name": "handoff_summary",
+      "conversation_binding_valid": true,
+      "auth_connection_present": true
+    },
+    {
+      "name": "agent_capabilities",
+      "conversation_binding_valid": true,
+      "auth_connection_present": true
+    }
+  ],
+  "handoff_request_id_required": true,
+  "handoff_current_step_ignored_by_backend": true,
+  "handoff_patch_transport_preserved": true,
+  "handoff_patch_backend_fixture_passed": true,
+  "export_is_not_live_voice_test": true
+}

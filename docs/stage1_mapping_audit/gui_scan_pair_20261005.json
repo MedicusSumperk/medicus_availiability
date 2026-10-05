@@ -1,0 +1,161 @@
+{
+  "date": "2026-10-05",
+  "status": "passed_separate_gui_reservations_and_resource_reading",
+  "test_day": "2027-01-04",
+  "identity": {
+    "main_idpac": [REDACTED_TEST_CARD],
+    "laser_idpac": null
+  },
+  "existing_readonly_samples": {
+    "laser": [
+      {
+        "idobj": 98683,
+        "start": "14:45",
+        "end": "15:00",
+        "activity": 28
+      },
+      {
+        "idobj": 98692,
+        "start": "15:45",
+        "end": "16:00",
+        "activity": 28
+      }
+    ],
+    "day": "2026-10-07",
+    "empty_turquoise_1415_1430_available": true,
+    "brown_booking_1445_1500_available": false
+  },
+  "colors": {
+    "laser": [
+      {
+        "id": 28,
+        "label": "Dermatoskop",
+        "barva": 16512,
+        "gui": "brown"
+      },
+      {
+        "id": 13,
+        "label": "Dermatoskop potvrzeno",
+        "barva": 4194432,
+        "gui": "dark purple; dropdown only, no booking test"
+      }
+    ],
+    "main": [
+      {
+        "id": 1,
+        "label": "Sken znamének č. 1",
+        "barva": 4344044,
+        "volno": 4254956,
+        "obsazeno": 4344044
+      },
+      {
+        "id": 2,
+        "label": "kontrola po skenu",
+        "barva": 65408
+      },
+      {
+        "id": 5,
+        "label": "Sken znamének 2 a vyšší",
+        "barva": 16711680
+      },
+      {
+        "id": 6,
+        "label": "rezervace dermatoskop",
+        "barva": 65535
+      }
+    ],
+    "conclusion": "Activity color and occupancy are separate concepts. Tested LASER booking had COLORID=NULL and CINNOSTI.BARVA=16512. A sampled empty turquoise schedule interval was available. Do not infer availability from color alone."
+  },
+  "steps": [
+    {
+      "phase": "D0",
+      "utc": "2026-10-05T12:25:09.655492+00:00",
+      "action": "baseline",
+      "scanner_available": true,
+      "doctor_available": true
+    },
+    {
+      "phase": "D1",
+      "utc": "2026-10-05T12:28:09.232517+00:00",
+      "action": "GUI create LASER anonymous scanner reservation",
+      "idobj": 100051,
+      "start": "08:15",
+      "end": "08:30",
+      "iduzi": 5,
+      "idprac": 1,
+      "typ": 1,
+      "idcinnosti": 28,
+      "idpac": "[REDACTED_TEST_CARD]",
+      "colorid": null,
+      "idrec": null,
+      "typproh": null,
+      "scanner_available": false,
+      "doctor_available": true,
+      "main_unchanged": true
+    },
+    {
+      "phase": "D2",
+      "utc": "2026-10-05T12:29:45.928689+00:00",
+      "action": "GUI separately create MAIN physician appointment",
+      "idobj": 144756,
+      "start": "08:30",
+      "end": "08:40",
+      "iduzi": 8,
+      "idprac": 1,
+      "typ": 1,
+      "idcinnosti": null,
+      "colorid": null,
+      "idrec": null,
+      "typproh": null,
+      "scanner_available": false,
+      "doctor_available": false,
+      "laser_unchanged": true
+    },
+    {
+      "phase": "D3",
+      "utc": "2026-10-05T12:30:51.721518+00:00",
+      "action": "GUI cancel MAIN appointment only",
+      "scanner_available": false,
+      "doctor_available": true,
+      "laser_booking_remains": true
+    },
+    {
+      "phase": "D4",
+      "utc": "2026-10-05T12:31:49.219510+00:00",
+      "action": "GUI cancel LASER appointment",
+      "scanner_available": true,
+      "doctor_available": true
+    }
+  ],
+  "cleanup": {
+    "main_test_row_count_global": 0,
+    "laser_test_row_count_global": 0,
+    "all_sampled_objobj_rows_match_baseline": true,
+    "existing_main_141976_unchanged": true,
+    "objproc_unchanged": true,
+    "history_added": "one D row in each database",
+    "persisted_test_dekurs_matches": 0
+  },
+  "evidence": {
+    "directory": "C:\\db_bridge\\state\\gui-test-20261005",
+    "snapshots": "D0.json through D4.json",
+    "availability": "D0-availability.json through D4-availability.json",
+    "final_diff": "D0-D4.json",
+    "final_counts": "D4-cleanup.json",
+    "privacy": "Restricted server ACL, HMAC of personal/free-text fields; no personal names or clinical text in report."
+  },
+  "conclusions": [
+    "Anonymous LASER booking is a normal OBJOBJ row with NULL IDPAC and activity 28, not a newly created patient card.",
+    "Separate GUI writes do not automatically create or cancel the other calendar's appointment. Both resources must be managed explicitly for this workflow.",
+    "No explicit pair link appeared in IDREC/TYPPROH or OBJPROC in the observed workflow. This does not establish that all other Medicus workflows lack linking.",
+    "Production ScanCalendar reading blocked the scanner with MAIN doctor still free, and released it after deletion."
+  ],
+  "limits": [
+    "dermatoscope_first remains disabled for agent-facing availability; production search call rejected the service. No flags changed and no HTTP/voice write tested.",
+    "Resource checks used production ScanCalendar.is_available and skin search_availability in read-only transactions, not the complete combined-service endpoint.",
+    "MAIN appointment was deliberately an ordinary physician cell with test note and NULL activity. This validates resource occupancy, not the clinic's canonical activity for post-scan consultation.",
+    "Confirm with staff the exact MAIN activity for immediate post-scan examination and whether their normal workflow creates both calendar entries separately.",
+    "No paired move, confirmed-scan activity13 booking, administrative scanner block, or other service category tested in this session.",
+    "No Firebird schema/procedure changes, no restart, no production code/config changes."
+  ]
+}

@@ -24,13 +24,22 @@ _SEQUENCE_LOCK = threading.Lock()
 _SEQUENCES: dict[str, int] = {}
 
 _SENSITIVE_KEYS = {
+    "offer_token", "patient_verification_token", "staff_approval_token",
     "authorization", "bearer_token", "token", "api_key", "password", "secret",
     "birth_number", "rodne_cislo", "rodcis", "birth_number_last4", "idpac",
+    "first_name", "last_name", "full_name", "patient_name", "birth_date",
+    "date_of_birth", "email", "address", "conversation_summary", "summary",
+    "info", "pozn", "poznamka",
 }
 _PHONE_KEYS = {"phone", "phone_number", "caller_phone", "caller_id"}
 
 
 def _sanitize(value: Any, key: str | None = None) -> Any:
+    if key in {'options_json','appointments_json','past_appointments_json'} and isinstance(value,str):
+        try:
+            return json.dumps(_sanitize(json.loads(value)), ensure_ascii=False)
+        except (ValueError, TypeError):
+            return '[REDACTED]'
     normalized_key = (key or "").lower().replace("-", "_")
     if normalized_key in _SENSITIVE_KEYS or normalized_key.startswith("secret__"):
         return "[REDACTED]"
@@ -66,23 +75,24 @@ def telemetry_config(api_config: dict[str, Any]) -> dict[str, Any]:
 
 
 def _post_event(config: dict[str, Any], payload: dict[str, Any]) -> None:
-    request = Request(
-        str(config["url"]).rstrip("/") + "/v1/events/tool",
-        data=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
-        headers={
-            "Content-Type": "application/json",
-            "X-Operator-Token": str(config["token"]),
-        },
-        method="POST",
-    )
     try:
+        request = Request(
+            str(config["url"]).rstrip("/") + "/v1/events/tool",
+            data=json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "X-Operator-Token": str(config["token"]),
+            },
+            method="POST",
+        )
         with urlopen(request, timeout=float(config["timeout"])) as response:  # noqa: S310
             response.read(1)
-    except (OSError, URLError, ValueError) as error:
-        LOGGER.warning("Operator telemetry delivery failed: %s", error)
+    except Exception:
+        # Exception messages may contain credentials, URLs or patient data.
+        LOGGER.warning("Operator telemetry delivery failed")
 
 
-def emit_tool_event(
+def _emit_tool_event(
     api_config: dict[str, Any],
     *,
     conversation_id: str | None,
@@ -95,6 +105,7 @@ def emit_tool_event(
     business_ok: bool | None,
     error_code: str | None = None,
     trace_id: str | None = None,
+    request_id: str | None = None,
 ) -> None:
     config = telemetry_config(api_config)
     if not conversation_id or not config["url"] or not config["token"] or not config["tenant"]:
@@ -110,7 +121,10 @@ def emit_tool_event(
         "tool_call": {
             "name": tool_name,
             "endpoint": endpoint,
-            "sequence_no": _next_sequence(conversation_id),
+            # A durable staff request must not collide with an older tool after
+            # this process restarts and its in-memory sequence resets.
+            "sequence_no": None if request_id else _next_sequence(conversation_id),
+            "request_id": request_id,
             "duration_ms": duration_ms,
             "http_status": http_status,
             "business_ok": business_ok,
@@ -122,3 +136,11 @@ def emit_tool_event(
         },
     }
     _EXECUTOR.submit(_post_event, config, payload)
+
+
+def emit_tool_event(*args, **kwargs) -> None:
+    """Diagnostics must never convert a successful clinical operation to failure."""
+    try:
+        _emit_tool_event(*args, **kwargs)
+    except Exception:
+        LOGGER.warning('Operator telemetry scheduling failed')

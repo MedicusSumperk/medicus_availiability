@@ -1,0 +1,63 @@
+{
+  "result": "PASS: inventory integrity and current-behavior characterization only",
+  "rule_count": 40,
+  "confidence_counts": {
+    "CONFIRMED": 7,
+    "PROBABLE": 8,
+    "UNCLEAR": 18,
+    "CONFLICT": 7
+  },
+  "source_comparison": {
+    "api_server": {
+      "same_file": false,
+      "changed_symbols": [
+        "approval_store",
+        "approval_tenant",
+        "require_staff_auth",
+        "StaffProposalDecision",
+        "staff_proposals",
+        "staff_proposal",
+        "reject_proposal",
+        "doctor_availability",
+        "patient_lookup",
+        "book_appointment",
+        "handoff_summary"
+      ]
+    },
+    "business_rules": {
+      "same_file": false,
+      "changed_symbols": []
+    },
+    "availability_search": {
+      "same_file": false,
+      "changed_symbols": [
+        "compact_options"
+      ]
+    },
+    "availability_engine": {
+      "same_file": true,
+      "changed_symbols": []
+    },
+    "agent_context": {
+      "same_file": true,
+      "changed_symbols": []
+    },
+    "laser_calendar": {
+      "same_file": true,
+      "changed_symbols": []
+    },
+    "appointment_write": {
+      "same_file": false,
+      "changed_symbols": []
+    },
+    "patient_lookup": {
+      "same_file": false,
+      "changed_symbols": []
+    },
+    "handoff_summary": {
+      "same_file": false,
+      "changed_symbols": []
+    }
+  },
+  "human_business_validation": "NOT DONE"
+}

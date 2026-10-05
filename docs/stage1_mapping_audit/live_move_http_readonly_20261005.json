@@ -1,0 +1,19 @@
+{
+  "checked_at": "2026-10-05 14:25:14 UTC",
+  "firebird_read_only": true,
+  "http_status": 400,
+  "source_activity": 6,
+  "supported_source": false,
+  "baseline_options": 0,
+  "move_options": 0,
+  "bound_to_original": null,
+  "original_unchanged": true,
+  "test_server_stopped": true,
+  "events_sent": false,
+  "limitations": [
+    "Negative live HTTP test only: source activity 6 is not enabled for managed single rescheduling",
+    "No Firebird DML or schema changes; all Firebird connections used read-only TPB",
+    "Production API/config/worker unchanged",
+    "Happy-path live overlapping move remains unverified"
+  ]
+}

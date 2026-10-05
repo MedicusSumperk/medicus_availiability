@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-05",
+  "scope": "Actual proposal submission and authenticated staff revalidate/approve HTTP endpoints, isolated bounded host",
+  "actor": "controlled-api-test",
+  "result": "create_reschedule_cancel_committed",
+  "main_idobj": 144780,
+  "laser_idobj": 100059,
+  "created": {
+    "date": "2027-01-04",
+    "physician": "09:30-09:40",
+    "scan": "09:15-09:30"
+  },
+  "moved": {
+    "date": "2027-01-05",
+    "physician": "09:20-09:30",
+    "scan": "09:05-09:20",
+    "same_ids": true,
+    "read_back_verified": true
+  },
+  "summary": {
+    "doctor_present": true,
+    "verified_original_scan_present": true,
+    "paired_change_note_present": true,
+    "historic_arrival_not_inferred": true
+  },
+  "cleanup": {
+    "test_rows_removed": true,
+    "original_141976_unchanged": true,
+    "OBJOBJ_and_OBJPROC_scoped_delta": 0,
+    "OBJHIST": "one U and one D per DB",
+    "helper_stopped": true
+  },
+  "restricted_evidence": "C:/db_bridge/state/gui-test-20261005: SM0..SM3.json, SM0-SM3.json, review-cycle2-*-approved.json",
+  "limitations": [
+    "Controlled seeded identity/offer grants, not a voice identity-verification test",
+    "HTTP move test, not a browser click or Medicus GUI test",
+    "No uncertain-commit recovery drill",
+    "No production activation"
+  ]
+}

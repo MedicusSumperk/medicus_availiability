@@ -1,0 +1,92 @@
+{
+  "date": "2026-10-05",
+  "status": "passed_main_skin_gui_cycle",
+  "authorization": "User authorized GUI tests with active MAIN card [REDACTED_TEST_CARD] on valid dates in early 2027.",
+  "patient": {
+    "database": "MAIN",
+    "idpac": "[REDACTED_TEST_CARD]",
+    "active": true
+  },
+  "test_appointment_id": 144753,
+  "test_marker": "TEST AI GUI 20261005 - technicky test, ne navsteva",
+  "steps": [
+    {
+      "phase": "P0",
+      "captured_utc": "2026-10-05T11:56:55.628139",
+      "action": "baseline",
+      "both_test_slots_available": true
+    },
+    {
+      "phase": "P1",
+      "captured_utc": "2026-10-05T12:00:26.625497",
+      "action": "GUI create",
+      "date": "2027-01-04",
+      "start": "08:30",
+      "end": "08:40",
+      "doctor_id": 8,
+      "idprac": 1,
+      "typ": 1,
+      "idcinnosti": null,
+      "new_slot_available": false
+    },
+    {
+      "phase": "P2",
+      "captured_utc": "2026-10-05T12:03:14.593283",
+      "action": "GUI drag move",
+      "date": "2027-01-05",
+      "start": "09:20",
+      "end": "09:30",
+      "appointment_id_preserved": true,
+      "original_slot_available": true,
+      "new_slot_available": false,
+      "history_action": "U"
+    },
+    {
+      "phase": "P3",
+      "captured_utc": "2026-10-05T12:05:02.540942",
+      "action": "GUI delete with test cleanup reason",
+      "appointment_row_count": 0,
+      "both_test_slots_available": true,
+      "history_action": "D"
+    }
+  ],
+  "cleanup": {
+    "main_objobj_matches_baseline_for_sample_dates": true,
+    "existing_appointment_141976_unchanged": true,
+    "laser_objobj_objhist_objproc_unchanged_for_sample_dates": true,
+    "main_objproc_unchanged_for_sample_dates": true,
+    "main_objhist_added_rows": 2,
+    "gui_generated_appointment_note_absent_after_cancellation": true,
+    "persisted_dekurs_rows_matching_test_marker_or_test_dates": 0
+  },
+  "evidence": {
+    "server_directory": "C:\\db_bridge\\state\\gui-test-20261005",
+    "snapshots": [
+      "P0.json",
+      "P1.json",
+      "P2.json",
+      "P3.json"
+    ],
+    "availability": [
+      "P0-availability.json",
+      "P1-availability.json",
+      "P2-availability.json",
+      "P3-availability.json"
+    ],
+    "diffs": [
+      "P0-P1.json",
+      "P1-P2.json",
+      "P2-P3.json",
+      "P0-P3.json"
+    ],
+    "privacy": "Restricted server ACL; personal fields fingerprinted using server-local HMAC key. No patient name, DOB, phone or clinical text in this report.",
+    "availability_method": "Production search_availability Python module on server, Firebird read-only transactions; not an HTTP appointment_write test."
+  },
+  "limits": [
+    "Only MAIN skin GUI create/move/delete validated. Dermatoscope combined, scan-only, follow-up and regular-check write mapping remains unverified.",
+    "No API write or end-to-end voice booking tested; production write flags remain disabled.",
+    "Scoped snapshots cover OBJOBJ, OBJHIST and OBJPROC on January 4 and 5, not all database tables.",
+    "DEKURS check after cleanup found no test marker/date matches; no before/after clinical-record snapshot was taken.",
+    "Audit history intentionally remains. No Firebird schema or procedure changes; no server restart."
+  ]
+}

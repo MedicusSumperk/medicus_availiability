@@ -7,9 +7,12 @@ context export. It is read-only.
 from __future__ import annotations
 
 import json
+from calendar import monthrange
 import unicodedata
+from contextlib import ExitStack
 from datetime import date, datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from agent_context import (
     DEFAULT_CONFIG,
@@ -23,6 +26,8 @@ from agent_context import (
     parse_time,
 )
 from availability_engine import compute_day_availability, load_doctors
+from laser_calendar import open_scan_calendar
+from clinic_calendar import is_clinic_workday
 from business_rules import (
     afternoon_bucket_for_time,
     agent_context_overlay,
@@ -35,9 +40,69 @@ from business_rules import (
 
 
 DEFAULT_DAYS_AHEAD = 30
-DEFAULT_ENSURE_FIRST_AVAILABLE_DAYS = 180
 DEFAULT_LIMIT = 3
 MAX_LIMIT = 10
+
+
+def _clinic_now() -> datetime:
+    return datetime.now(ZoneInfo("Europe/Prague"))
+
+
+def _search_end_date(start: date, request: dict[str, Any]) -> date:
+    """Bound a search by six calendar months from the requested start."""
+    month_index = start.year * 12 + start.month - 1 + 6
+    year, month_zero = divmod(month_index, 12)
+    month = month_zero + 1
+    horizon = date(year, month, min(start.day, monthrange(year, month)[1]))
+    explicit_end = _parse_date(request.get('date_to'))
+    if explicit_end is not None:
+        if explicit_end < start:
+            raise ValueError('date_to must not precede date_from')
+        return min(explicit_end, horizon)
+    days = int(request.get('days_ahead') or DEFAULT_DAYS_AHEAD)
+    if days < 1:
+        raise ValueError('days_ahead must be positive')
+    if _parse_bool(request.get('ensure_first_available'), True):
+        extended = request.get('max_days_ahead')
+        if extended is None:
+            return horizon
+        extended = int(extended)
+        if extended < 1:
+            raise ValueError('max_days_ahead must be positive')
+        days = max(days, extended)
+    # Clamp before date arithmetic to avoid overflow from malformed requests.
+    return start + timedelta(days=min(days - 1, (horizon - start).days))
+
+
+def _option_is_future(option: dict[str, Any], target_date: date, now: datetime) -> bool:
+    starts = [option["start_time"], _arrival_time(option)]
+    if option.get("scan_slot"):
+        starts.append(option["scan_slot"]["start_time"])
+    return all(datetime.combine(target_date, parse_time(value), tzinfo=now.tzinfo) > now for value in starts)
+
+
+def _arrival_time(option: dict[str, Any]) -> str:
+    """Earliest required presence, not merely the doctor's technical slot."""
+    times = [str(option.get("spoken_time_label") or option["start_time"])]
+    if option.get("scan_slot"):
+        times.append(str(option["scan_slot"]["start_time"]))
+    return min(times, key=parse_time)
+
+
+def _rank_options(options):
+    ranked = sorted(options, key=lambda o: (
+        o["date"], parse_time(_arrival_time(o)), parse_time(o["start_time"]),
+        int(o["doctor_id"]), int(o["idprac"])))
+    seen = set()
+    result = []
+    for option in ranked:
+        key = (option["date"], option["service"], option["doctor_id"], _arrival_time(option))
+        if key not in seen:
+            seen.add(key)
+            result.append(option)
+    return result
+
+
 WEEKDAY_NAMES_CS = {
     1: "pondělí",
     2: "úterý",
@@ -134,7 +199,7 @@ def _iter_dates(
 
 
 def _option_matches_time(option: dict[str, Any], time_from: time | None, time_to: time | None) -> bool:
-    start_time = parse_time(option["start_time"])
+    start_time = parse_time(_arrival_time(option))
     if time_from is not None and start_time < time_from:
         return False
     if time_to is not None and start_time > time_to:
@@ -180,16 +245,20 @@ def _resolve_doctor_filter(
     if doctor_id is not None:
         filtered = _filtered_doctors(doctors, doctor_id)
         if filtered:
+            if doctor_name:
+                named, _, _ = _resolve_doctor_filter(doctors, None, doctor_name)
+                if len(named) != 1 or int(named[0]["doctor_id"]) != doctor_id:
+                    return [], {"doctor_id": doctor_id, "doctor_name": doctor_name, "match_type": "conflict"}, ["Doctor ID and name do not identify the same unique doctor; clarify the request."]
             return filtered, {"doctor_id": doctor_id, "doctor_name": filtered[0]["doctor_name"], "match_type": "doctor_id"}, notes
-        notes.append(f"Doctor ID {doctor_id} was not found; returning general availability.")
-        return doctors, {"doctor_id": doctor_id, "doctor_name": doctor_name, "match_type": "not_found"}, notes
+        notes.append(f"Doctor ID {doctor_id} was not found; no options returned; clarify the requested doctor.")
+        return [], {"doctor_id": doctor_id, "doctor_name": doctor_name, "match_type": "not_found"}, notes
 
     if not doctor_name:
         return doctors, {"doctor_id": None, "doctor_name": None, "match_type": "none"}, notes
 
     requested = _normalize_name(str(doctor_name))
     if not requested:
-        return doctors, {"doctor_id": None, "doctor_name": doctor_name, "match_type": "empty"}, notes
+        return [], {"doctor_id": None, "doctor_name": doctor_name, "match_type": "empty"}, notes
 
     exact_matches: list[dict[str, Any]] = []
     partial_matches: list[dict[str, Any]] = []
@@ -220,12 +289,12 @@ def _resolve_doctor_filter(
     if len(matches) > 1:
         match_names = ", ".join(str(match["doctor_name"]) for match in matches[:5])
         notes.append(
-            f"Doctor name '{doctor_name}' matched multiple doctors ({match_names}); returning general availability."
+            f"Doctor name '{doctor_name}' matched multiple doctors ({match_names}); no options returned; clarify the requested doctor."
         )
-        return doctors, {"doctor_id": None, "doctor_name": doctor_name, "match_type": "ambiguous"}, notes
+        return [], {"doctor_id": None, "doctor_name": doctor_name, "match_type": "ambiguous"}, notes
 
-    notes.append(f"Doctor name '{doctor_name}' was not found; returning general availability.")
-    return doctors, {"doctor_id": None, "doctor_name": doctor_name, "match_type": "not_found"}, notes
+    notes.append(f"Doctor name '{doctor_name}' was not found; no options returned; clarify the requested doctor.")
+    return [], {"doctor_id": None, "doctor_name": doctor_name, "match_type": "not_found"}, notes
 
 
 def load_search_config() -> dict[str, Any]:
@@ -247,9 +316,9 @@ def _option_allowed_by_operational_rules(
     emergency: bool,
 ) -> bool:
     before_rule = before_time_rule(rules)
-    if before_rule.get("enabled") and not emergency:
+    if before_rule.get("enabled"):
         before = _parse_time(before_rule.get("before"))
-        if before is not None and parse_time(option["start_time"]) < before:
+        if before is not None and parse_time(_arrival_time(option)) < before:
             return False
     return True
 
@@ -273,7 +342,12 @@ def _apply_spoken_time(
     return option
 
 
-def search_availability(cursor, request: dict[str, Any] | None = None, base_config: dict[str, Any] | None = None) -> dict[str, Any]:
+def search_availability(cursor, request: dict[str, Any] | None = None, base_config: dict[str, Any] | None = None, *, call_started_at: datetime | None = None, scan_calendar=None, exclude_main_ids=()) -> dict[str, Any]:
+    with ExitStack() as resources:
+        return _search_availability(cursor, request, base_config, resources, call_started_at, scan_calendar, exclude_main_ids)
+
+
+def _search_availability(cursor, request, base_config, resources, call_started_at=None, scan_calendar=None, exclude_main_ids=()):
     """Return the first matching service options for a compact tool response."""
     request = request or {}
     rules = load_business_rules()
@@ -289,25 +363,39 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
     if not service_enabled_for_availability(rules, service):
         raise ValueError(f"service is not agent-facing for availability: {service}")
 
-    today = date.today()
+    now = _clinic_now()
+    call_started_at = call_started_at or now
+    if call_started_at.tzinfo is None or call_started_at > now:
+        raise ValueError('Invalid trusted call start')
+    earliest_arrival = call_started_at + timedelta(hours=1)
+    today = now.date()
     date_from = _parse_date(request.get("date_from")) or today
-    explicit_date_to = _parse_date(request.get("date_to"))
-    days_ahead = int(request.get("days_ahead") or DEFAULT_DAYS_AHEAD)
-    ensure_first_available = _parse_bool(request.get("ensure_first_available"), True)
-    max_days_ahead = int(request.get("max_days_ahead") or DEFAULT_ENSURE_FIRST_AVAILABLE_DAYS)
-    effective_days_ahead = days_ahead
-    if explicit_date_to is None and ensure_first_available:
-        effective_days_ahead = max(days_ahead, max_days_ahead)
-    date_to = explicit_date_to or (date_from + timedelta(days=effective_days_ahead - 1))
+    date_to = _search_end_date(date_from, request)
+    effective_days_ahead = (date_to - date_from).days + 1
 
-    include_weekends = _parse_bool(request.get("include_weekends"), False)
+    # Clinic policy is not caller-overridable, even when a DB schedule exists.
+    include_weekends = False
     weekdays = _parse_weekdays(request.get("weekdays", request.get("weekday", [])))
-    effective_weekdays = _effective_weekdays(include_weekends, weekdays)
+    effective_weekdays = [day for day in _effective_weekdays(False, weekdays) if day < 6]
     time_from = _parse_time(request.get("time_from"))
     time_to = _parse_time(request.get("time_to"))
+    exact_start = _parse_time(request.get("technical_start_time"))
     emergency_rule = before_time_rule(rules)
     emergency_flag = str(emergency_rule.get("request_flag") or "emergency")
     emergency = _parse_bool(request.get(emergency_flag), False)
+    if emergency:
+        return {
+            "ok": True,
+            "service": service,
+            "filters": {"emergency": True},
+            "next_action": "handoff_to_staff",
+            "reason": "emergency_requires_staff",
+            "agent_notes": [
+                "Offer immediate transfer to staff. Do not offer or promise an emergency appointment."
+            ],
+            "options": [],
+            "scanned": {"days": 0, "contexts": 0},
+        }
     doctor_id = int(request["doctor_id"]) if request.get("doctor_id") is not None else None
     doctor_name = str(request.get("doctor_name") or "").strip() or None
     limit = min(max(int(request.get("limit") or DEFAULT_LIMIT), 1), int(request.get("max_limit") or MAX_LIMIT))
@@ -319,11 +407,10 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
     doctors, doctor_filter, agent_notes = _resolve_doctor_filter(service_doctors, doctor_id, doctor_name)
     if emergency_rule.get("enabled") and not emergency:
         agent_notes.append(
-            f"Slots before {emergency_rule.get('before')} are hidden unless {emergency_flag}=true."
+            f"Arrivals before {emergency_rule.get('before')} are reserved for staff; emergency requests require transfer."
         )
 
     options: list[dict[str, Any]] = []
-    spoken_option_keys: set[tuple[str, str, int, str]] = set()
     scanned_days = 0
     scanned_contexts = 0
     context_candidate_limit = limit
@@ -334,19 +421,30 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
             50,
         )
 
-    for target_date in _iter_dates(date_from, date_to, include_weekends, weekdays):
+    for target_date in _iter_dates(max(date_from, today), date_to, include_weekends, weekdays):
+        if not is_clinic_workday(target_date):
+            continue
         if not is_service_in_season(rules, service, target_date.strftime("%m-%d")):
             continue
         scanned_days += 1
         blockers = load_dermatoscope_blockers(cursor, target_date, blocking_idcinnosti)
 
         for doctor in doctors:
-            availability = compute_day_availability(cursor, doctor, target_date)
+            availability = compute_day_availability(cursor, doctor, target_date,
+                **({'exclude_ids': exclude_main_ids} if exclude_main_ids else {}))
             if not availability["has_schedule"]:
                 continue
 
             for context in availability.get("contexts", []):
+                # Filter before builders apply their candidate limit, so earlier
+                # times today cannot hide later, still-bookable appointments.
+                context = dict(context)
+                context["free_slots"] = [slot for slot in context.get("free_slots", [])
+                    if datetime.combine(target_date, parse_time(slot), tzinfo=now.tzinfo) > now]
                 scanned_contexts += 1
+                # Arrival filters and deduplication run after construction.
+                # Never let an arbitrary candidate cap hide later valid slots.
+                context_candidate_limit = max(limit, len(context.get("free_slots", [])))
                 if service == "skin":
                     context_options, _rejections = build_skin_options(
                         context,
@@ -361,7 +459,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                         blockers,
                         services["dermatoscope_first"],
                         fallback_slot_interval_minutes,
-                        context_candidate_limit,
+                        max(context_candidate_limit, len(context.get('free_slots', []))),
                     )
                 else:
                     context_options, _rejections = build_simple_service_options(
@@ -372,21 +470,26 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                     )
 
                 for option in context_options:
+                    if exact_start is not None and parse_time(option["start_time"]) != exact_start:
+                        continue
+                    weekday_payload = _weekday_payload(target_date)
+                    option = _apply_spoken_time(option, service, rules, weekday_payload["weekday_iso"])
+                    if not _option_is_future(option, target_date, now):
+                        continue
+                    if datetime.combine(target_date, parse_time(_arrival_time(option)), tzinfo=now.tzinfo) < earliest_arrival:
+                        continue
                     if not _option_allowed_by_operational_rules(option, service, rules, emergency):
                         continue
                     if not _option_matches_time(option, time_from, time_to):
                         continue
-                    weekday_payload = _weekday_payload(target_date)
-                    option = _apply_spoken_time(option, service, rules, weekday_payload["weekday_iso"])
-                    spoken_key = (
-                        target_date.isoformat(),
-                        service,
-                        int(doctor["doctor_id"]),
-                        str(option.get("spoken_time_label", option["start_time"])),
-                    )
-                    if spoken_key in spoken_option_keys:
-                        continue
-                    spoken_option_keys.add(spoken_key)
+                    if service == 'dermatoscope_first':
+                        if scan_calendar is None:
+                            scan_calendar = resources.enter_context(open_scan_calendar())
+                        scan = option['scan_slot']
+                        if not scan_calendar.is_available(target_date, scan['start_time'], scan['end_time']):
+                            continue
+                        scan['inferred_from_main_db'] = False
+                        scan['verified_in_laser_calendar'] = True
                     options.append(
                         {
                             "date": target_date.isoformat(),
@@ -408,31 +511,12 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
                             "communication_note": option.get("communication_note"),
                         }
                     )
-                    if len(options) >= limit:
-                        return {
-                            "ok": True,
-                            "service": service,
-                            "date_range": {
-                                "date_from": date_from.isoformat(),
-                                "date_to": date_to.isoformat(),
-                                "searched_days_ahead": effective_days_ahead,
-                            },
-                            "filters": {
-                                "weekdays": sorted(weekdays),
-                                "effective_weekdays": effective_weekdays,
-                                "include_weekends": include_weekends,
-                                "time_from": time_from.strftime("%H:%M") if time_from else None,
-                                "time_to": time_to.strftime("%H:%M") if time_to else None,
-                                "doctor": doctor_filter,
-                                "emergency": emergency,
-                            },
-                            "agent_notes": agent_notes,
-                            "options": options,
-                            "scanned": {
-                                "days": scanned_days,
-                                "contexts": scanned_contexts,
-                            },
-                        }
+        # Rank all doctors/contexts for a day before applying the voice limit.
+        options = _rank_options(options)
+        if len(options) >= limit:
+            break
+
+    options = options[:limit]
 
     return {
         "ok": True,
@@ -443,6 +527,7 @@ def search_availability(cursor, request: dict[str, Any] | None = None, base_conf
             "searched_days_ahead": effective_days_ahead,
         },
         "filters": {
+            "minimum_arrival_at": earliest_arrival.isoformat(),
             "weekdays": sorted(weekdays),
             "effective_weekdays": effective_weekdays,
             "include_weekends": include_weekends,
@@ -472,10 +557,12 @@ def compact_options(response: dict[str, Any]) -> dict[str, Any]:
             "start_time": option["start_time"],
             "technical_start_time": option.get("technical_start_time", option["start_time"]),
             "spoken_time_label": option.get("spoken_time_label", option["start_time"]),
+            "arrival_time": _arrival_time(option),
             "scan_start_time": (option.get("scan_slot") or {}).get("start_time"),
             "scan_end_time": (option.get("scan_slot") or {}).get("end_time"),
             "communication_note": option.get("communication_note"),
             "doctor_name": option["doctor_name"],
+            **({'offer_token': option['offer_token']} if option.get('offer_token') else {}),
         }
         for option in response["options"]
     ]
@@ -484,6 +571,8 @@ def compact_options(response: dict[str, Any]) -> dict[str, Any]:
         "service": response["service"],
         "filters": response.get("filters", {}),
         "agent_notes": response.get("agent_notes", []),
+        **({"next_action": response["next_action"], "reason": response["reason"]}
+           if response.get("next_action") else {}),
         "options": options,
         "options_json": json.dumps(options, ensure_ascii=False, separators=(",", ":")),
     }

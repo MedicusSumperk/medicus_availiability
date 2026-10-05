@@ -1,0 +1,72 @@
+{
+  "checked_at": "2026-10-05 14:13:04 UTC",
+  "scope": "Targeted live MAIN/LASER procedure projection comparison and NOWAIT lock-only probe",
+  "exclusion": {
+    "read_only": true,
+    "checks": [
+      {
+        "database": "MAIN",
+        "date": "2026-10-07",
+        "calendar": 8,
+        "rows_before": 17,
+        "rows_after": 16,
+        "excluded_occurrences": 1,
+        "status": "exact_projection_match"
+      },
+      {
+        "database": "MAIN",
+        "date": "2027-01-04",
+        "calendar": 8,
+        "rows_before": 1,
+        "rows_after": 0,
+        "excluded_occurrences": 1,
+        "status": "exact_projection_match"
+      },
+      {
+        "database": "LASER",
+        "date": "2026-10-07",
+        "calendar": 5,
+        "rows_before": 10,
+        "rows_after": 9,
+        "excluded_occurrences": 1,
+        "status": "exact_projection_match"
+      },
+      {
+        "database": "LASER",
+        "date": "2027-01-04",
+        "calendar": 5,
+        "rows_before": 1,
+        "rows_after": 0,
+        "excluded_occurrences": 1,
+        "status": "exact_projection_match"
+      }
+    ]
+  },
+  "locking": {
+    "dml_executed": false,
+    "checks": [
+      {
+        "database": "MAIN",
+        "status": "lock_conflict",
+        "codes": [
+          -901,
+          335544345
+        ]
+      },
+      {
+        "database": "LASER",
+        "status": "lock_conflict",
+        "codes": [
+          -901,
+          335544345
+        ]
+      }
+    ]
+  },
+  "limitations": [
+    "No API write or GUI operation performed",
+    "Protected OBJOBJ write reservation remains blocked in both databases",
+    "No Firebird schema changes, no DML, no restart or termination of other sessions",
+    "Projection correctness alone does not prove safe concurrent writes"
+  ]
+}
