@@ -12,15 +12,23 @@ a nástrojů, Operator backendu i frontendu a klientského testování.
 | Odpovědi klienta na zbývající otázky | Po představení první verze | Pokyn 5. 10.: nyní implementovat nejlepší dosavadní pochopení a domluvené defaulty; Q01–Q18 slouží pro následnou revizi. Faktické DB rozpory neřešit odhadem. |
 | Konsolidace návrhu | Schváleno | konsolidovany_navrh.md, včetně etap a navazujících závislostí |
 | Schválení návrhu před změnami | Doloženo | Uživatel výslovně odpověděl „Schvaluji“; autorizována postupná implementace návrhu |
-| API a infrastrukturní změny | Nasazeno; přejímka pokračuje | Runtime e0ed623, staff_review pro skin a dermatoscope_first; ostatní zápisové cesty předává personálu |
+| API a infrastrukturní změny | Nasazeno; přejímka pokračuje | Runtime e0ed623 + oprava nulových intervalů 862c138 (dva moduly); staff_review pro skin a dermatoscope_first; ostatní zápisové cesty předává personálu |
 | Prompt a schémata ElevenLabs tools | Publikováno; hlasový test zbývá | Verze agtvrsn_2701m46xg14ze4j9fjkcpm3kp74z, pět toolů se zachovanou autentizací a viditelnými výsledky |
 | Operator backend a frontend | Nasazeno; produkční UI přejímka zbývá | Backend 4c949dd, dashboard 725fb06; předchozí řízené staff testy prošly, ovládání browseru nyní selhává |
-| Technické notifikace | Částečně ověřeno | Trvalé požadavky v Operatoru fungují; admin e-mailové alerty pro v2 ještě ověřit. SMS uživatel vyřadil z rozsahu. |
+| Technické notifikace | Konfigurace a plán ověřeny | Owner SQL výstup 5. 10. 21:43 UTC: zapnuto, správný příjemce, minutový plán, pět úspěšných běhů, jeden sent záznam, žádné čekající. Endpoint 200/idle s klíčem a 401 bez klíče. Nové doručení do schránky netestováno; dřívější uživatel potvrdil. SMS mimo rozsah. |
 | Prezentovatelná verze pro klientský test | Nasazena; závěrečné ověření pokračuje | Aktualizovaný tiskový podklad, pravidla staff-first; je třeba skutečný hlasový průchod |
 | Řízený test s klientem a opravy | Nedokončeno | T01–T15, záznam skutečné řeči, toolů a DB výsledku, ne jen unit test |
-| Nasazení a ověření pilotu v2 | Nasazeno; cíl není uzavřen | Pět služeb Running, zdravotní sondy a API kontrakty prošly; zbývá hlasový průchod, produkční UI a aktuální notifikace |
+| Nasazení a ověření pilotu v2 | Nasazeno; cíl není uzavřen | Pět služeb Running při nasazení, zdravotní sondy a API kontrakty prošly; zbývá hlasový průchod, produkční UI a dosud nedoložené části mapování. Veřejná sonda ze serveru vrací Cloudflare 403/1010; nelze tím určit dostupnost z ElevenLabs. |
 
 ## Aktuální podmínky dokončení
+
+Doplnění 5. 10. večer: široké lokální hledání po opravě nulového MAIN
+intervalu vrací HTTP 200; regrese má 309 úspěšných testů. GUI LASERu pro
+7. října ukázalo obsazená pole kolem 14:45 a 15:45, konzistentní s databázovými
+kolizemi. Přesné hranice ani ID nebyly samostatně přečtené v GUI detailu;
+viz ../stage1_mapping_audit/incident_laser_gui_20261005.json. Kontrola skončila
+po zaznamenání uživatelského vstupu do relace, bez změny dat. Tato dílčí
+shoda nenahrazuje původní rozsah empirického mapování.
 
 Nejnovější stav 5. 10. 2026: produkční nasazení je dokončené. Podrobný záznam
 verzí a ověření je v production_rollout_20261005.json. Supabase migrace je
