@@ -3,7 +3,7 @@
   "status": "passed_separate_gui_reservations_and_resource_reading",
   "test_day": "2027-01-04",
   "identity": {
-    "main_idpac": [REDACTED_TEST_CARD],
+    "main_idpac": "[REDACTED_TEST_CARD]",
     "laser_idpac": null
   },
   "existing_readonly_samples": {

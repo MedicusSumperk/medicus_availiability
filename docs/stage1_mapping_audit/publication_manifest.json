@@ -49,7 +49,9 @@
     {
       "file": "gui_scan_pair_20261005.json",
       "source_sha256": "2b1b412146a3f54b95cd77b2ed0ad748008906de838e238881fc6babd4bcd248",
-      "published_sha256": "0327568a0f6a4d2e9bf4d6877376924a6aeca8130b19cdd7b85628d292c01379"
+      "published_sha256": "80bc8f3c520c25a7026e3ab65545d81fa7dbe276b90850936b297209fddd977c",
+      "published_sha256_before_json_repair": "0327568a0f6a4d2e9bf4d6877376924a6aeca8130b19cdd7b85628d292c01379",
+      "repair_note": "2026-10-06: quote redacted test-card placeholder; SHA-256 uses UTF-8 LF publication content. No patient ID restored."
     },
     {
       "file": "gui_skin_cycle_20261005.json",
@@ -104,7 +106,9 @@
     {
       "file": "paired_write_candidate_20261005.json",
       "source_sha256": "8f4607fccd7cd163fbcbc06defa06e0c5c2d3c212e1ca429305881463f1992fb",
-      "published_sha256": "e3fd0f423565233f45d2c672c4b45168f4f5549cbf4e606ab7ad749f80dea0ae"
+      "published_sha256": "13da3b8d40ae204c637bd15b3640ef98f6807f59efdce5d980efbb3331598034",
+      "published_sha256_before_json_repair": "e3fd0f423565233f45d2c672c4b45168f4f5549cbf4e606ab7ad749f80dea0ae",
+      "repair_note": "2026-10-06: quote redacted test-card placeholder; SHA-256 uses UTF-8 LF publication content. No patient ID restored."
     },
     {
       "file": "production_prompt_supplied_2026-10-01.txt",

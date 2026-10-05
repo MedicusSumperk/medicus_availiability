@@ -22,7 +22,7 @@
     }
   ],
   "test_scope": {
-    "main_idpac": [REDACTED_TEST_CARD],
+    "main_idpac": "[REDACTED_TEST_CARD]",
     "doctor_id": 8,
     "date": "2027-01-04",
     "start": "09:30",

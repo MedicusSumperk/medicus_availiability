@@ -11,6 +11,7 @@ se dostupnost ověřuje znovu. SMS nejsou součástí první verze.
 - [Pokrytí všech 40 bodů inventáře](pokryti_inventare.md)
 - [Ověření dokumentu](verification.json)
 - [Stav celého cíle](stav_cile.md)
+- [Závěrečná přejímka ve třech blocích](zaverecna_prejimka.md)
 
 PDF obsahuje 18 konkrétních otázek, 24 pracovních kroků a kopírovatelný list
 zpětné vazby. Otázky mají místa pro ruční odpovědi. Technické detaily jsou
