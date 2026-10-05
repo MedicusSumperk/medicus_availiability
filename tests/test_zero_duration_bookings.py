@@ -25,6 +25,23 @@ def test_mixed_duration_uses_cell_at_appointment_time():
     assert [x.strftime('%H:%M') for x in free] == ['09:00', '09:10', '11:30']
 
 
+@pytest.mark.parametrize('overlapping_reservation_present', [True, False])
+@pytest.mark.parametrize('reverse_order', [True, False])
+def test_oct9_overlap_does_not_hide_original_zero_duration_occupancy(
+        overlapping_reservation_present, reverse_order):
+    # Sanitized Oct 9 MAIN observation: original zero-length row, a later
+    # overlapping booking, and the next booked cell. Removing the later
+    # overlap must not release the original GUI appointment's cell.
+    appointments = [('11:15', '11:15'), ('11:30', '11:45')]
+    if overlapping_reservation_present:
+        appointments.append(('11:15', '11:30'))
+    if reverse_order:
+        appointments.reverse()
+    _, occupied, free = compute_slots([('11:15', 45, 15)], appointments)
+    assert [x.strftime('%H:%M') for x in occupied] == ['11:15', '11:30']
+    assert [x.strftime('%H:%M') for x in free] == ['11:45']
+
+
 @pytest.mark.parametrize('booking', [
     ('11:16', '11:16'), ('12:00', '12:00'), ('11:30', '11:15'),
     (None, '11:30'), ('11:15', None), ('invalid', '11:30'),

@@ -18,9 +18,19 @@ a nástrojů, Operator backendu i frontendu a klientského testování.
 | Technické notifikace | Konfigurace a plán ověřeny | Owner SQL výstup 5. 10. 21:43 UTC: zapnuto, správný příjemce, minutový plán, pět úspěšných běhů, jeden sent záznam, žádné čekající. Endpoint 200/idle s klíčem a 401 bez klíče. Nové doručení do schránky netestováno; dřívější uživatel potvrdil. SMS mimo rozsah. |
 | Prezentovatelná verze pro klientský test | Nasazena; závěrečné ověření pokračuje | Aktualizovaný tiskový podklad, pravidla staff-first; je třeba skutečný hlasový průchod |
 | Řízený test s klientem a opravy | Nedokončeno | T01–T15, záznam skutečné řeči, toolů a DB výsledku, ne jen unit test |
-| Nasazení a ověření pilotu v2 | Nasazeno; cíl není uzavřen | Pět služeb Running při nasazení, zdravotní sondy a API kontrakty prošly; zbývá hlasový průchod, produkční UI a dosud nedoložené části mapování. Veřejná sonda ze serveru vrací Cloudflare 403/1010; nelze tím určit dostupnost z ElevenLabs. |
+| Nasazení a ověření pilotu v2 | Nasazeno; cíl není uzavřen | Pět služeb Running při nasazení, zdravotní sondy a API kontrakty prošly; zbývá hlasový průchod, produkční UI a dosud nedoložené části mapování. Veřejné autentizované hledání z PowerShellu vrací 200, Python urllib ze serveru i pracovní stanice 403. Přesná příčina odmítnutí a dostupnost z ElevenLabs nejsou tím doložené. |
 
 ## Aktuální podmínky dokončení
+
+Doplnění 5. 10., po 21:50 UTC: omezené čtení potvrdilo v MAIN 9. října
+u lékaře 15 původní nulový záznam 141243 (červenec) a překryv 144588
+z 1. října s příznakem AI_RECEPTION. Následující 11:30 je srpnový záznam
+142198; žádný z nich není dnešní testovací zápis. Nic nebylo změněno.
+Anonymizovaná regrese potvrzuje zachování obsazenosti původního nulového
+intervalu i při odstranění pozdějšího překryvu; všech 14 cílených testů prošlo.
+Veřejná cesta byla ověřena autentizovaným POST přes PowerShell (200 a tři
+nabídky), Python urllib je odmítán 403. Viz oct9_overlap_20261005.json
+a public_client_comparison_20261005.json v ../stage1_mapping_audit/.
 
 Doplnění 5. 10. večer: široké lokální hledání po opravě nulového MAIN
 intervalu vrací HTTP 200; regrese má 309 úspěšných testů. GUI LASERu pro
