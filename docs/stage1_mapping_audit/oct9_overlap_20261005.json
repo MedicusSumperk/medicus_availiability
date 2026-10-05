@@ -14,5 +14,19 @@
     "AI_RECEPTION marker alone does not identify the originating call or prove the exact historical cause.",
     "No booking was changed or removed; staff must assess the existing overlap."
   ],
-  "regression": "tests/test_zero_duration_bookings.py::test_oct9_overlap_does_not_hide_original_zero_duration_occupancy"
+  "regression": "tests/test_zero_duration_bookings.py::test_oct9_overlap_does_not_hide_original_zero_duration_occupancy",
+  "historical_reproduction": {
+    "source_commit": "3fcb626",
+    "method": "Execute historical compute_slots locally with sanitized schedule and appointment intervals; no database writes",
+    "historical_free": ["11:15"],
+    "current_free": [],
+    "historical_preinsert_guard": "CAS < new_end AND CASDO > new_start excludes the zero-length 11:15 row for a new 11:15-11:30 booking",
+    "limitation": "Reproduces the code defect, not the exact deployed process or originating call on October 1"
+  },
+  "write_path_regression": {
+    "test": "tests/test_zero_duration_bookings.py::test_zero_duration_arriving_after_offer_blocks_staff_validation_and_writer",
+    "result": "A valid offer passes staff validation while free. Adding only the zero-duration occupied row makes staff validation raise ProposalConflict and the create writer return slot_not_bookable; insert is never called.",
+    "scope": "Real search, slot computation, staff validation and create writer; synthetic DB-loader outputs and patient fingerprint. No live Firebird write or transaction test.",
+    "targeted_suite": "39 passed: test_zero_duration_bookings.py and test_approval_execution.py"
+  }
 }

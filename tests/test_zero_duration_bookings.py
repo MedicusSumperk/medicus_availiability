@@ -12,6 +12,47 @@ from availability_engine import CalendarDataUnavailable, compute_slots
 import laser_calendar
 
 
+def test_zero_duration_arriving_after_offer_blocks_staff_validation_and_writer():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    import availability_engine as engine
+    import availability_search as search
+    import appointment_write as writer
+    import approval_execution as execution
+    from approval_proposals import offer_snapshot
+    from approval_store import ProposalConflict
+
+    request = dict(service='skin', date='2026-10-09', start_time='11:15',
+                   doctor_id=15, idpac=1, patient_verified=True)
+    cursor = Mock()
+    with patch.object(search, '_clinic_now', return_value=datetime(2026, 10, 5, 10, tzinfo=ZoneInfo('Europe/Prague'))), \
+         patch.object(search, 'load_doctors', return_value=[{'doctor_id':15, 'doctor_name':'Test doctor'}]), \
+         patch.object(search, 'load_dermatoscope_blockers', return_value=[]), \
+         patch.object(engine, 'find_schedule_contexts', return_value=[{'idprac':1, 'typtyd':4, 'dentyd':5}]), \
+         patch.object(engine, 'load_schedule_blocks', return_value=[('11:15',30,15)]), \
+         patch.object(engine, 'load_appointments', return_value=[]) as appointments, \
+         patch.object(execution, 'patient_fingerprint', return_value='verified'), \
+         patch.object(writer, '_insert_appointment') as insert:
+        # Positive control: real search and slot calculation produce a valid
+        # offer and the staff precondition accepts it before occupancy changes.
+        option = writer._find_exact_bookable_option(cursor, request)
+        assert option.get('error') is None
+        assert option['start_time'] == '11:15'
+        payload = {'action':'create', 'patient':{'idpac':1, 'fingerprint':'verified'},
+                   'source':[], 'offer':offer_snapshot(option)}
+        execution.validate_payload(cursor, None, payload)
+
+        # Only the data-loader output changes; no availability/search/approval
+        # result is mocked. Both production callers must now reject the slot.
+        appointments.return_value = [('11:15','11:15')]
+        with pytest.raises(ProposalConflict, match='no longer available'):
+            execution.validate_payload(cursor, None, payload)
+        result = writer._create_appointments(cursor, request, {})
+        assert result['ok'] is False
+        assert result['status'] == 'slot_not_bookable'
+        insert.assert_not_called()
+
+
 @pytest.mark.parametrize('minutes,end', [(10, '11:25'), (15, '11:30')])
 def test_zero_duration_blocks_actual_cell_and_keeps_next_cell(minutes, end):
     _, occupied, free = compute_slots([('11:15', minutes * 2, minutes)], [('11:15', '11:15')])
