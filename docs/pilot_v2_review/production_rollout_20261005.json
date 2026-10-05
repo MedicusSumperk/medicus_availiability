@@ -81,5 +81,20 @@
     "Uncertain commit recovery and remaining transfer scenarios must be audited against existing coverage"
   ],
   "protected_host_evidence": "C:\\db_bridge\\state\\gui-test-20261005\\v1-release-20261005\\switch-plan",
-  "rollback": "Restore listed backed-up code/config files and previous Operator junction; never restore live request store or journal automatically"
+  "rollback": "Restore listed backed-up code/config files and previous Operator junction; never restore live request store or journal automatically",
+  "medicus_runtime_hotfix": {
+    "commit": "862c1385664ca6815fb75f1b4e47da26ca8c6d8d",
+    "github_equivalent_commit": "8c5ddf777ca0da30f6c5294b4f9e684f029d39f8",
+    "files": [
+      "scripts/availability_engine.py",
+      "scripts/laser_calendar.py"
+    ],
+    "original_availability_request_http": 200,
+    "regression_tests_passed": 309,
+    "restart_scope": [
+      "Medicus Local API"
+    ],
+    "firebird_changes": false,
+    "public_server_probe": "Cloudflare 403/1010; ElevenLabs transport still requires real-call verification"
+  }
 }
