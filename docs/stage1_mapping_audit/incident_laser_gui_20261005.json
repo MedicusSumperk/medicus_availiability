@@ -15,6 +15,17 @@
     ],
     "result": "Visible occupied grid cells are consistent with the database blockers for the three incident scan intervals."
   },
+  "followup_20261006": {
+    "method": "Single-select the two occupied scanner cells; read the Medicus status bar, without opening an edit dialog",
+    "date_header": "07.10.2026",
+    "first_status_bar_interval": "14:45-15:00",
+    "first_category": "Dermatoskop",
+    "second_status_bar_interval": "15:45-16:00",
+    "result": "Both exact GUI intervals match the previously read LASER blockers. This supersedes the earlier limitation that endpoints were only inferred from the grid.",
+    "remaining_limit": "GUI row identifiers were not read; correlation uses date, scanner and interval. This is current occupancy, not a historical call-time snapshot.",
+    "data_written": false,
+    "implementation_changed": false
+  },
   "appointment_detail_opened": false,
   "data_written": false,
   "screenshots_saved": false,

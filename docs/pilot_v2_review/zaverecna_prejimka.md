@@ -5,6 +5,15 @@ ověření provést ve třech společných blocích, neopakovat hotové testy an
 otevírat další izolované historické vzorky bez konkrétního chybějícího důkazu.
 Cíl není dokončený a tento seznam neznamená zúžení jeho rozsahu.
 
+Pokyn uživatele 6. 10. po pozastavení: GUI příště pravděpodobně nebude
+dostupné. Provést jen poslední krátkou kontrolu bez implementace; rozsáhlejší
+testy nechat na vyjasnění s klientem. Dokončeno: LASER pro 7. října,
+stavový řádek přesně potvrzuje blokace 14:45–15:00 a 15:45–16:00, shodné
+s DB. Bez změny rezervací. Řízený GUI přesun skenu vyžaduje vytvoření,
+přesun a úklid; podle tohoto pokynu je odložen na společnou session
+s klientem. Nepovažovat jej za splněný a nepředpokládat dostupnost GUI
+při příštím obnovení. Cíl zůstává pozastavený.
+
 ## 1. Technická přejímka a GUI
 
 | Oblast | Co už je doloženo | Co ještě chybí |
